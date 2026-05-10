@@ -122,7 +122,8 @@ fun SignUpScreen(
 
         Button(
             onClick = {
-                viewModel.register(fullName, email, phone.ifBlank { null }, password)
+                val phoneValue = if (phone.isBlank()) null else phone
+                viewModel.register(fullName, email, phoneValue, password)
             },
             modifier = Modifier
                 .fillMaxWidth()
