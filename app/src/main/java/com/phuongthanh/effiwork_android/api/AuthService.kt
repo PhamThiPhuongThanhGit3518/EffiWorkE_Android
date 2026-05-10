@@ -11,15 +11,15 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface AuthService {
-    @POST("auth/login")
+    @POST("v1/auth/login")
     suspend fun login(@Body request: LoginRequest): ApiResponse<AuthResponse>
 
-    @POST("auth/register")
+    @POST("v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): ApiResponse<AuthResponse>
 
-    @POST("auth/logout")
+    @POST("v1/auth/logout")
     suspend fun logout(@Body request: RefreshTokenRequest): ApiResponse<Unit>
 
-    @GET("auth/me")
+    @GET("v1/auth/me")
     suspend fun getMe(): ApiResponse<UserResponse>
 }

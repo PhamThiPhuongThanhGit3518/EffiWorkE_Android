@@ -2,10 +2,7 @@ package com.phuongthanh.effiwork_android.di
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.phuongthanh.effiwork_android.api.AuthService
-import com.phuongthanh.effiwork_android.api.ApiClient
 import com.phuongthanh.effiwork_android.data.local.TokenManager
-import com.phuongthanh.effiwork_android.data.local.TokenManagerHolder
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.AuthRepositoryImpl
 import dagger.Module
@@ -28,23 +25,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTokenManager(sharedPreferences: SharedPreferences): TokenManager {
-        val tokenManager = TokenManager(sharedPreferences)
-        TokenManagerHolder.tokenManager = tokenManager
-        return tokenManager
-    }
-
-    @Provides
-    @Singleton
-    fun provideAuthService(): AuthService {
-        return ApiClient.authService
+        return TokenManager(sharedPreferences)
     }
 
     @Provides
     @Singleton
     fun provideAuthRepository(
-        authService: AuthService,
-        tokenManager: TokenManager
+        authRepository: AuthRepositoryImpl
     ): AuthRepository {
-        return AuthRepositoryImpl(authService, tokenManager)
+        return authRepository
     }
 }
