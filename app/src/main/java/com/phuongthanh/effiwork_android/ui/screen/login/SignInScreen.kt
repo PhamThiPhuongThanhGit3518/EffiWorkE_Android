@@ -20,7 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.phuongthanh.effiwork_android.ui.common.CustomTextField
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.ui.theme.LightBackground
-import com.phuongthanh.effiwork_android.viewmodel.AuthViewModel
+import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 
 @Composable
 fun SignInScreen(

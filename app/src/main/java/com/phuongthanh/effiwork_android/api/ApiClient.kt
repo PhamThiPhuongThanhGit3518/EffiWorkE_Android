@@ -1,6 +1,5 @@
 package com.phuongthanh.effiwork_android.api
 
-import android.R.attr.level
 import com.phuongthanh.effiwork_android.BuildConfig
 import com.phuongthanh.effiwork_android.data.local.TokenManagerHolder
 import okhttp3.OkHttpClient
