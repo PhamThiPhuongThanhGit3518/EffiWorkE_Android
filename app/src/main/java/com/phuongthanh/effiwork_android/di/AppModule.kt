@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.AuthRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
+import com.phuongthanh.effiwork_android.data.repository.ProjectRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,5 +36,13 @@ object AppModule {
         authRepository: AuthRepositoryImpl
     ): AuthRepository {
         return authRepository
+    }
+
+    @Provides
+    @Singleton
+    fun provideProjectRepository(
+        projectRepository: ProjectRepositoryImpl
+    ): ProjectRepository {
+        return projectRepository
     }
 }
