@@ -58,14 +58,24 @@ fun ProjectSettingScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Cài đặt dự án", fontWeight = FontWeight.Bold) },
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = {
+                    Text(
+                        text = "Cài đặt dự án",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp // Có thể chỉnh size nhỏ lại một chút nếu muốn "thu bé"
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Quay lại"
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors( // Đổi thành topAppBarColors
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )

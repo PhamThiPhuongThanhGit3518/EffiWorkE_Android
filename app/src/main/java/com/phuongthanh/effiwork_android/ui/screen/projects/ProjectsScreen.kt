@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,21 +74,30 @@ fun ProjectsScreen(
         content = {
             Scaffold(
                 topBar = {
-                    CenterAlignedTopAppBar(
+                    TopAppBar(
+                        windowInsets = WindowInsets(0, 0, 0, 0),
                         title = {
                             val title = when (val state = detailUiState) {
                                 is ProjectDetailUiState.Success -> state.project.name
                                 else -> stringResource(R.string.nav_projects)
                             }
-                            Text(title, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = title,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         },
                         navigationIcon = {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                 Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 }
@@ -247,7 +257,7 @@ private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         onClick = onClick
     ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = color.copy(alpha = 0.1f)) {
                 Icon(icon, label, tint = color, modifier = Modifier.padding(12.dp))
             }
@@ -257,15 +267,11 @@ private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier
     }
 }
 
-// --- PHẦN PREVIEW ĐỂ XEM GIAO DIỆN ---
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "Giao diện Dashboard Dự án")
 @Composable
 fun ProjectsScreenPreview() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-
-    // Giả lập giao diện Material Theme
     MaterialTheme {
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -296,9 +302,8 @@ fun ProjectsScreenPreview() {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
-                            .background(Color(0xFFF5F5F5)) // Màu nền xám nhạt để nổi bật Card
+                            .background(Color(0xFFF5F5F5))
                     ) {
-                        // Gọi hàm hiển thị Dashboard với dữ liệu giả
                         ProjectDashboardContent(
                             projectName = "Dự án NCKH",
                             projectCode = "PRJ-D22DD5FB",
