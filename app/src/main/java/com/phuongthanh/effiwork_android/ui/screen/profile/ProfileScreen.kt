@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,7 +37,8 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Hồ sơ cá nhân", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { /* Mở Drawer nếu cần */ }) {
@@ -80,7 +82,6 @@ private fun ProfileContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header Card (Avatar & Name)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -112,7 +113,6 @@ private fun ProfileContent(
             }
         }
 
-        // Thông tin cá nhân Section
         item {
             Text("Thông tin cá nhân", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(8.dp))
@@ -134,37 +134,37 @@ private fun ProfileContent(
             }
         }
 
-        // Bảo mật tài khoản Section
-        item {
-            Text("Bảo mật tài khoản", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            SettingsItem(
-                icon = Icons.Default.Lock,
-                title = "Đổi mật khẩu",
-                subtitle = "Cập nhật mật khẩu để bảo vệ tài khoản",
-                iconColor = Color(0xFF2196F3)
-            )
-        }
-
-        // Cài đặt ứng dụng Section
-        item {
-            Text("Cài đặt ứng dụng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            SettingsItem(
-                icon = Icons.Default.Notifications,
-                title = "Thông báo",
-                subtitle = "Quản lý tùy chọn thông báo",
-                iconColor = Color(0xFF9C27B0)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            SettingsItem(
-                icon = Icons.Default.Brightness4,
-                title = "Giao diện",
-                subtitle = "Chọn chế độ sáng hoặc tối",
-                iconColor = Color(0xFFFFEB3B),
-                trailingText = "Sáng"
-            )
-        }
+//        // Bảo mật tài khoản Section
+//        item {
+//            Text("Bảo mật tài khoản", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+//            Spacer(modifier = Modifier.height(8.dp))
+//            SettingsItem(
+//                icon = Icons.Default.Lock,
+//                title = "Đổi mật khẩu",
+//                subtitle = "Cập nhật mật khẩu để bảo vệ tài khoản",
+//                iconColor = Color(0xFF2196F3)
+//            )
+//        }
+//
+//        // Cài đặt ứng dụng Section
+//        item {
+//            Text("Cài đặt ứng dụng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+//            Spacer(modifier = Modifier.height(8.dp))
+//            SettingsItem(
+//                icon = Icons.Default.Notifications,
+//                title = "Thông báo",
+//                subtitle = "Quản lý tùy chọn thông báo",
+//                iconColor = Color(0xFF9C27B0)
+//            )
+//            Spacer(modifier = Modifier.height(8.dp))
+//            SettingsItem(
+//                icon = Icons.Default.Brightness4,
+//                title = "Giao diện",
+//                subtitle = "Chọn chế độ sáng hoặc tối",
+//                iconColor = Color(0xFFFFEB3B),
+//                trailingText = "Sáng"
+//            )
+//        }
 
         // Logout Button
         item {
@@ -194,7 +194,7 @@ fun ProfileInfoField(label: String, value: String) {
             value = value,
             onValueChange = {},
             modifier = Modifier.fillMaxWidth(),
-            readOnly = true,
+            readOnly = false,
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.LightGray,
@@ -204,48 +204,108 @@ fun ProfileInfoField(label: String, value: String) {
     }
 }
 
+//@Composable
+//fun SettingsItem(
+//    icon: ImageVector,
+//    title: String,
+//    subtitle: String,
+//    iconColor: Color,
+//    trailingText: String? = null
+//) {
+//    Card(
+//        modifier = Modifier.fillMaxWidth(),
+//        shape = RoundedCornerShape(12.dp),
+//        colors = CardDefaults.cardColors(containerColor = Color.White)
+//    ) {
+//        Row(
+//            modifier = Modifier.padding(16.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Box(
+//                modifier = Modifier
+//                    .size(40.dp)
+//                    .clip(RoundedCornerShape(8.dp))
+//                    .background(iconColor.copy(alpha = 0.1f)),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(icon, contentDescription = null, tint = iconColor)
+//            }
+//            Spacer(modifier = Modifier.width(16.dp))
+//            Column(modifier = Modifier.weight(1f)) {
+//                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+//                Text(subtitle, fontSize = 12.sp, color = Color.Gray)
+//            }
+//            if (trailingText != null) {
+//                Text(
+//                    trailingText,
+//                    fontSize = 13.sp,
+//                    color = Blue500,
+//                    modifier = Modifier
+//                        .background(Blue500.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
+//                        .padding(horizontal = 8.dp, vertical = 4.dp)
+//                )
+//            }
+//            Icon(Icons.Default.Menu, contentDescription = null, tint = Color.Gray)
+//        }
+//    }
+//}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Giao diện Hồ sơ cá nhân")
 @Composable
-fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    iconColor: Color,
-    trailingText: String? = null
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(iconColor.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = iconColor)
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text(subtitle, fontSize = 12.sp, color = Color.Gray)
-            }
-            if (trailingText != null) {
-                Text(
-                    trailingText,
-                    fontSize = 13.sp,
-                    color = Blue500,
-                    modifier = Modifier
-                        .background(Blue500.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+private fun ProfileScreenPreview() {
+    val mockUser = com.phuongthanh.effiwork_android.data.model.response.UserResponse(
+        id = "cmozsw7xs0006lodu18u7043v",
+        fullName = "Phạm Thị Phương Thanh",
+        email = "phamthiphuongthanh@gmail.com",
+        phone = "0845408835",
+        avatarUrl = null,
+        status = "ACTIVE",
+        createdAt = "2026-05-10T13:20:34.864Z",
+        updatedAt = "2026-05-10T13:20:34.864Z"
+    )
+
+    MaterialTheme {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    title = { Text("Hồ sơ cá nhân", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = {}) {
+                            Icon(Icons.Default.Menu, contentDescription = null)
+                        }
+                    }
                 )
             }
-            Icon(Icons.Default.Menu, contentDescription = null, tint = Color.Gray)
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(Color(0xFFF8F9FA))
+            ) {
+                ProfileContent(
+                    user = mockUser,
+                    onLogoutClick = {}
+                )
+            }
         }
     }
 }
+
+//@Preview(showBackground = true, name = "Xem riêng lẻ mục Cài đặt")
+//@Composable
+//private fun SettingsItemPreview() {
+//    MaterialTheme {
+//        Column(modifier = Modifier.padding(16.dp)) {
+//            SettingsItem(
+//                icon = Icons.Default.Brightness4,
+//                title = "Giao diện",
+//                subtitle = "Chọn chế độ sáng hoặc tối",
+//                iconColor = Color(0xFFFFEB3B),
+//                trailingText = "Sáng"
+//            )
+//        }
+//    }
+//}
