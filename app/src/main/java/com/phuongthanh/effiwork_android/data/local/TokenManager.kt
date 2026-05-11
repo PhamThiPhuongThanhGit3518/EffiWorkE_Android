@@ -29,7 +29,7 @@ class TokenManager @Inject constructor(
 
             .remove("access_token")
             .remove("refresh_token")
-            .remove("selected_project_id") 
+            .remove("selected_project_id")
             .apply()
     }
 
