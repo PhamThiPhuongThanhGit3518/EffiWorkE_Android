@@ -3,9 +3,11 @@ package com.phuongthanh.effiwork_android.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -21,6 +23,7 @@ import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.JoinByCodeScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectsScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectSettingScreen
+import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
 
 sealed class BottomNavItem(
@@ -42,9 +45,11 @@ object NavRoutes {
 
 @Composable
 fun MainScreen(
-    projectsViewModel: ProjectsViewModel = hiltViewModel()
+    projectsViewModel: ProjectsViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val navItems = listOf(
         BottomNavItem.Projects,
         BottomNavItem.Notifications,
@@ -54,8 +59,15 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Chỉ hiện BottomBar ở 3 màn hình chính
     val showBottomBar = currentRoute in navItems.map { it.route }
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            // Thực hiện điều hướng về màn hình Login của bạn
+             navController.navigate("login_route") { popUpTo(0) }
+            // Hoặc nếu MainScreen được bọc trong một NavHost lớn hơn, bạn có thể gọi callback thoát
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -99,7 +111,7 @@ fun MainScreen(
                 NotificationScreen()
             }
             composable(BottomNavItem.Profile.route) {
-                ProfileScreen()
+                ProfileScreen(authViewModel = authViewModel)
             }
             composable(NavRoutes.JOIN_BY_CODE) {
                 JoinByCodeScreen(

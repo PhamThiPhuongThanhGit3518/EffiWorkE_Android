@@ -26,8 +26,10 @@ class TokenManager @Inject constructor(
 
     fun clearTokens() {
         sharedPreferences.edit()
-            .remove(KEY_ACCESS_TOKEN)
-            .remove(KEY_REFRESH_TOKEN)
+
+            .remove("access_token")
+            .remove("refresh_token")
+            .remove("selected_project_id") 
             .apply()
     }
 
