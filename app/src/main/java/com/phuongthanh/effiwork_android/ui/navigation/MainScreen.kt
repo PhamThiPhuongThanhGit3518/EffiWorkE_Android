@@ -7,10 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.ui.common.BottomNavigationBar
 import com.phuongthanh.effiwork_android.ui.screen.notis.NotificationScreen
@@ -18,6 +20,7 @@ import com.phuongthanh.effiwork_android.ui.screen.profile.ProfileScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.JoinByCodeScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectsScreen
+import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectSettingScreen
 import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
 
 sealed class BottomNavItem(
@@ -32,6 +35,9 @@ sealed class BottomNavItem(
 object NavRoutes {
     const val JOIN_BY_CODE = "join_by_code"
     const val CREATE_PROJECT = "create_project"
+    const val PROJECT_SETTING = "project_setting/{projectId}"
+
+    fun projectSetting(projectId: String) = "project_setting/$projectId"
 }
 
 @Composable
@@ -83,6 +89,9 @@ fun MainScreen(
                     },
                     onNavigateToCreateProject = {
                         navController.navigate(NavRoutes.CREATE_PROJECT)
+                    },
+                    onNavigateToSettings = { projectId ->
+                        navController.navigate(NavRoutes.projectSetting(projectId))
                     }
                 )
             }
@@ -102,6 +111,16 @@ fun MainScreen(
                 CreateProjectScreen(
                     viewModel = projectsViewModel,
                     onBackClick = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.PROJECT_SETTING,
+                arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                ProjectSettingScreen(
+                    projectId = projectId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }

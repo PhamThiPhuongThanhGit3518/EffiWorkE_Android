@@ -35,7 +35,8 @@ fun ProjectsScreen(
     projectsViewModel: ProjectsViewModel,
     detailViewModel: ProjectDetailViewModel = hiltViewModel(),
     onNavigateToJoinByCode: () -> Unit = {},
-    onNavigateToCreateProject: () -> Unit = {}
+    onNavigateToCreateProject: () -> Unit = {},
+    onNavigateToSettings: (String) -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -105,7 +106,8 @@ fun ProjectsScreen(
                                 memberCount = state.project.memberCount,
                                 taskCount = state.project.taskCount,
                                 meetings = state.project.meetingsCount,
-                                documents = state.project.documentsCount
+                                documents = state.project.documentsCount,
+                                onSettingsClick = { onNavigateToSettings(state.project.id) }
                             )
                         }
                         is ProjectDetailUiState.NoProject -> {
@@ -133,7 +135,8 @@ private fun ProjectDashboardContent(
     memberCount: Int,
     taskCount: Int,
     meetings: Int,
-    documents: Int
+    documents: Int,
+    onSettingsClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -151,7 +154,7 @@ private fun ProjectDashboardContent(
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(12.dp))
-        FeaturesGrid()
+        FeaturesGrid(onSettingsClick = onSettingsClick)
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
@@ -210,20 +213,20 @@ private fun StatDivider() {
 }
 
 @Composable
-private fun FeaturesGrid() {
+private fun FeaturesGrid(onSettingsClick: () -> Unit = {}) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         val features = listOf(
-            Triple("Công việc", Icons.Default.Menu, Color(0xFF2196F3)),
-            Triple("Cuộc họp", Icons.Default.Menu, Color(0xFF9C27B0)),
-            Triple("Tài liệu", Icons.Default.Menu, Color(0xFF4CAF50)),
-            Triple("Tin nhắn", Icons.Default.Menu, Color(0xFF03A9F4)),
+            Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
+            Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
+            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
             Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
         )
 
         features.chunked(3).forEach { rowItems ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { (label, icon, color) ->
-                    FeatureCard(icon, label, color, Modifier.weight(1f))
+                    val onClick: () -> Unit = if (label == "Cài đặt") onSettingsClick else { {} }
+                    FeatureCard(icon, label, color, Modifier.weight(1f), onClick = onClick)
                 }
                 if (rowItems.size < 3) Spacer(Modifier.weight(3f - rowItems.size))
             }
@@ -233,12 +236,13 @@ private fun FeaturesGrid() {
 }
 
 @Composable
-private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier: Modifier, onClick: () -> Unit = {}) {
+private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        onClick = onClick
     ) {
         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = color.copy(alpha = 0.1f)) {
