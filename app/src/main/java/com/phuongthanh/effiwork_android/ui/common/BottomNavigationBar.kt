@@ -20,8 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.phuongthanh.effiwork_android.R
-import com.phuongthanh.effiwork_android.ui.screen.main.BottomNavItem
+import com.phuongthanh.effiwork_android.ui.navigation.BottomNavItem
 
 @Composable
 fun BottomNavigationBar(

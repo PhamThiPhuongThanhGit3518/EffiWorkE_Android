@@ -117,14 +117,14 @@ class ProjectsViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val data = result.data
                     _projectDetailState.value = ProjectDetailUiState.Success(
-                        projectId = data.project.projectId,
-                        name = data.project.name,
-                        description = data.project.description,
-                        ownerName = data.project.ownerName,
-                        memberCount = data.summary.memberCount,
-                        taskCount = data.summary.taskCount,
-                        completedTaskCount = data.summary.completedTaskCount,
-                        members = data.members
+                        projectId = data.id,
+                        name = data.name,
+                        description = data.description,
+                        ownerName = "",
+                        memberCount = data.memberCount,
+                        taskCount = data.taskCount,
+                        completedTaskCount = 0,
+                        members = emptyList()
                     )
                 }
                 is ApiResult.Error -> {

@@ -21,7 +21,8 @@ data class ProjectSummaryResponse(
     val ownerName: String,
     val memberCount: Int,
     val taskCount: Int,
-    val completedTaskCount: Int
+    val completedTaskCount: Int,
+    val meetings: Int = 0
 )
 
 data class ProjectMemberResponse(
@@ -45,7 +46,8 @@ data class JoinRequestResponse(
 data class ProjectsCount(
     val members: Int,
     val tasks: Int,
-    val meetings: Int
+    val meetings: Int,
+    val documents: Int = 0
 )
 
 data class ProjectsApiData(
@@ -74,9 +76,45 @@ data class ProjectsListResponse(
 )
 
 data class ProjectDetailResponse(
-    val project: ProjectResponse,
-    val summary: ProjectSummaryResponse,
-    val members: List<ProjectMemberResponse>
+    val id: String,
+    val projectCode: String,
+    val name: String,
+    val description: String,
+    val status: String,
+    val createdById: String,
+    val currentAdminId: String,
+    val createdAt: String,
+    val updatedAt: String,
+    @SerializedName("_count")
+    val count: ProjectsCount?
+) {
+    val memberCount: Int get() = count?.members ?: 0
+    val taskCount: Int get() = count?.tasks ?: 0
+    val meetingsCount: Int get() = count?.meetings ?: 0
+    val documentsCount: Int get() = count?.documents ?: 0
+}
+
+fun ProjectDetailResponse.toProjectResponse(): ProjectResponse = ProjectResponse(
+    projectId = id,
+    name = name,
+    description = description,
+    projectCode = projectCode,
+    ownerId = createdById,
+    ownerName = "",
+    memberCount = memberCount,
+    createdAt = createdAt,
+    updatedAt = updatedAt
+)
+
+fun ProjectDetailResponse.toSummaryResponse(): ProjectSummaryResponse = ProjectSummaryResponse(
+    projectId = id,
+    name = name,
+    description = description,
+    ownerName = "",
+    memberCount = memberCount,
+    taskCount = taskCount,
+    completedTaskCount = 0,
+    meetings = meetingsCount
 )
 
 fun ProjectsApiData.toProjectResponse(): ProjectResponse = ProjectResponse(

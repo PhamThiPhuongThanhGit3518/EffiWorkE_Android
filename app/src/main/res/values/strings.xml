@@ -3,6 +3,7 @@
     <string name="app_name">EffiWork</string>
     <string name="home_title">Home</string>
     <string name="notifications_title">Notifications</string>
+    <string name="nav_home">Trang chủ</string>
     <string name="nav_projects">Dự án</string>
     <string name="nav_notifications">Thông báo</string>
     <string name="nav_profile">Hồ sơ</string>

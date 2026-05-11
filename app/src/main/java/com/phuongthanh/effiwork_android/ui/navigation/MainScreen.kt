@@ -1,10 +1,11 @@
-package com.phuongthanh.effiwork_android.ui.screen.main
+package com.phuongthanh.effiwork_android.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,7 +19,6 @@ import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.JoinByCodeScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectsScreen
 import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
 
 sealed class BottomNavItem(
     val route: String,
@@ -48,6 +48,7 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Chỉ hiện BottomBar ở 3 màn hình chính
     val showBottomBar = currentRoute in navItems.map { it.route }
 
     Scaffold(

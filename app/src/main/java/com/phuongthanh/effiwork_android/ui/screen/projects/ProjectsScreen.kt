@@ -1,38 +1,47 @@
 package com.phuongthanh.effiwork_android.ui.screen.projects
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.R
+import com.phuongthanh.effiwork_android.ui.theme.Blue500
+import com.phuongthanh.effiwork_android.viewmodel.project_detail.ProjectDetailUiState
+import com.phuongthanh.effiwork_android.viewmodel.project_detail.ProjectDetailViewModel
 import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectsScreen(
-    modifier: Modifier = Modifier,
     projectsViewModel: ProjectsViewModel,
+    detailViewModel: ProjectDetailViewModel = hiltViewModel(),
     onNavigateToJoinByCode: () -> Unit = {},
     onNavigateToCreateProject: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val uiState by projectsViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Lắng nghe trạng thái của DetailViewModel
+    val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -41,7 +50,10 @@ fun ProjectsScreen(
                 ProjectsDrawerContent(
                     viewModel = projectsViewModel,
                     onProjectClick = { projectId ->
-                        scope.launch { drawerState.close() }
+                        scope.launch {
+                            drawerState.close()
+                            detailViewModel.loadProject(projectId)
+                        }
                     },
                     onJoinProjectClick = {
                         scope.launch { drawerState.close() }
@@ -55,20 +67,255 @@ fun ProjectsScreen(
             }
         },
         content = {
-            Scaffold { innerPadding ->
-                Box(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.projects_swipe_hint),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            Scaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            val title = when (val state = detailUiState) {
+                                is ProjectDetailUiState.Success -> state.project.name
+                                else -> stringResource(R.string.nav_projects)
+                            }
+                            Text(title, fontWeight = FontWeight.Bold)
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     )
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    when (val state = detailUiState) {
+                        is ProjectDetailUiState.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Blue500)
+                        }
+                        is ProjectDetailUiState.Success -> {
+                            ProjectDashboardContent(
+                                projectName = state.project.name,
+                                projectCode = state.project.projectCode,
+                                memberCount = state.project.memberCount,
+                                taskCount = state.project.taskCount,
+                                meetings = state.project.meetingsCount,
+                                documents = state.project.documentsCount
+                            )
+                        }
+                        is ProjectDetailUiState.NoProject -> {
+                            Text(
+                                text = stringResource(R.string.projects_swipe_hint),
+                                modifier = Modifier.align(Alignment.Center),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                        is ProjectDetailUiState.Error -> {
+                            Text(state.message, modifier = Modifier.align(Alignment.Center), color = Color.Red)
+                        }
+                        else -> {}
+                    }
                 }
             }
         }
     )
+}
+
+@Composable
+private fun ProjectDashboardContent(
+    projectName: String,
+    projectCode: String,
+    memberCount: Int,
+    taskCount: Int,
+    meetings: Int,
+    documents: Int
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        ProjectHeaderCard(projectName, projectCode)
+        Spacer(modifier = Modifier.height(16.dp))
+        StatsBar(taskCount, meetings, documents, memberCount)
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            "Chức năng chính",
+            modifier = Modifier.padding(horizontal = 20.dp),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        FeaturesGrid()
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun ProjectHeaderCard(projectName: String, projectCode: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(projectName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(projectCode, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
+                    Text(" Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50))
+                }
+            }
+            Surface(modifier = Modifier.size(56.dp), shape = RoundedCornerShape(12.dp), color = Blue500.copy(alpha = 0.1f)) {
+                Icon(Icons.Default.Menu, "Project", tint = Blue500, modifier = Modifier.padding(12.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsBar(taskCount: Int, meetings: Int, documents: Int, memberCount: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatItem(taskCount.toString(), "Công việc")
+        StatDivider()
+        StatItem(meetings.toString(), "Cuộc họp")
+        StatDivider()
+        StatItem(documents.toString(), "Tài liệu")
+        StatDivider()
+        StatItem(memberCount.toString(), "Thành viên")
+    }
+}
+
+@Composable
+private fun StatItem(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 12.sp, color = Color.Gray)
+    }
+}
+
+@Composable
+private fun StatDivider() {
+    Box(modifier = Modifier.height(30.dp).width(1.dp).background(Color.LightGray))
+}
+
+@Composable
+private fun FeaturesGrid() {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        val features = listOf(
+            Triple("Công việc", Icons.Default.Menu, Color(0xFF2196F3)),
+            Triple("Cuộc họp", Icons.Default.Menu, Color(0xFF9C27B0)),
+            Triple("Tài liệu", Icons.Default.Menu, Color(0xFF4CAF50)),
+            Triple("Tin nhắn", Icons.Default.Menu, Color(0xFF03A9F4)),
+            Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
+        )
+
+        features.chunked(3).forEach { rowItems ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowItems.forEach { (label, icon, color) ->
+                    FeatureCard(icon, label, color, Modifier.weight(1f))
+                }
+                if (rowItems.size < 3) Spacer(Modifier.weight(3f - rowItems.size))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier: Modifier, onClick: () -> Unit = {}) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = color.copy(alpha = 0.1f)) {
+                Icon(icon, label, tint = color, modifier = Modifier.padding(12.dp))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+// --- PHẦN PREVIEW ĐỂ XEM GIAO DIỆN ---
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Giao diện Dashboard Dự án")
+@Composable
+fun ProjectsScreenPreview() {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    // Giả lập giao diện Material Theme
+    MaterialTheme {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Danh sách dự án", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Dự án NCKH", modifier = Modifier.padding(8.dp))
+                        Text("Dự án DATN", modifier = Modifier.padding(8.dp), color = Blue500)
+                    }
+                }
+            },
+            content = {
+                Scaffold(
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = { Text("Dự án NCKH", fontWeight = FontWeight.Bold) },
+                            navigationIcon = {
+                                IconButton(onClick = {}) {
+                                    Icon(Icons.Default.Menu, contentDescription = null)
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .background(Color(0xFFF5F5F5)) // Màu nền xám nhạt để nổi bật Card
+                    ) {
+                        // Gọi hàm hiển thị Dashboard với dữ liệu giả
+                        ProjectDashboardContent(
+                            projectName = "Dự án NCKH",
+                            projectCode = "PRJ-D22DD5FB",
+                            memberCount = 5,
+                            taskCount = 4,
+                            meetings = 7,
+                            documents = 14
+                        )
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Xem riêng Header Card")
+@Composable
+fun HeaderCardPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ProjectHeaderCard(
+                projectName = "Đồ án tốt nghiệp",
+                projectCode = "PRJ-E3987FNT"
+            )
+        }
+    }
 }
