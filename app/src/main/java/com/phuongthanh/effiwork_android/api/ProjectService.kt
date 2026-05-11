@@ -9,7 +9,7 @@ interface ProjectService {
     @GET("v1/projects")
     suspend fun getProjects(
         @Query("keyword") keyword: String? = null
-    ): ApiResponse<ProjectsListResponse>
+    ): ProjectsListResponse
 
     @POST("v1/projects")
     suspend fun createProject(

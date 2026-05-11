@@ -3,6 +3,9 @@ package com.phuongthanh.effiwork_android.viewmodel.projects
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.data.model.response.ProjectResponse
+import com.phuongthanh.effiwork_android.data.model.response.ProjectsApiData
+import com.phuongthanh.effiwork_android.data.model.response.toProjectResponse
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -48,7 +51,8 @@ class ProjectsViewModel @Inject constructor(
             _uiState.value = ProjectsUiState.Loading
             when (val result = projectRepository.getProjects()) {
                 is ApiResult.Success -> {
-                    _uiState.value = ProjectsUiState.Success(result.data.projects)
+                    val projects = result.data.data.map { it.toProjectResponse() }
+                    _uiState.value = ProjectsUiState.Success(projects)
                 }
                 is ApiResult.Error -> {
                     _uiState.value = ProjectsUiState.Error(result.message)
@@ -65,7 +69,8 @@ class ProjectsViewModel @Inject constructor(
             _uiState.value = ProjectsUiState.Loading
             when (val result = projectRepository.getProjects(keyword)) {
                 is ApiResult.Success -> {
-                    _uiState.value = ProjectsUiState.Success(result.data.projects)
+                    val projects = result.data.data.map { it.toProjectResponse() }
+                    _uiState.value = ProjectsUiState.Success(projects)
                 }
                 is ApiResult.Error -> {
                     _uiState.value = ProjectsUiState.Error(result.message)

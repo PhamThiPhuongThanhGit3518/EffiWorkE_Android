@@ -18,11 +18,7 @@ class ProjectRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val response = projectService.getProjects(keyword)
-                if (response.success && response.data != null) {
-                    ApiResult.Success(response.data)
-                } else {
-                    ApiResult.Error(response.message)
-                }
+                ApiResult.Success(response)
             } catch (e: Exception) {
                 ApiResult.Error(e.message ?: "Unknown error")
             }

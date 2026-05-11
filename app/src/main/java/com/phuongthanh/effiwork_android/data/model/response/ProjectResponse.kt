@@ -1,5 +1,7 @@
 package com.phuongthanh.effiwork_android.data.model.response
 
+import com.google.gson.annotations.SerializedName
+
 data class ProjectResponse(
     val projectId: String,
     val name: String,
@@ -40,15 +42,51 @@ data class JoinRequestResponse(
     val createdAt: String
 )
 
-data class ProjectsListResponse(
-    val projects: List<ProjectResponse>,
-    val total: Int,
+data class ProjectsCount(
+    val members: Int,
+    val tasks: Int,
+    val meetings: Int
+)
+
+data class ProjectsApiData(
+    val id: String,
+    val projectCode: String,
+    val name: String,
+    val description: String,
+    val status: String,
+    val createdById: String,
+    val currentAdminId: String,
+    val createdAt: String,
+    val updatedAt: String,
+    val _count: ProjectsCount?
+)
+
+data class ProjectsMeta(
     val page: Int,
-    val pageSize: Int
+    val limit: Int,
+    val total: Int,
+    val totalPages: Int
+)
+
+data class ProjectsListResponse(
+    val data: List<ProjectsApiData>,
+    val meta: ProjectsMeta
 )
 
 data class ProjectDetailResponse(
     val project: ProjectResponse,
     val summary: ProjectSummaryResponse,
     val members: List<ProjectMemberResponse>
+)
+
+fun ProjectsApiData.toProjectResponse(): ProjectResponse = ProjectResponse(
+    projectId = id,
+    name = name,
+    description = description,
+    projectCode = projectCode,
+    ownerId = createdById,
+    ownerName = "",
+    memberCount = _count?.members ?: 0,
+    createdAt = createdAt,
+    updatedAt = updatedAt
 )
