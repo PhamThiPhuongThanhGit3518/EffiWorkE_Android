@@ -57,7 +57,12 @@ class ProjectSettingViewModel @Inject constructor(
             val members = if (membersResult is ApiResult.Success) membersResult.data else emptyList()
 
             val requestsResult = projectRepository.getJoinRequests(projectId)
-            val requests = if (requestsResult is ApiResult.Success) requestsResult.data else emptyList()
+            val requests = if (requestsResult is ApiResult.Success) {
+                // CHỈ lấy những yêu cầu có status là PENDING
+                requestsResult.data.filter { it.status == "PENDING" }
+            } else {
+                emptyList()
+            }
 
             _uiState.value = ProjectSettingUiState.Success(project, members, requests)
         }

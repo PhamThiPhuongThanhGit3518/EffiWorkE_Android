@@ -27,20 +27,48 @@ data class ProjectSummaryResponse(
 
 data class ProjectMemberResponse(
     val userId: String,
-    val fullName: String,
-    val email: String,
-    val role: String,
-    val joinedAt: String
+    val role: String, // ADMIN, MEMBER
+    val user: UserInfoResponse? // Thông tin chi tiết nằm ở đây
 )
 
+//data class UserInfoResponse(
+//    val fullName: String?,
+//    val email: String?,
+//    val avatarUrl: String?
+//)
+
+//data class JoinRequestResponse(
+//    val requestId: String,
+//    val userId: String,
+//    val fullName: String,
+//    val email: String,
+//    val note: String?,
+//    val status: String,
+//    val createdAt: String
+//)
+
 data class JoinRequestResponse(
+    @SerializedName("id")
     val requestId: String,
+
+    val projectId: String, // Thêm trường này
     val userId: String,
-    val fullName: String,
-    val email: String,
-    val note: String?,
     val status: String,
-    val createdAt: String
+    val note: String?,
+
+    @SerializedName("requestedAt")
+    val createdAt: String,
+
+    // Thay vì fullName/email trực tiếp, dùng object user
+    val user: UserInfoResponse?
+)
+
+data class UserInfoResponse(
+    val id: String? = null,
+    val fullName: String?,
+    val email: String?,
+    val phone: String? = null,
+    val avatarUrl: String? = null
 )
 
 data class ProjectsCount(
