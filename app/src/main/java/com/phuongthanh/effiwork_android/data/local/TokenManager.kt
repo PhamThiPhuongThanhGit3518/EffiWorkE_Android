@@ -25,12 +25,7 @@ class TokenManager @Inject constructor(
     fun getRefreshToken(): String? = sharedPreferences.getString(KEY_REFRESH_TOKEN, null)
 
     fun clearTokens() {
-        sharedPreferences.edit()
-
-            .remove("access_token")
-            .remove("refresh_token")
-            .remove("selected_project_id")
-            .apply()
+        sharedPreferences.edit().clear().apply() // Xóa sạch bộ nhớ đệm SharedPreferences
     }
 
     fun isLoggedIn(): Boolean = getAccessToken() != null

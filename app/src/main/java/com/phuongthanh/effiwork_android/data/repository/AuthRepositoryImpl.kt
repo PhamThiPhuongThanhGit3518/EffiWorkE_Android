@@ -2,6 +2,7 @@ package com.phuongthanh.effiwork_android.data.repository
 
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.api.AuthService
+import com.phuongthanh.effiwork_android.data.local.AppPreferences
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import com.phuongthanh.effiwork_android.data.model.request.LoginRequest
 import com.phuongthanh.effiwork_android.data.model.request.RefreshTokenRequest
@@ -16,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authService: AuthService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val appPreferences: AppPreferences
 ) : AuthRepository {
 
     override suspend fun login(identifier: String, password: String): ApiResult<AuthResponse> {
@@ -67,9 +69,11 @@ class AuthRepositoryImpl @Inject constructor(
                     authService.logout(RefreshTokenRequest(refreshToken))
                 }
                 tokenManager.clearTokens()
+                appPreferences.clearSelectedProjectId() // THÊM DÒNG NÀY
                 ApiResult.Success(Unit)
             } catch (e: Exception) {
                 tokenManager.clearTokens()
+                appPreferences.clearSelectedProjectId()
                 ApiResult.Success(Unit)
             }
         }

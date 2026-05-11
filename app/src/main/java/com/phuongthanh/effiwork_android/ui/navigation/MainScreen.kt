@@ -63,9 +63,12 @@ fun MainScreen(
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
-            // Thực hiện điều hướng về màn hình Login của bạn
-             navController.navigate("login_route") { popUpTo(0) }
-            // Hoặc nếu MainScreen được bọc trong một NavHost lớn hơn, bạn có thể gọi callback thoát
+            navController.navigate("login_route") {
+                // Xóa sạch toàn bộ Stack cũ, bao gồm cả MainScreen
+                popUpTo(navController.graph.id) {
+                    inclusive = true
+                }
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.phuongthanh.effiwork_android.di
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.phuongthanh.effiwork_android.BuildConfig
+import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
 import com.phuongthanh.effiwork_android.api.ProjectService
 import com.phuongthanh.effiwork_android.api.TokenAuthenticator
@@ -38,10 +39,11 @@ object NetworkModule {
         }
     }
 
+    // NetworkModule.kt
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        tokenManager: TokenManager,
+        authInterceptor: AuthInterceptor, // Inject class đã viết
         loggingInterceptor: HttpLoggingInterceptor,
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
@@ -52,18 +54,7 @@ object NetworkModule {
                     .build()
                 chain.proceed(request)
             }
-            .addInterceptor { chain ->
-                val token = tokenManager.getAccessToken()
-                val request = chain.request().newBuilder().apply {
-                    if (!token.isNullOrEmpty()) {
-                        addHeader("Authorization", "Bearer $token")
-                        android.util.Log.d("AuthDebug", "Sending Authorization: Bearer ${token.take(50)}...")
-                    } else {
-                        android.util.Log.d("AuthDebug", "No token to send")
-                    }
-                }.build()
-                chain.proceed(request)
-            }
+            .addInterceptor(authInterceptor) // Dùng class này, nó sẽ lấy token mới mỗi lần request
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)

@@ -23,39 +23,45 @@ sealed class ProjectDetailUiState {
 @HiltViewModel
 class ProjectDetailViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences // Inject thêm cái này
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProjectDetailUiState>(ProjectDetailUiState.Loading)
     val uiState: StateFlow<ProjectDetailUiState> = _uiState.asStateFlow()
 
-    fun loadProject(projectId: String) {
-        android.util.Log.d("ProjectDetail", "loadProject called with projectId: $projectId")
-        viewModelScope.launch {
-            _uiState.value = ProjectDetailUiState.Loading
-            android.util.Log.d("ProjectDetail", "Calling repository.getProject($projectId)")
-            when (val result = projectRepository.getProject(projectId)) {
-                is ApiResult.Success -> {
-                    android.util.Log.d("ProjectDetail", "API Success! Data: ${result.data}")
-                    android.util.Log.d("ProjectDetail", "name: ${result.data.name}")
-                    android.util.Log.d("ProjectDetail", "projectCode: ${result.data.projectCode}")
-                    android.util.Log.d("ProjectDetail", "memberCount: ${result.data.memberCount}")
-                    appPreferences.saveSelectedProjectId(projectId)
-                    _uiState.value = ProjectDetailUiState.Success(result.data)
-                }
-                is ApiResult.Error -> {
-                    android.util.Log.e("ProjectDetail", "API Error: ${result.message}")
-                    _uiState.value = ProjectDetailUiState.Error(result.message)
-                }
-                is ApiResult.Loading -> {
-                    _uiState.value = ProjectDetailUiState.Loading
-                }
-            }
+    init {
+        // Vừa khởi tạo là check xem có ID đã lưu chưa để load luôn
+        checkAndLoadSavedProject()
+    }
+
+    private fun checkAndLoadSavedProject() {
+        val savedId = appPreferences.getSelectedProjectId()
+        if (!savedId.isNullOrEmpty()) {
+            loadProject(savedId)
+        } else {
+            _uiState.value = ProjectDetailUiState.NoProject
         }
     }
 
-    fun selectProjectAndLoad(projectId: String) {
-        appPreferences.saveSelectedProjectId(projectId)
-        loadProject(projectId)
+    // ProjectDetailViewModel.kt
+    fun loadProject(projectId: String) {
+        viewModelScope.launch {
+            _uiState.value = ProjectDetailUiState.Loading
+            when (val result = projectRepository.getProject(projectId)) {
+                is ApiResult.Success -> {
+                    _uiState.value = ProjectDetailUiState.Success(result.data)
+                }
+                is ApiResult.Error -> {
+                    // Nếu lỗi là 403 hoặc thông báo "không thuộc dự án"
+                    if (result.message.contains("không thuộc dự án", ignoreCase = true)) {
+                        appPreferences.clearSelectedProjectId() // Xóa ID rác
+                        _uiState.value = ProjectDetailUiState.NoProject // Đưa về màn hình trống
+                    } else {
+                        _uiState.value = ProjectDetailUiState.Error(result.message)
+                    }
+                }
+                else -> {}
+            }
+        }
     }
 }

@@ -41,8 +41,11 @@ fun ProjectsScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Lắng nghe trạng thái của DetailViewModel
     val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        projectsViewModel.handleIntent(com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsIntent.LoadProjects)
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
