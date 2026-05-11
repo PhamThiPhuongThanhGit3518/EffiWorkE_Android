@@ -22,4 +22,7 @@ interface AuthService {
 
     @GET("v1/auth/me")
     suspend fun getMe(): ApiResponse<UserResponse>
+
+    @POST("v1/auth/refresh")
+    suspend fun refreshToken(@Body request: RefreshTokenRequest): ApiResponse<AuthResponse>
 }

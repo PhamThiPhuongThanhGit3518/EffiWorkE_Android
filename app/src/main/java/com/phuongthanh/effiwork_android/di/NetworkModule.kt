@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.phuongthanh.effiwork_android.BuildConfig
 import com.phuongthanh.effiwork_android.api.AuthService
 import com.phuongthanh.effiwork_android.api.ProjectService
+import com.phuongthanh.effiwork_android.api.TokenAuthenticator
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import dagger.Module
 import dagger.Provides
@@ -41,7 +42,8 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         tokenManager: TokenManager,
-        loggingInterceptor: HttpLoggingInterceptor
+        loggingInterceptor: HttpLoggingInterceptor,
+        tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -63,6 +65,7 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .addInterceptor(loggingInterceptor)
+            .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
