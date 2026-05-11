@@ -8,4 +8,17 @@
     <string name="nav_profile">Hồ sơ</string>
     <string name="projects_title">Dự án</string>
     <string name="profile_title">Hồ sơ</string>
+    <string name="projects_drawer_title">Dự án của tôi</string>
+    <string name="btn_join_project">Tham gia dự án</string>
+    <string name="btn_create_project">Thêm mới dự án</string>
+    <string name="join_by_code_title">Tham gia dự án</string>
+    <string name="create_project_title">Tạo dự án mới</string>
+    <string name="hint_project_code">Nhập mã dự án</string>
+    <string name="hint_project_name">Tên dự án</string>
+    <string name="hint_project_description">Mô tả dự án</string>
+    <string name="hint_note_optional">Ghi chú (không bắt buộc)</string>
+    <string name="btn_join">Tham gia</string>
+    <string name="btn_create">Tạo dự án</string>
+    <string name="btn_logout">Đăng xuất</string>
+    <string name="projects_swipe_hint">Trượt từ trái để mở danh sách dự án</string>
 </resources>
