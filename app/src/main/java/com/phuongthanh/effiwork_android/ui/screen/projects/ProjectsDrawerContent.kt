@@ -1,6 +1,5 @@
 package com.phuongthanh.effiwork_android.ui.screen.projects
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,7 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.R
-import com.phuongthanh.effiwork_android.data.model.response.ProjectResponse
+import com.phuongthanh.effiwork_android.ui.common.ProjectCard
+import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsIntent
+import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsUiState
 import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
 
 @Composable
@@ -27,10 +28,11 @@ fun ProjectsDrawerContent(
     onCreateProjectClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedProjectId by viewModel.selectedProjectId.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState) {
-        if (uiState is com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsUiState.Idle) {
-            viewModel.handleIntent(com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsIntent.LoadProjects)
+        if (uiState is ProjectsUiState.Idle) {
+            viewModel.handleIntent(ProjectsIntent.LoadProjects)
         }
     }
 
@@ -69,7 +71,7 @@ fun ProjectsDrawerContent(
         HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
 
         when (val state = uiState) {
-            is com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsUiState.Loading -> {
+            is ProjectsUiState.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -77,17 +79,21 @@ fun ProjectsDrawerContent(
                     CircularProgressIndicator()
                 }
             }
-            is com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsUiState.Success -> {
+            is ProjectsUiState.Success -> {
                 LazyColumn {
                     items(state.projects) { project ->
-                        ProjectItem(
+                        ProjectCard(
                             project = project,
-                            onClick = { onProjectClick(project.projectId) }
+                            isSelected = project.projectId == selectedProjectId,
+                            onClick = {
+                                viewModel.selectProject(project.projectId)
+                                onProjectClick(project.projectId)
+                            }
                         )
                     }
                 }
             }
-            is com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsUiState.Error -> {
+            is ProjectsUiState.Error -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -106,33 +112,6 @@ fun ProjectsDrawerContent(
                     Text("Chưa có dự án nào")
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ProjectItem(
-    project: ProjectResponse,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        color = MaterialTheme.colorScheme.surface
-    ) {
-        Column {
-            Text(
-                text = project.name,
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp
-            )
-            Text(
-                text = "${project.memberCount} thành viên",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
         }
     }
 }

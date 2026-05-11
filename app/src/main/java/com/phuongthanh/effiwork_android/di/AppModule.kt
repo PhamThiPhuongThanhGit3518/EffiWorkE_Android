@@ -2,6 +2,7 @@ package com.phuongthanh.effiwork_android.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.phuongthanh.effiwork_android.data.local.AppPreferences
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.AuthRepositoryImpl
@@ -28,6 +29,12 @@ object AppModule {
     @Singleton
     fun provideTokenManager(sharedPreferences: SharedPreferences): TokenManager {
         return TokenManager(sharedPreferences)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppPreferences(@ApplicationContext context: Context): AppPreferences {
+        return AppPreferences(context)
     }
 
     @Provides

@@ -3,6 +3,7 @@ package com.phuongthanh.effiwork_android.viewmodel.projects
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.data.local.AppPreferences
 import com.phuongthanh.effiwork_android.data.model.response.ProjectResponse
 import com.phuongthanh.effiwork_android.data.model.response.ProjectsApiData
 import com.phuongthanh.effiwork_android.data.model.response.toProjectResponse
@@ -19,8 +20,17 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProjectsViewModel @Inject constructor(
-    private val projectRepository: ProjectRepository
+    private val projectRepository: ProjectRepository,
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
+
+    private val _selectedProjectId = MutableStateFlow<String?>(appPreferences.getSelectedProjectId())
+    val selectedProjectId: StateFlow<String?> = _selectedProjectId.asStateFlow()
+
+    fun selectProject(projectId: String) {
+        _selectedProjectId.value = projectId
+        appPreferences.saveSelectedProjectId(projectId)
+    }
 
     private val _uiState = MutableStateFlow<ProjectsUiState>(ProjectsUiState.Idle)
     val uiState: StateFlow<ProjectsUiState> = _uiState.asStateFlow()
