@@ -61,9 +61,12 @@ class AuthViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
+            android.util.Log.d("LogoutDebug", "logout() called")
             authRepository.logout()
+            android.util.Log.d("LogoutDebug", "after authRepository.logout(), isLoggedIn = ${authRepository.isLoggedIn()}")
             _uiState.value = AuthUiState.Idle
             _isLoggedIn.value = false
+            android.util.Log.d("LogoutDebug", "_isLoggedIn set to false")
         }
     }
 

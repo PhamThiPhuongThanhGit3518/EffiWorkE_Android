@@ -24,7 +24,9 @@ class AuthRepositoryImpl @Inject constructor(
             try {
                 val response = authService.login(LoginRequest(identifier, password))
                 if (response.success && response.data != null) {
+                    android.util.Log.d("AuthDebug", "Login success, saving tokens...")
                     tokenManager.saveTokens(response.data.accessToken, response.data.refreshToken)
+                    android.util.Log.d("AuthDebug", "Tokens saved. Access token: ${response.data.accessToken.take(20)}...")
                     ApiResult.Success(response.data)
                 } else {
                     ApiResult.Error(response.message)

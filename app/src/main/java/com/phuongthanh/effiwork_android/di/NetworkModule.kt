@@ -55,6 +55,9 @@ object NetworkModule {
                 val request = chain.request().newBuilder().apply {
                     if (!token.isNullOrEmpty()) {
                         addHeader("Authorization", "Bearer $token")
+                        android.util.Log.d("AuthDebug", "Sending Authorization: Bearer ${token.take(50)}...")
+                    } else {
+                        android.util.Log.d("AuthDebug", "No token to send")
                     }
                 }.build()
                 chain.proceed(request)
