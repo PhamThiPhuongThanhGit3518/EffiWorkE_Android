@@ -25,9 +25,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
-import com.phuongthanh.effiwork_android.viewmodel.project_detail.ProjectDetailUiState
-import com.phuongthanh.effiwork_android.viewmodel.project_detail.ProjectDetailViewModel
-import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectDetailUiState
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectDetailViewModel
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsIntent
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +46,7 @@ fun ProjectsScreen(
     val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        projectsViewModel.handleIntent(com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsIntent.LoadProjects)
+        projectsViewModel.handleIntent(ProjectsIntent.LoadProjects)
     }
 
     ModalNavigationDrawer(
@@ -189,9 +190,6 @@ private fun ProjectHeaderCard(projectName: String, projectCode: String) {
                     Text(" Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50))
                 }
             }
-            Surface(modifier = Modifier.size(56.dp), shape = RoundedCornerShape(12.dp), color = Blue500.copy(alpha = 0.1f)) {
-                Icon(Icons.Default.Menu, "Project", tint = Blue500, modifier = Modifier.padding(12.dp))
-            }
         }
     }
 }
@@ -229,9 +227,9 @@ private fun StatDivider() {
 private fun FeaturesGrid(onSettingsClick: () -> Unit = {}) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         val features = listOf(
-            Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
-            Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
-            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
+//            Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
+//            Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
+//            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
             Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
         )
 
