@@ -66,7 +66,7 @@ fun CustomTextField(
             placeholder = {
                 Text(
                     text = placeholder,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF9E9E9E)),
                 )
             },
             leadingIcon = leadingIcon?.let {
