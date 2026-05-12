@@ -39,11 +39,10 @@ object NetworkModule {
         }
     }
 
-    // NetworkModule.kt
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor, // Inject class đã viết
+        authInterceptor: AuthInterceptor,
         loggingInterceptor: HttpLoggingInterceptor,
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
@@ -54,7 +53,7 @@ object NetworkModule {
                     .build()
                 chain.proceed(request)
             }
-            .addInterceptor(authInterceptor) // Dùng class này, nó sẽ lấy token mới mỗi lần request
+            .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
