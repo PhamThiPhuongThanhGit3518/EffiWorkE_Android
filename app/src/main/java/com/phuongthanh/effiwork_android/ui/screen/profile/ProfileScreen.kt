@@ -12,17 +12,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
+import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileEffect
 import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileUiState
 import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileViewModel
 
@@ -31,22 +29,29 @@ import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileViewModel
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     profileViewModel: ProfileViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel() // Để gọi hàm logout
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        profileViewModel.effect.collect { effect ->
+            when (effect) {
+                is ProfileEffect.ShowToast -> {
+                    snackbarHostState.showSnackbar(effect.message)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Hồ sơ cá nhân", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { /* Mở Drawer nếu cần */ }) {
-                        Icon(Icons.Default.Menu, contentDescription = null)
-                    }
-                }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Box(
             modifier = modifier
@@ -61,6 +66,9 @@ fun ProfileScreen(
                 is ProfileUiState.Success -> {
                     ProfileContent(
                         user = state.user,
+                        onSaveClick = { fullName, phone ->
+                            profileViewModel.updateProfile(fullName, phone)
+                        },
                         onLogoutClick = { authViewModel.logout() }
                     )
                 }
@@ -75,8 +83,12 @@ fun ProfileScreen(
 @Composable
 private fun ProfileContent(
     user: com.phuongthanh.effiwork_android.data.model.response.UserResponse,
+    onSaveClick: (String, String?) -> Unit,
     onLogoutClick: () -> Unit
 ) {
+    var fullName by remember(user) { mutableStateOf(user.fullName ?: "") }
+    var phone by remember(user) { mutableStateOf(user.phone ?: "") }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -116,14 +128,26 @@ private fun ProfileContent(
         item {
             Text("Thông tin cá nhân", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            ProfileInfoField("Họ và tên", user.fullName ?: "")
+            ProfileInfoField(
+                label = "Họ và tên",
+                value = fullName,
+                onValueChange = { fullName = it }
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            ProfileInfoField("Email đăng nhập", user.email)
+            ProfileInfoField(
+                label = "Email đăng nhập",
+                value = user.email,
+                onValueChange = {}
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            ProfileInfoField("Số điện thoại", user.phone ?: "Chưa có")
+            ProfileInfoField(
+                label = "Số điện thoại",
+                value = phone,
+                onValueChange = { phone = it }
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = { /* TODO: Update logic */ },
+                onClick = { onSaveClick(fullName, phone.ifBlank { null }) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Blue500)
@@ -134,39 +158,6 @@ private fun ProfileContent(
             }
         }
 
-//        // Bảo mật tài khoản Section
-//        item {
-//            Text("Bảo mật tài khoản", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            SettingsItem(
-//                icon = Icons.Default.Lock,
-//                title = "Đổi mật khẩu",
-//                subtitle = "Cập nhật mật khẩu để bảo vệ tài khoản",
-//                iconColor = Color(0xFF2196F3)
-//            )
-//        }
-//
-//        // Cài đặt ứng dụng Section
-//        item {
-//            Text("Cài đặt ứng dụng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            SettingsItem(
-//                icon = Icons.Default.Notifications,
-//                title = "Thông báo",
-//                subtitle = "Quản lý tùy chọn thông báo",
-//                iconColor = Color(0xFF9C27B0)
-//            )
-//            Spacer(modifier = Modifier.height(8.dp))
-//            SettingsItem(
-//                icon = Icons.Default.Brightness4,
-//                title = "Giao diện",
-//                subtitle = "Chọn chế độ sáng hoặc tối",
-//                iconColor = Color(0xFFFFEB3B),
-//                trailingText = "Sáng"
-//            )
-//        }
-
-        // Logout Button
         item {
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(
@@ -186,15 +177,19 @@ private fun ProfileContent(
 }
 
 @Composable
-fun ProfileInfoField(label: String, value: String) {
+private fun ProfileInfoField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(label, fontSize = 13.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(
             value = value,
-            onValueChange = {},
+            onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            readOnly = false,
+            readOnly = label == "Email đăng nhập",
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.LightGray,
@@ -203,109 +198,3 @@ fun ProfileInfoField(label: String, value: String) {
         )
     }
 }
-
-//@Composable
-//fun SettingsItem(
-//    icon: ImageVector,
-//    title: String,
-//    subtitle: String,
-//    iconColor: Color,
-//    trailingText: String? = null
-//) {
-//    Card(
-//        modifier = Modifier.fillMaxWidth(),
-//        shape = RoundedCornerShape(12.dp),
-//        colors = CardDefaults.cardColors(containerColor = Color.White)
-//    ) {
-//        Row(
-//            modifier = Modifier.padding(16.dp),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Box(
-//                modifier = Modifier
-//                    .size(40.dp)
-//                    .clip(RoundedCornerShape(8.dp))
-//                    .background(iconColor.copy(alpha = 0.1f)),
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Icon(icon, contentDescription = null, tint = iconColor)
-//            }
-//            Spacer(modifier = Modifier.width(16.dp))
-//            Column(modifier = Modifier.weight(1f)) {
-//                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-//                Text(subtitle, fontSize = 12.sp, color = Color.Gray)
-//            }
-//            if (trailingText != null) {
-//                Text(
-//                    trailingText,
-//                    fontSize = 13.sp,
-//                    color = Blue500,
-//                    modifier = Modifier
-//                        .background(Blue500.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
-//                        .padding(horizontal = 8.dp, vertical = 4.dp)
-//                )
-//            }
-//            Icon(Icons.Default.Menu, contentDescription = null, tint = Color.Gray)
-//        }
-//    }
-//}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Giao diện Hồ sơ cá nhân")
-@Composable
-private fun ProfileScreenPreview() {
-    val mockUser = com.phuongthanh.effiwork_android.data.model.response.UserResponse(
-        id = "cmozsw7xs0006lodu18u7043v",
-        fullName = "Phạm Thị Phương Thanh",
-        email = "phamthiphuongthanh@gmail.com",
-        phone = "0845408835",
-        avatarUrl = null,
-        status = "ACTIVE",
-        createdAt = "2026-05-10T13:20:34.864Z",
-        updatedAt = "2026-05-10T13:20:34.864Z"
-    )
-
-    MaterialTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("Hồ sơ cá nhân", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.Menu, contentDescription = null)
-                        }
-                    }
-                )
-            }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .background(Color(0xFFF8F9FA))
-            ) {
-                ProfileContent(
-                    user = mockUser,
-                    onLogoutClick = {}
-                )
-            }
-        }
-    }
-}
-
-//@Preview(showBackground = true, name = "Xem riêng lẻ mục Cài đặt")
-//@Composable
-//private fun SettingsItemPreview() {
-//    MaterialTheme {
-//        Column(modifier = Modifier.padding(16.dp)) {
-//            SettingsItem(
-//                icon = Icons.Default.Brightness4,
-//                title = "Giao diện",
-//                subtitle = "Chọn chế độ sáng hoặc tối",
-//                iconColor = Color(0xFFFFEB3B),
-//                trailingText = "Sáng"
-//            )
-//        }
-//    }
-//}
