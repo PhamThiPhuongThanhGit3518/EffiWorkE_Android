@@ -3,11 +3,13 @@ package com.phuongthanh.effiwork_android.api
 import com.phuongthanh.effiwork_android.data.model.request.LoginRequest
 import com.phuongthanh.effiwork_android.data.model.request.RegisterRequest
 import com.phuongthanh.effiwork_android.data.model.request.RefreshTokenRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateProfileRequest
 import com.phuongthanh.effiwork_android.data.model.response.ApiResponse
 import com.phuongthanh.effiwork_android.data.model.response.AuthResponse
 import com.phuongthanh.effiwork_android.data.model.response.UserResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 
 interface AuthService {
@@ -25,4 +27,7 @@ interface AuthService {
 
     @POST("v1/auth/refresh")
     suspend fun refreshToken(@Body request: RefreshTokenRequest): ApiResponse<AuthResponse>
+
+    @PATCH("v1/users/profile")
+    suspend fun updateProfile(@Body request: UpdateProfileRequest): ApiResponse<UserResponse>
 }
