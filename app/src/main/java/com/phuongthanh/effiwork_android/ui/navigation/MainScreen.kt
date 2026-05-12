@@ -24,7 +24,7 @@ import com.phuongthanh.effiwork_android.ui.screen.projects.JoinByCodeScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectsScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectSettingScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
-import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
 
 sealed class BottomNavItem(
     val route: String,
@@ -64,7 +64,6 @@ fun MainScreen(
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
             navController.navigate("login_route") {
-                // Xóa sạch toàn bộ Stack cũ, bao gồm cả MainScreen
                 popUpTo(navController.graph.id) {
                     inclusive = true
                 }
