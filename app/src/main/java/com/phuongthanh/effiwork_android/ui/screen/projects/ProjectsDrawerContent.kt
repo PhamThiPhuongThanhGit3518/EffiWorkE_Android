@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.ui.common.ProjectCard
-import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsIntent
-import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsUiState
-import com.phuongthanh.effiwork_android.viewmodel.projects.ProjectsViewModel
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsIntent
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsUiState
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
 
 @Composable
 fun ProjectsDrawerContent(
