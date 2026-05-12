@@ -9,5 +9,6 @@ interface AuthRepository {
     suspend fun register(fullName: String, email: String, phone: String?, password: String): ApiResult<AuthResponse>
     suspend fun logout(): ApiResult<Unit>
     suspend fun getCurrentUser(): ApiResult<UserResponse>
+    suspend fun updateProfile(fullName: String?, phone: String?, avatarUrl: String?): ApiResult<UserResponse>
     fun isLoggedIn(): Boolean
 }

@@ -7,6 +7,7 @@ import com.phuongthanh.effiwork_android.data.local.TokenManager
 import com.phuongthanh.effiwork_android.data.model.request.LoginRequest
 import com.phuongthanh.effiwork_android.data.model.request.RefreshTokenRequest
 import com.phuongthanh.effiwork_android.data.model.request.RegisterRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateProfileRequest
 import com.phuongthanh.effiwork_android.data.model.response.AuthResponse
 import com.phuongthanh.effiwork_android.data.model.response.UserResponse
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +70,7 @@ class AuthRepositoryImpl @Inject constructor(
                     authService.logout(RefreshTokenRequest(refreshToken))
                 }
                 tokenManager.clearTokens()
-                appPreferences.clearSelectedProjectId() // THÊM DÒNG NÀY
+                appPreferences.clearSelectedProjectId()
                 ApiResult.Success(Unit)
             } catch (e: Exception) {
                 tokenManager.clearTokens()
@@ -95,4 +96,19 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun isLoggedIn(): Boolean = tokenManager.isLoggedIn()
+
+    override suspend fun updateProfile(fullName: String?, phone: String?, avatarUrl: String?): ApiResult<UserResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = authService.updateProfile(UpdateProfileRequest(fullName, phone, avatarUrl))
+                if (response.success && response.data != null) {
+                    ApiResult.Success(response.data)
+                } else {
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
 }
