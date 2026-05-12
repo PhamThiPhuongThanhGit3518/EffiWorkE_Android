@@ -1,11 +1,9 @@
-package com.phuongthanh.effiwork_android.viewmodel.projects
+package com.phuongthanh.effiwork_android.viewmodel.project
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.local.AppPreferences
-import com.phuongthanh.effiwork_android.data.model.response.ProjectResponse
-import com.phuongthanh.effiwork_android.data.model.response.ProjectsApiData
 import com.phuongthanh.effiwork_android.data.model.response.toProjectResponse
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +22,8 @@ class ProjectsViewModel @Inject constructor(
     private val appPreferences: AppPreferences
 ) : ViewModel() {
 
-    private val _selectedProjectId = MutableStateFlow<String?>(appPreferences.getSelectedProjectId())
+    private val _selectedProjectId =
+        MutableStateFlow<String?>(appPreferences.getSelectedProjectId())
     val selectedProjectId: StateFlow<String?> = _selectedProjectId.asStateFlow()
 
     fun selectProject(projectId: String) {
@@ -35,7 +34,8 @@ class ProjectsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ProjectsUiState>(ProjectsUiState.Idle)
     val uiState: StateFlow<ProjectsUiState> = _uiState.asStateFlow()
 
-    private val _projectDetailState = MutableStateFlow<ProjectDetailUiState>(ProjectDetailUiState.Idle)
+    private val _projectDetailState =
+        MutableStateFlow<ProjectDetailUiState>(ProjectDetailUiState.Idle)
     val projectDetailState: StateFlow<ProjectDetailUiState> = _projectDetailState.asStateFlow()
 
     private val _effect = MutableSharedFlow<ProjectsEffect>()
@@ -115,24 +115,13 @@ class ProjectsViewModel @Inject constructor(
             _projectDetailState.value = ProjectDetailUiState.Loading
             when (val result = projectRepository.getProject(projectId)) {
                 is ApiResult.Success -> {
-                    val data = result.data
-                    _projectDetailState.value = ProjectDetailUiState.Success(
-                        projectId = data.id,
-                        name = data.name,
-                        description = data.description,
-                        ownerName = "",
-                        memberCount = data.memberCount,
-                        taskCount = data.taskCount,
-                        completedTaskCount = 0,
-                        members = emptyList()
-                    )
+                    // Truyền trực tiếp result.data (là ProjectDetailResponse) vào Success
+                    _projectDetailState.value = ProjectDetailUiState.Success(result.data)
                 }
                 is ApiResult.Error -> {
                     _projectDetailState.value = ProjectDetailUiState.Error(result.message)
                 }
-                is ApiResult.Loading -> {
-                    _projectDetailState.value = ProjectDetailUiState.Loading
-                }
+                else -> {}
             }
         }
     }
