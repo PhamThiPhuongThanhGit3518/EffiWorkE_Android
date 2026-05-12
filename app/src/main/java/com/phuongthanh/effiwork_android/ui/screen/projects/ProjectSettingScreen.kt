@@ -15,22 +15,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.data.model.response.JoinRequestResponse
 import com.phuongthanh.effiwork_android.data.model.response.ProjectsCount
 import com.phuongthanh.effiwork_android.data.model.response.ProjectDetailResponse
 import com.phuongthanh.effiwork_android.data.model.response.ProjectMemberResponse
 import com.phuongthanh.effiwork_android.data.model.response.UserInfoResponse
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
-import com.phuongthanh.effiwork_android.viewmodel.project_setting.ProjectSettingEffect
-import com.phuongthanh.effiwork_android.viewmodel.project_setting.ProjectSettingUiState
-import com.phuongthanh.effiwork_android.viewmodel.project_setting.ProjectSettingViewModel
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectSettingEffect
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectSettingUiState
+import com.phuongthanh.effiwork_android.viewmodel.project.ProjectSettingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +62,7 @@ fun ProjectSettingScreen(
                     Text(
                         text = "Cài đặt dự án",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp // Có thể chỉnh size nhỏ lại một chút nếu muốn "thu bé"
+                        fontSize = 18.sp /
                     )
                 },
                 navigationIcon = {
@@ -75,7 +73,7 @@ fun ProjectSettingScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors( // Đổi thành topAppBarColors
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
@@ -412,7 +410,7 @@ private fun ProjectSettingScreenPreview() {
         count = ProjectsCount(members = 5, tasks = 12, meetings = 3, documents = 8)
     )
 
-    // Sửa lại danh sách thành viên giả (Fake Members)
+
     val fakeMembers = listOf(
         ProjectMemberResponse(
             userId = "u1",
@@ -435,7 +433,6 @@ private fun ProjectSettingScreenPreview() {
         )
     )
 
-    // Sửa lại danh sách yêu cầu giả (Fake Requests) - Cũng dùng UserInfoResponse lồng bên trong
     val fakeRequests = listOf(
         JoinRequestResponse(
             requestId = "r1",
