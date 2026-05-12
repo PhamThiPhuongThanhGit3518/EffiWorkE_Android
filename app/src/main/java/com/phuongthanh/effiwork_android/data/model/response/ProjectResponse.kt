@@ -27,31 +27,15 @@ data class ProjectSummaryResponse(
 
 data class ProjectMemberResponse(
     val userId: String,
-    val role: String, // ADMIN, MEMBER
-    val user: UserInfoResponse? // Thông tin chi tiết nằm ở đây
+    val role: String,
+    val user: UserInfoResponse?
 )
-
-//data class UserInfoResponse(
-//    val fullName: String?,
-//    val email: String?,
-//    val avatarUrl: String?
-//)
-
-//data class JoinRequestResponse(
-//    val requestId: String,
-//    val userId: String,
-//    val fullName: String,
-//    val email: String,
-//    val note: String?,
-//    val status: String,
-//    val createdAt: String
-//)
 
 data class JoinRequestResponse(
     @SerializedName("id")
     val requestId: String,
 
-    val projectId: String, // Thêm trường này
+    val projectId: String,
     val userId: String,
     val status: String,
     val note: String?,
@@ -59,7 +43,6 @@ data class JoinRequestResponse(
     @SerializedName("requestedAt")
     val createdAt: String,
 
-    // Thay vì fullName/email trực tiếp, dùng object user
     val user: UserInfoResponse?
 )
 
