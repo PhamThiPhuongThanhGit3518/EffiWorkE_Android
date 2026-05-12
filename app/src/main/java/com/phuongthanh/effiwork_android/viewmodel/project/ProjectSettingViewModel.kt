@@ -1,4 +1,4 @@
-package com.phuongthanh.effiwork_android.viewmodel.project_setting
+package com.phuongthanh.effiwork_android.viewmodel.project
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -58,7 +58,6 @@ class ProjectSettingViewModel @Inject constructor(
 
             val requestsResult = projectRepository.getJoinRequests(projectId)
             val requests = if (requestsResult is ApiResult.Success) {
-                // CHỈ lấy những yêu cầu có status là PENDING
                 requestsResult.data.filter { it.status == "PENDING" }
             } else {
                 emptyList()
