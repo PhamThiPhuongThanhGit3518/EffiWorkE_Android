@@ -1,4 +1,4 @@
-package com.phuongthanh.effiwork_android.viewmodel.project_detail
+package com.phuongthanh.effiwork_android.viewmodel.project
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class ProjectDetailUiState {
+    data object Idle : ProjectDetailUiState()
     data object Loading : ProjectDetailUiState()
     data object NoProject : ProjectDetailUiState()
     data class Success(val project: ProjectDetailResponse) : ProjectDetailUiState()
@@ -23,14 +24,13 @@ sealed class ProjectDetailUiState {
 @HiltViewModel
 class ProjectDetailViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
-    private val appPreferences: AppPreferences // Inject thêm cái này
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProjectDetailUiState>(ProjectDetailUiState.Loading)
     val uiState: StateFlow<ProjectDetailUiState> = _uiState.asStateFlow()
 
     init {
-        // Vừa khởi tạo là check xem có ID đã lưu chưa để load luôn
         checkAndLoadSavedProject()
     }
 
@@ -43,7 +43,6 @@ class ProjectDetailViewModel @Inject constructor(
         }
     }
 
-    // ProjectDetailViewModel.kt
     fun loadProject(projectId: String) {
         viewModelScope.launch {
             _uiState.value = ProjectDetailUiState.Loading
@@ -52,10 +51,9 @@ class ProjectDetailViewModel @Inject constructor(
                     _uiState.value = ProjectDetailUiState.Success(result.data)
                 }
                 is ApiResult.Error -> {
-                    // Nếu lỗi là 403 hoặc thông báo "không thuộc dự án"
                     if (result.message.contains("không thuộc dự án", ignoreCase = true)) {
-                        appPreferences.clearSelectedProjectId() // Xóa ID rác
-                        _uiState.value = ProjectDetailUiState.NoProject // Đưa về màn hình trống
+                        appPreferences.clearSelectedProjectId()
+                        _uiState.value = ProjectDetailUiState.NoProject
                     } else {
                         _uiState.value = ProjectDetailUiState.Error(result.message)
                     }
