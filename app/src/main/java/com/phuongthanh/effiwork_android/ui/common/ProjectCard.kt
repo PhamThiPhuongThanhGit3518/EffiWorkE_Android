@@ -12,8 +12,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.phuongthanh.effiwork_android.data.model.response.ProjectResponse
+
+@Preview
+@Composable
+private fun ProjectCardPreview() {
+    ProjectCard(
+        project = ProjectResponse(
+            projectId = "1",
+            name = "Project Alpha",
+            projectCode = "PA001",
+            description = "A sample project",
+            ownerId = "owner1",
+            ownerName = "Owner Name",
+            memberCount = 5,
+            createdAt = "2024-01-01",
+            updatedAt = "2024-01-01"
+        ),
+        isSelected = false,
+        onClick = {}
+    )
+}
 
 @Composable
 fun ProjectCard(

@@ -7,16 +7,36 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsIntent
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
+@Composable
+fun JoinByCodeScreen(
+    viewModel: ProjectsViewModel = hiltViewModel(),
+    onBackClick: () -> Unit = {}
+) {
+    JoinByCodeContent(
+        onBackClick = onBackClick,
+        onJoinClick = { code, note ->
+            viewModel.handleIntent(
+                ProjectsIntent.JoinByCode(
+                    projectCode = code,
+                    note = note.ifBlank { null }
+                )
+            )
+            onBackClick()
+        }
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JoinByCodeScreen(
-    viewModel: ProjectsViewModel,
-    onBackClick: () -> Unit = {}
+private fun JoinByCodeContent(
+    onBackClick: () -> Unit,
+    onJoinClick: (String, String) -> Unit
 ) {
     var projectCode by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
@@ -24,6 +44,7 @@ fun JoinByCodeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text(stringResource(R.string.join_by_code_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -63,20 +84,23 @@ fun JoinByCodeScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = {
-                    viewModel.handleIntent(
-                        ProjectsIntent.JoinByCode(
-                            projectCode = projectCode,
-                            note = note.ifBlank { null }
-                        )
-                    )
-                    onBackClick()
-                },
+                onClick = { onJoinClick(projectCode, note) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = projectCode.isNotBlank()
             ) {
                 Text(stringResource(R.string.btn_join))
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun JoinByCodePreviewEmpty() {
+    MaterialTheme {
+        JoinByCodeContent(
+            onBackClick = {},
+            onJoinClick = { _, _ -> }
+        )
     }
 }

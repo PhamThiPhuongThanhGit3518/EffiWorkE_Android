@@ -184,7 +184,7 @@ private fun ProjectSettingContent(
 
 @Composable
 private fun ProjectInfoCard(
-    project: com.phuongthanh.effiwork_android.data.model.response.ProjectDetailResponse
+    project: ProjectDetailResponse
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),

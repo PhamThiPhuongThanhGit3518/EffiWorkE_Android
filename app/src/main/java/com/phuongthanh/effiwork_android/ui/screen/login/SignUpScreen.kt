@@ -28,13 +28,6 @@ fun SignUpScreen(
     onRegisterSuccess: () -> Unit = {},
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(uiState) {
@@ -42,6 +35,28 @@ fun SignUpScreen(
             onRegisterSuccess()
         }
     }
+
+    SignUpContent(
+        uiState = uiState,
+        onRegisterClick = { fullName, email, phone, password ->
+            val phoneValue = phone.ifBlank { null }
+            viewModel.register(fullName, email, phoneValue, password)
+        },
+        onSignInClick = onSignInClick
+    )
+}
+
+@Composable
+private fun SignUpContent(
+    uiState: AuthUiState,
+    onRegisterClick: (String, String, String, String) -> Unit,
+    onSignInClick: () -> Unit
+) {
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -53,20 +68,11 @@ fun SignUpScreen(
     ) {
         Spacer(modifier = Modifier.height(48.dp))
 
-        Text(
-            text = "EffiWork",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = Blue500
-        )
+        Text(text = "EffiWork", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Blue500)
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "Tạo tài khoản mới",
-            fontSize = 14.sp,
-            color = Color(0xFF666666)
-        )
+        Text(text = "Tạo tài khoản mới", fontSize = 14.sp, color = Color(0xFF666666))
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -121,37 +127,22 @@ fun SignUpScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = {
-                val phoneValue = if (phone.isBlank()) null else phone
-                viewModel.register(fullName, email, phoneValue, password)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            onClick = { onRegisterClick(fullName, email, phone, password) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Blue500),
-            enabled = uiState !is AuthUiState.Loading
+            enabled = uiState !is AuthUiState.Loading && password == confirmPassword && password.isNotBlank()
         ) {
-            when (uiState) {
-                is AuthUiState.Loading -> CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White
-                )
-                else -> Text(
-                    text = "Đăng ký",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+            if (uiState is AuthUiState.Loading) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+            } else {
+                Text(text = "Đăng ký", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
         if (uiState is AuthUiState.Error) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = (uiState as AuthUiState.Error).message,
-                color = Color.Red,
-                fontSize = 14.sp
-            )
+            Text(text = uiState.message, color = Color.Red, fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -169,11 +160,7 @@ fun SignUpScreen(
             modifier = Modifier.padding(bottom = 40.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "Đã có tài khoản? ",
-                color = Color(0xFF666666),
-                fontSize = 14.sp
-            )
+            Text(text = "Đã có tài khoản? ", color = Color(0xFF666666), fontSize = 14.sp)
             Text(
                 text = "Đăng nhập ngay",
                 color = Blue500,
@@ -185,8 +172,15 @@ fun SignUpScreen(
     }
 }
 
-@Preview
+
+@Preview(showBackground = true, name = "Đăng ký - Bình thường")
 @Composable
-fun SignUpScreenPreview() {
-    SignUpScreen()
+private fun SignUpPreviewNormal() {
+    MaterialTheme {
+        SignUpContent(
+            uiState = AuthUiState.Idle,
+            onRegisterClick = { _, _, _, _ -> },
+            onSignInClick = {}
+        )
+    }
 }

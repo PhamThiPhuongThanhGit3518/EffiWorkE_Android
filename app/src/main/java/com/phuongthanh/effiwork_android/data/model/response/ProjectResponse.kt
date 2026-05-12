@@ -5,13 +5,13 @@ import com.google.gson.annotations.SerializedName
 data class ProjectResponse(
     val projectId: String,
     val name: String,
-    val description: String,
     val projectCode: String,
-    val ownerId: String,
-    val ownerName: String,
-    val memberCount: Int,
-    val createdAt: String,
-    val updatedAt: String
+    val description: String = "",
+    val ownerId: String = "",
+    val ownerName: String = "",
+    val memberCount: Int = 0,
+    val createdAt: String = "",
+    val updatedAt: String = ""
 )
 
 data class ProjectSummaryResponse(

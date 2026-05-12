@@ -29,10 +29,6 @@ fun SignInScreen(
     onLoginSuccess: () -> Unit = {},
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var identifier by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(uiState) {
@@ -40,6 +36,26 @@ fun SignInScreen(
             onLoginSuccess()
         }
     }
+
+    SignInContent(
+        uiState = uiState,
+        onLoginClick = { identifier, password ->
+            viewModel.login(identifier, password)
+        },
+        onSignUpClick = onSignUpClick,
+        onForgotPasswordClick = onForgotPasswordClick
+    )
+}
+
+@Composable
+private fun SignInContent(
+    uiState: AuthUiState,
+    onLoginClick: (String, String) -> Unit,
+    onSignUpClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit
+) {
+    var identifier by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -51,20 +67,11 @@ fun SignInScreen(
     ) {
         Spacer(modifier = Modifier.height(60.dp))
 
-        Text(
-            text = "EffiWork",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = Blue500
-        )
+        Text(text = "EffiWork", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Blue500)
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "Đăng nhập để tiếp tục",
-            fontSize = 14.sp,
-            color = Color(0xFF666666)
-        )
+        Text(text = "Đăng nhập để tiếp tục", fontSize = 14.sp, color = Color(0xFF666666))
 
         Spacer(modifier = Modifier.height(40.dp))
 
@@ -89,10 +96,7 @@ fun SignInScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterEnd
-        ) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
             Text(
                 text = "Quên mật khẩu?",
                 color = Blue500,
@@ -104,66 +108,36 @@ fun SignInScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { viewModel.login(identifier, password) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            onClick = { onLoginClick(identifier, password) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Blue500),
             enabled = uiState !is AuthUiState.Loading
         ) {
-            when (uiState) {
-                is AuthUiState.Loading -> CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White
-                )
-                else -> Text(
-                    text = "Đăng nhập",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+            if (uiState is AuthUiState.Loading) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+            } else {
+                Text(text = "Đăng nhập", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
         if (uiState is AuthUiState.Error) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = (uiState as AuthUiState.Error).message,
-                color = Color.Red,
-                fontSize = 14.sp
-            )
+            Text(text = uiState.message, color = Color.Red, fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFE0E0E0))
-            Text(
-                text = "  Hoặc  ",
-                color = Color(0xFF666666),
-                fontSize = 14.sp
-            )
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFE0E0E0))
-        }
+        DividerSection()
 
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
-            onClick = { /* TODO: Handle Google sign in */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1A1A1A))
+            onClick = { /* Google Login */ },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text(
-                text = "Đăng nhập với Google",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text(text = "Đăng nhập với Google", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -172,11 +146,7 @@ fun SignInScreen(
             modifier = Modifier.padding(bottom = 40.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "Chưa có tài khoản? ",
-                color = Color(0xFF666666),
-                fontSize = 14.sp
-            )
+            Text(text = "Chưa có tài khoản? ", color = Color(0xFF666666), fontSize = 14.sp)
             Text(
                 text = "Đăng ký ngay",
                 color = Blue500,
@@ -188,8 +158,25 @@ fun SignInScreen(
     }
 }
 
-@Preview
 @Composable
-fun SignInScreenPreview() {
-    SignInScreen()
+private fun DividerSection() {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFE0E0E0))
+        Text(text = "  Hoặc  ", color = Color(0xFF666666), fontSize = 14.sp)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFE0E0E0))
+    }
+}
+
+
+@Preview(showBackground = true, name = "Đăng nhập - Bình thường")
+@Composable
+private fun SignInPreviewNormal() {
+    MaterialTheme {
+        SignInContent(
+            uiState = AuthUiState.Idle,
+            onLoginClick = { _, _ -> },
+            onSignUpClick = {},
+            onForgotPasswordClick = {}
+        )
+    }
 }

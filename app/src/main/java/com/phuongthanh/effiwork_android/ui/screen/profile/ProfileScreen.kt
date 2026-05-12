@@ -14,15 +14,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phuongthanh.effiwork_android.data.model.response.UserResponse
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileEffect
 import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileUiState
 import com.phuongthanh.effiwork_android.viewmodel.profile.ProfileViewModel
+
+@Preview
+@Composable
+private fun ProfileScreenPreview() {
+    ProfileContent(
+        user = UserResponse(
+            id = "1",
+            email = "user@example.com",
+            fullName = "Nguyen Van A",
+            phone = "0123456789",
+            avatarUrl = null,
+            status = null,
+            createdAt = "2024-01-01",
+            updatedAt = "2024-01-01"
+        ),
+        onSaveClick = { _, _ -> },
+        onLogoutClick = {}
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -8,8 +8,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import kotlinx.coroutines.delay
+
+@Preview
+@Composable
+private fun SplashScreenPreview() {
+    SplashScreen(
+        isLoggedIn = false,
+        onNavigate = {}
+    )
+}
 
 @Composable
 fun SplashScreen(
