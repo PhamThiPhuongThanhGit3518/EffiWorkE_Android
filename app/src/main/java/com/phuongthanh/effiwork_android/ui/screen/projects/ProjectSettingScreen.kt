@@ -62,7 +62,7 @@ fun ProjectSettingScreen(
                     Text(
                         text = "Cài đặt dự án",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp /
+                        fontSize = 18.sp
                     )
                 },
                 navigationIcon = {
