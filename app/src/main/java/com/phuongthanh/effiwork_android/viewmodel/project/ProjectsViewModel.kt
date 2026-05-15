@@ -115,7 +115,6 @@ class ProjectsViewModel @Inject constructor(
             _projectDetailState.value = ProjectDetailUiState.Loading
             when (val result = projectRepository.getProject(projectId)) {
                 is ApiResult.Success -> {
-                    // Truyền trực tiếp result.data (là ProjectDetailResponse) vào Success
                     _projectDetailState.value = ProjectDetailUiState.Success(result.data)
                 }
                 is ApiResult.Error -> {

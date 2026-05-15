@@ -224,19 +224,23 @@ private fun StatDivider() {
 }
 
 @Composable
-private fun FeaturesGrid(onSettingsClick: () -> Unit = {}) {
+private fun FeaturesGrid(
+    onSettingsClick: () -> Unit = {}
+) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         val features = listOf(
-//            Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
-//            Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
-//            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
+            Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
+            Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
+            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
             Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
         )
 
         features.chunked(3).forEach { rowItems ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { (label, icon, color) ->
-                    val onClick: () -> Unit = if (label == "Cài đặt") onSettingsClick else { {} }
+                    val onClick: () -> Unit =
+                        if (label == "Cài đặt") onSettingsClick
+                        else { {} }
                     FeatureCard(icon, label, color, Modifier.weight(1f), onClick = onClick)
                 }
                 if (rowItems.size < 3) Spacer(Modifier.weight(3f - rowItems.size))

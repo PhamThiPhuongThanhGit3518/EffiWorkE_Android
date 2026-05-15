@@ -33,14 +33,12 @@ fun ProjectsDrawerContent(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedProjectId by viewModel.selectedProjectId.collectAsStateWithLifecycle()
 
-    // Logic gọi API khi lần đầu vào Drawer
     LaunchedEffect(uiState) {
         if (uiState is ProjectsUiState.Idle) {
             viewModel.handleIntent(ProjectsIntent.LoadProjects)
         }
     }
 
-    // Gọi hàm Internal bên dưới để vẽ giao diện
     ProjectsDrawerContentInternal(
         uiState = uiState,
         selectedProjectId = selectedProjectId,
