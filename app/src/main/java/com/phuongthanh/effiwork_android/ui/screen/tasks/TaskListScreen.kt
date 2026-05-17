@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,9 +28,11 @@ import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
 import kotlinx.coroutines.flow.collectLatest
 
-data class TaskScreenState(
-    val projectName: String = "NCKH",
+data class TaskListScreenState(
+    val projectName: String = "",
     val projectId: String = "",
+    val groupId: String = "",
+    val groupName: String = "",
     val uiState: TaskUiState = TaskUiState.Idle,
     val selectedTab: TaskTab = TaskTab.COMMON_TASKS,
     val selectedCategory: TaskCategory = TaskCategory.ALL,
@@ -37,7 +41,7 @@ data class TaskScreenState(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskScreen(
+fun TaskListScreen(
     projectName: String = "NCKH",
     projectId: String = "",
     groupId: String = "",
@@ -46,17 +50,30 @@ fun TaskScreen(
     onNavigateToCreateTask: (String) -> Unit = {},
     onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> }
 ) {
+    var screenState by remember { mutableStateOf(TaskListScreenState(projectId = projectId, projectName = projectName, groupId = groupId)) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val currentProjectName by viewModel.projectName.collectAsStateWithLifecycle()
+    val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, projectName, groupId) {
         viewModel.setProjectInfo(projectId, projectName)
         viewModel.setGroupId(groupId)
+        viewModel.loadTaskGroupsForCreate()
         val sectionId = groupId.ifBlank { null }
         viewModel.loadTasks(sectionId)
+        screenState = screenState.copy(projectId = projectId, projectName = projectName, groupId = groupId)
+    }
+
+    LaunchedEffect(uiState) {
+        screenState = screenState.copy(uiState = uiState)
+    }
+
+    LaunchedEffect(taskGroups) {
+        val groupName = taskGroups.find { it.id == groupId }?.name ?: ""
+        screenState = screenState.copy(groupName = groupName)
     }
 
     LaunchedEffect(Unit) {
@@ -68,36 +85,31 @@ fun TaskScreen(
         }
     }
 
-    TaskScreenContent(
-        state = TaskScreenState(
-            projectName = currentProjectName,
-            projectId = projectId,
-            uiState = uiState,
-            selectedTab = selectedTab,
-            selectedCategory = selectedCategory,
-            searchQuery = searchQuery
-        ),
+    TaskListScreenContent(
+        state = screenState,
         onBackClick = onBackClick,
         onNavigateToCreateTask = onNavigateToCreateTask,
         onNavigateToTaskDetail = onNavigateToTaskDetail,
         onTabSelect = { viewModel.selectTab(it) },
         onCategorySelect = { viewModel.selectCategory(it) },
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-        onSubtaskToggle = { taskId, subtaskId -> viewModel.toggleSubtask(taskId, subtaskId) }
+        onSubtaskToggle = { taskId, subtaskId -> viewModel.toggleSubtask(taskId, subtaskId) },
+        onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskScreenContent(
-    state: TaskScreenState,
+fun TaskListScreenContent(
+    state: TaskListScreenState,
     onBackClick: () -> Unit,
     onNavigateToCreateTask: (String) -> Unit,
     onNavigateToTaskDetail: (String, String) -> Unit,
     onTabSelect: (TaskTab) -> Unit,
     onCategorySelect: (TaskCategory) -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onSubtaskToggle: (String, String) -> Unit
+    onSubtaskToggle: (String, String) -> Unit,
+    onStatusChange: (String, TaskStatus) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -106,7 +118,7 @@ fun TaskScreenContent(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Công việc",
+                            text = state.groupName.ifBlank { "Công việc" },
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -193,11 +205,6 @@ fun TaskScreenContent(
                 )
             }
 
-            ChipFilters(
-                selectedCategory = state.selectedCategory,
-                onCategorySelect = onCategorySelect
-            )
-
             when (val uiState = state.uiState) {
                 is TaskUiState.Loading -> {
                     Box(
@@ -219,7 +226,8 @@ fun TaskScreenContent(
                     TaskList(
                         tasks = filteredTasks,
                         onSubtaskToggle = onSubtaskToggle,
-                        onTaskClick = { onNavigateToTaskDetail(state.projectId, it) }
+                        onTaskClick = { onNavigateToTaskDetail(state.projectId, it) },
+                        onStatusChange = onStatusChange
                     )
                 }
                 is TaskUiState.Error -> {
@@ -266,42 +274,17 @@ private fun SearchAndFilterBar(
             )
         )
         Spacer(modifier = Modifier.width(8.dp))
-        FilledTonalButton(
-            onClick = onFilterClick,
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = Blue500.copy(alpha = 0.1f),
-                contentColor = Blue500
-            )
-        ) {
-            Icon(Icons.Default.FilterList, contentDescription = null)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Bộ lọc")
-        }
-    }
-}
-
-@Composable
-private fun ChipFilters(
-    selectedCategory: TaskCategory,
-    onCategorySelect: (TaskCategory) -> Unit
-) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(TaskCategory.entries) { category ->
-            FilterChip(
-                selected = category == selectedCategory,
-                onClick = { onCategorySelect(category) },
-                label = { Text(category.displayName) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Blue500,
-                    selectedLabelColor = Color.White
-                )
-            )
-        }
+//        FilledTonalButton(
+//            onClick = onFilterClick,
+//            colors = ButtonDefaults.filledTonalButtonColors(
+//                containerColor = Blue500.copy(alpha = 0.1f),
+//                contentColor = Blue500
+//            )
+//        ) {
+//            Icon(Icons.Default.FilterList, contentDescription = null)
+//            Spacer(modifier = Modifier.width(4.dp))
+//            Text("Bộ lọc")
+//        }
     }
 }
 
@@ -309,7 +292,8 @@ private fun ChipFilters(
 private fun TaskList(
     tasks: List<Task>,
     onSubtaskToggle: (String, String) -> Unit,
-    onTaskClick: (String) -> Unit
+    onTaskClick: (String) -> Unit,
+    onStatusChange: (String, TaskStatus) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -320,7 +304,8 @@ private fun TaskList(
             TaskCard(
                 task = task,
                 onSubtaskToggle = { subtaskId -> onSubtaskToggle(task.id, subtaskId) },
-                onClick = { onTaskClick(task.id) }
+                onClick = { onTaskClick(task.id) },
+                onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) }
             )
         }
     }
@@ -330,7 +315,8 @@ private fun TaskList(
 private fun TaskCard(
     task: Task,
     onSubtaskToggle: (String) -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onStatusChange: (TaskStatus) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -350,7 +336,7 @@ private fun TaskCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                StatusBadge(task.status)
+                StatusBadge(task.status, onStatusChange)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -439,41 +425,86 @@ private fun TaskCard(
 }
 
 @Composable
-private fun StatusBadge(currentStatus: TaskStatus) {
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = when (currentStatus) {
-            TaskStatus.NOT_STARTED -> Color.Gray.copy(alpha = 0.1f)
-            TaskStatus.IN_PROGRESS -> Color(0xFF2196F3).copy(alpha = 0.1f)
-            TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-            TaskStatus.ON_HOLD -> Color(0xFFFF9800).copy(alpha = 0.1f)
-        }
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+private fun StatusBadge(
+    currentStatus: TaskStatus,
+    onStatusChange: (TaskStatus) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        Surface(
+            modifier = Modifier.clickable { expanded = true },
+            shape = RoundedCornerShape(4.dp),
+            color = when (currentStatus) {
+                TaskStatus.NOT_STARTED -> Color.Gray.copy(alpha = 0.1f)
+                TaskStatus.IN_PROGRESS -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                TaskStatus.REVIEW -> Color(0xFFFF9800).copy(alpha = 0.1f)
+                TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                TaskStatus.CANCELLED -> Color(0xFFF44336).copy(alpha = 0.1f)
+            }
         ) {
-            Text(
-                text = currentStatus.displayName,
-                fontSize = 12.sp,
-                color = when (currentStatus) {
-                    TaskStatus.NOT_STARTED -> Color.Gray
-                    TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                    TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                    TaskStatus.ON_HOLD -> Color(0xFFFF9800)
-                }
-            )
-            Icon(
-                Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = when (currentStatus) {
-                    TaskStatus.NOT_STARTED -> Color.Gray
-                    TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                    TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                    TaskStatus.ON_HOLD -> Color(0xFFFF9800)
-                }
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = currentStatus.displayName,
+                    fontSize = 12.sp,
+                    color = when (currentStatus) {
+                        TaskStatus.NOT_STARTED -> Color.Gray
+                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                        TaskStatus.REVIEW -> Color(0xFFFF9800)
+                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                        TaskStatus.CANCELLED -> Color(0xFFF44336)
+                    }
+                )
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = when (currentStatus) {
+                        TaskStatus.NOT_STARTED -> Color.Gray
+                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                        TaskStatus.REVIEW -> Color(0xFFFF9800)
+                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                        TaskStatus.CANCELLED -> Color(0xFFF44336)
+                    }
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            TaskStatus.entries.forEach { status ->
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (status) {
+                                            TaskStatus.NOT_STARTED -> Color.Gray
+                                            TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                                            TaskStatus.REVIEW -> Color(0xFFFF9800)
+                                            TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                                            TaskStatus.CANCELLED -> Color(0xFFF44336)
+                                        }
+                                    )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(status.displayName)
+                        }
+                    },
+                    onClick = {
+                        onStatusChange(status)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }
@@ -555,10 +586,10 @@ private val previewTasks = listOf(
 
 @Preview(showBackground = true, name = "Task Screen")
 @Composable
-fun TaskScreenPreview() {
+fun TaskListScreenPreview() {
     MaterialTheme {
-        TaskScreenContent(
-            state = TaskScreenState(
+        TaskListScreenContent(
+            state = TaskListScreenState(
                 projectName = "NCKH",
                 projectId = "proj123",
                 uiState = TaskUiState.Success(previewTasks),
@@ -572,7 +603,8 @@ fun TaskScreenPreview() {
             onTabSelect = {},
             onCategorySelect = {},
             onSearchQueryChange = {},
-            onSubtaskToggle = { _, _ -> }
+            onSubtaskToggle = { _, _ -> },
+            onStatusChange = { _, _ -> }
         )
     }
 }

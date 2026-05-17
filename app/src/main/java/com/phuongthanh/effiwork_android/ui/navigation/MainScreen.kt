@@ -23,9 +23,9 @@ import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.JoinByCodeScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectsScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.ProjectSettingScreen
-import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskScreen
+import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskListScreen
 import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskGroupListScreen
-import com.phuongthanh.effiwork_android.ui.screen.tasks.CreateTaskScreen
+import com.phuongthanh.effiwork_android.ui.screen.tasks.CreateTaskListScreen
 import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingListScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.CreateMeetingScreen
@@ -192,7 +192,7 @@ fun MainScreen(
                 val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
                 val projectName = backStackEntry.arguments?.getString("projectName") ?: "NCKH"
                 val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
-                TaskScreen(
+                TaskListScreen(
                     projectId = projectId,
                     projectName = projectName,
                     groupId = groupId,
@@ -225,7 +225,7 @@ fun MainScreen(
                 arguments = listOf(navArgument("projectId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
-                CreateTaskScreen(
+                CreateTaskListScreen(
                     projectId = projectId,
                     onBackClick = { navController.popBackStack() },
                     onCreateClick = {

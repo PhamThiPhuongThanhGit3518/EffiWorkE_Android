@@ -224,15 +224,19 @@ private fun StatusChip(status: String) {
     val (bgColor, textColor) = when (status.uppercase()) {
         "TODO", "NOT_STARTED" -> Color(0xFFF5F5F5) to Color.Gray
         "IN_PROGRESS" -> Color(0xFFE3F2FD) to Color(0xFF2196F3)
-        "DONE", "COMPLETED" -> Color(0xFFE8F5E9) to Color(0xFF4CAF50)
         "REVIEW" -> Color(0xFFFFF3E0) to Color(0xFFFF9800)
+        "DONE", "COMPLETED" -> Color(0xFFE8F5E9) to Color(0xFF4CAF50)
+        "ON_HOLD", "PAUSED" -> Color(0xFFFFF3E0) to Color(0xFFFF9800)
+        "CANCELLED" -> Color(0xFFFFEBEE) to Color(0xFFF44336)
         else -> Color(0xFFF5F5F5) to Color.Gray
     }
     val displayText = when (status.uppercase()) {
         "TODO", "NOT_STARTED" -> "Chưa bắt đầu"
         "IN_PROGRESS" -> "Đang thực hiện"
-        "DONE", "COMPLETED" -> "Hoàn thành"
         "REVIEW" -> "Đang review"
+        "DONE", "COMPLETED" -> "Hoàn thành"
+        "ON_HOLD", "PAUSED" -> "Tạm dừng"
+        "CANCELLED" -> "Đã hủy"
         else -> status
     }
     Surface(shape = RoundedCornerShape(4.dp), color = bgColor) {

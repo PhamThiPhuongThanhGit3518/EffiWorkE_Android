@@ -62,12 +62,13 @@ fun TaskGroupListScreen(
     onNavigateToTask: (String, String, String) -> Unit = { _, _, _ -> },
     viewModel: TaskGroupViewModel = hiltViewModel()
 ) {
-    var screenState by remember { mutableStateOf(TaskGroupScreenState()) }
+    var screenState by remember { mutableStateOf(TaskGroupScreenState(projectId = projectId, projectName = projectName)) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, projectName) {
         viewModel.setProjectInfo(projectId, projectName)
         viewModel.loadTaskGroups()
+        screenState = screenState.copy(projectId = projectId, projectName = projectName)
     }
 
     LaunchedEffect(uiState) {

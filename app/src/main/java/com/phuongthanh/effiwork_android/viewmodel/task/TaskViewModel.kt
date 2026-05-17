@@ -47,21 +47,27 @@ data class Subtask(
     val dueDate: String
 )
 
-enum class TaskStatus(val displayName: String) {
-    NOT_STARTED("Chưa bắt đầu"),
-    IN_PROGRESS("Đang thực hiện"),
-    COMPLETED("Hoàn thành"),
-    ON_HOLD("Tạm dừng");
+enum class TaskStatus(val displayName: String, val serverValue: String) {
+    NOT_STARTED("Chưa bắt đầu", "TODO"),
+    IN_PROGRESS("Đang thực hiện", "IN_PROGRESS"),
+    REVIEW("Đang review", "REVIEW"),
+    COMPLETED("Hoàn thành", "DONE"),
+    CANCELLED("Đã hủy", "CANCELLED");
 
     companion object {
         fun fromString(value: String): TaskStatus {
-            return when (value.lowercase()) {
-                "not_started", "chưa bắt đầu" -> NOT_STARTED
-                "in_progress", "đang thực hiện" -> IN_PROGRESS
-                "completed", "hoàn thành" -> COMPLETED
-                "on_hold", "tạm dừng" -> ON_HOLD
+            return when (value.uppercase()) {
+                "TODO", "NOT_STARTED" -> NOT_STARTED
+                "IN_PROGRESS" -> IN_PROGRESS
+                "REVIEW" -> REVIEW
+                "DONE", "COMPLETED" -> COMPLETED
+                "CANCELLED" -> CANCELLED
                 else -> NOT_STARTED
             }
+        }
+
+        fun fromServerValue(value: String): TaskStatus {
+            return entries.find { it.serverValue.equals(value, ignoreCase = true) } ?: fromString(value)
         }
     }
 }
@@ -153,7 +159,8 @@ class TaskViewModel @Inject constructor(
 
     fun loadTasks(sectionId: String? = null) {
         viewModelScope.launch {
-            Log.d(TAG, "loadTasks called with sectionId=$sectionId")
+            val effectiveSectionId = sectionId ?: _groupId.value.ifBlank { null }
+            Log.d(TAG, "loadTasks called with sectionId=$effectiveSectionId")
             _uiState.value = TaskUiState.Loading
             val projectIdValue = _projectId.value
             Log.d(TAG, "loadTasks projectId=$projectIdValue")
@@ -162,7 +169,7 @@ class TaskViewModel @Inject constructor(
                 return@launch
             }
 
-            when (val result = taskRepository.getTasks(projectIdValue, sectionId)) {
+            when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId)) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Tasks loaded: ${result.data.size}")
                     result.data.forEach { Log.d(TAG, "  Task: id=${it.id}, name=${it.name}") }
@@ -276,6 +283,26 @@ class TaskViewModel @Inject constructor(
                 } else task
             }
             _uiState.value = TaskUiState.Success(updatedTasks)
+        }
+    }
+
+    fun updateTaskStatus(taskId: String, newStatus: TaskStatus) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) return@launch
+
+            val statusValue = newStatus.serverValue
+
+            when (val result = taskRepository.updateTaskStatus(projectIdValue, taskId, UpdateTaskStatusRequest(statusValue))) {
+                is ApiResult.Success -> {
+                    _effect.emit(TaskEffect.ShowToast("Cập nhật trạng thái thành công"))
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
         }
     }
 

@@ -47,7 +47,7 @@ data class CreateTaskFormState(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTaskScreen(
+fun CreateTaskListScreen(
     projectId: String = "",
     onBackClick: () -> Unit = {},
     onCreateClick: (String) -> Unit = { _ -> },
@@ -74,7 +74,7 @@ fun CreateTaskScreen(
         }
     }
 
-    CreateTaskScreenContent(
+    CreateTaskListScreenContent(
         formState = formState,
         taskGroups = taskGroups,
         taskMembers = taskMembers,
@@ -98,7 +98,7 @@ fun CreateTaskScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTaskScreenContent(
+fun CreateTaskListScreenContent(
     formState: CreateTaskFormState,
     taskGroups: List<TaskGroup>,
     taskMembers: List<TaskMember>,
@@ -542,9 +542,9 @@ private fun CollaboratorsCard(
 
 @Preview(showBackground = true, name = "Create Task Screen")
 @Composable
-fun CreateTaskScreenPreview() {
+fun CreateTaskListScreenPreview() {
     MaterialTheme {
-        CreateTaskScreenContent(
+        CreateTaskListScreenContent(
             formState = CreateTaskFormState(
                 taskName = "Thiết kế giao diện màn hình chính",
                 description = "Thiết kế UI/UX cho ứng dụng",
