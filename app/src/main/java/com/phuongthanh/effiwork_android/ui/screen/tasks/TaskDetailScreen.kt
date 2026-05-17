@@ -3,7 +3,6 @@ package com.phuongthanh.effiwork_android.ui.screen.tasks
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,17 +16,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
-import com.phuongthanh.effiwork_android.viewmodel.task.TaskDetailEffect
-import com.phuongthanh.effiwork_android.viewmodel.task.TaskDetailUiState
-import com.phuongthanh.effiwork_android.viewmodel.task.TaskDetailViewModel
+import com.phuongthanh.effiwork_android.viewmodel.task.*
 import kotlinx.coroutines.flow.collectLatest
-import java.text.SimpleDateFormat
-import java.util.*
+
+data class TaskDetailScreenState(
+    val projectId: String = "",
+    val taskId: String = "",
+    val uiState: TaskDetailUiState = TaskDetailUiState.Idle,
+    val commentText: String = ""
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,25 +40,44 @@ fun TaskDetailScreen(
     onBackClick: () -> Unit = {},
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
+    var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var commentText by remember { mutableStateOf("") }
 
     LaunchedEffect(projectId, taskId) {
         viewModel.loadTaskDetail(projectId, taskId)
+    }
+
+    LaunchedEffect(uiState) {
+        screenState = screenState.copy(uiState = uiState)
     }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
                 is TaskDetailEffect.CommentPosted -> {
-                    commentText = ""
+                    screenState = screenState.copy(commentText = "")
                 }
-                is TaskDetailEffect.ShowToast -> {
-                }
+                is TaskDetailEffect.ShowToast -> {}
             }
         }
     }
 
+    TaskDetailScreenContent(
+        state = screenState,
+        onBackClick = onBackClick,
+        onCommentTextChange = { screenState = screenState.copy(commentText = it) },
+        onPostComment = { viewModel.postComment(screenState.commentText) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskDetailScreenContent(
+    state: TaskDetailScreenState,
+    onBackClick: () -> Unit,
+    onCommentTextChange: (String) -> Unit,
+    onPostComment: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -86,8 +108,8 @@ fun TaskDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
-                        value = commentText,
-                        onValueChange = { commentText = it },
+                        value = state.commentText,
+                        onValueChange = onCommentTextChange,
                         placeholder = { Text("Viết bình luận...") },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
@@ -98,24 +120,20 @@ fun TaskDetailScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
-                        onClick = {
-                            if (commentText.isNotBlank()) {
-                                viewModel.postComment(commentText)
-                            }
-                        },
-                        enabled = commentText.isNotBlank()
+                        onClick = onPostComment,
+                        enabled = state.commentText.isNotBlank()
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Gửi",
-                            tint = if (commentText.isNotBlank()) Blue500 else Color.Gray
+                            tint = if (state.commentText.isNotBlank()) Blue500 else Color.Gray
                         )
                     }
                 }
             }
         }
     ) { innerPadding ->
-        when (val state = uiState) {
+        when (val uiState = state.uiState) {
             is TaskDetailUiState.Loading -> {
                 Box(
                     modifier = Modifier
@@ -134,16 +152,16 @@ fun TaskDetailScreen(
                         .background(Color(0xFFF5F5F5))
                 ) {
                     item {
-                        TaskDetailHeader(state.taskDetail)
+                        TaskDetailHeader(uiState.taskDetail)
                     }
                     item {
-                        TaskDescriptionSection(state.taskDetail.description)
+                        TaskDescriptionSection(uiState.taskDetail.description)
                     }
                     item {
-                        TaskInfoSection(state.taskDetail)
+                        TaskInfoSection(uiState.taskDetail)
                     }
                     item {
-                        CommentsSection(state.taskDetail.comments)
+                        CommentsSection(uiState.taskDetail.comments)
                     }
                 }
             }
@@ -154,7 +172,7 @@ fun TaskDetailScreen(
                         .padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(state.message, color = Color.Red)
+                    Text(uiState.message, color = Color.Red)
                 }
             }
             else -> {}
@@ -163,7 +181,7 @@ fun TaskDetailScreen(
 }
 
 @Composable
-private fun TaskDetailHeader(task: com.phuongthanh.effiwork_android.viewmodel.task.TaskDetail) {
+private fun TaskDetailHeader(task: TaskDetail) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -255,7 +273,7 @@ private fun TaskDescriptionSection(description: String) {
 }
 
 @Composable
-private fun TaskInfoSection(task: com.phuongthanh.effiwork_android.viewmodel.task.TaskDetail) {
+private fun TaskInfoSection(task: TaskDetail) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -334,7 +352,7 @@ private fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label
 }
 
 @Composable
-private fun CommentsSection(comments: List<com.phuongthanh.effiwork_android.viewmodel.task.CommentItem>) {
+private fun CommentsSection(comments: List<CommentItem>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -381,7 +399,7 @@ private fun CommentsSection(comments: List<com.phuongthanh.effiwork_android.view
 }
 
 @Composable
-private fun CommentItem(comment: com.phuongthanh.effiwork_android.viewmodel.task.CommentItem) {
+private fun CommentItem(comment: CommentItem) {
     Row(verticalAlignment = Alignment.Top) {
         Box(
             modifier = Modifier
@@ -418,5 +436,43 @@ private fun CommentItem(comment: com.phuongthanh.effiwork_android.viewmodel.task
                 color = Color.DarkGray
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Task Detail Screen")
+@Composable
+fun TaskDetailScreenPreview() {
+    MaterialTheme {
+        TaskDetailScreenContent(
+            state = TaskDetailScreenState(
+                projectId = "proj123",
+                taskId = "task456",
+                uiState = TaskDetailUiState.Success(
+                    taskDetail = TaskDetail(
+                        id = "task456",
+                        title = "Thiết kế giao diện màn hình chính",
+                        description = "Thiết kế UI/UX cho màn hình chính của ứng dụng. Bao gồm các màn hình: Home, Profile, Settings.",
+                        status = "IN_PROGRESS",
+                        groupName = "Thiết kế giao diện",
+                        assigneeName = "Phạm Thị Phương Thanh",
+                        creatorName = "Nguyễn Văn Minh",
+                        startDate = "2026-05-20",
+                        endDate = "2026-05-25",
+                        createdAt = "2026-05-15 10:30",
+                        participantNames = listOf("Trần Văn Hoàng", "Lê Thị Mai"),
+                        commentCount = 2,
+                        attachmentCount = 0,
+                        comments = listOf(
+                            CommentItem("c1", "Bản thiết kế đã sẵn sàng để review chưa?", "Nguyễn Văn Minh", null, "2026-05-16 14:20"),
+                            CommentItem("c2", "Đã xong! Mình đã upload lên drive.", "Phạm Thị Phương Thanh", null, "2026-05-16 15:45")
+                        )
+                    )
+                ),
+                commentText = ""
+            ),
+            onBackClick = {},
+            onCommentTextChange = {},
+            onPostComment = {}
+        )
     }
 }

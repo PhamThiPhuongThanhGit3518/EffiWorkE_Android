@@ -31,6 +31,16 @@ import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsIntent
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
 import kotlinx.coroutines.launch
 
+data class ProjectDashboardState(
+    val projectId: String = "",
+    val projectName: String = "",
+    val projectCode: String = "",
+    val memberCount: Int = 0,
+    val taskCount: Int = 0,
+    val meetings: Int = 0,
+    val documents: Int = 0
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectsScreen(
@@ -117,16 +127,18 @@ fun ProjectsScreen(
                         }
                         is ProjectDetailUiState.Success -> {
                             ProjectDashboardContent(
-                                projectName = state.project.name,
-                                projectCode = state.project.projectCode,
-                                memberCount = state.project.memberCount,
-                                taskCount = state.project.taskCount,
-                                meetings = state.project.meetingsCount,
-                                documents = state.project.documentsCount,
+                                state = ProjectDashboardState(
+                                    projectId = state.project.id,
+                                    projectName = state.project.name,
+                                    projectCode = state.project.projectCode,
+                                    memberCount = state.project.memberCount,
+                                    taskCount = state.project.taskCount,
+                                    meetings = state.project.meetingsCount,
+                                    documents = state.project.documentsCount
+                                ),
                                 onSettingsClick = { onNavigateToSettings(state.project.id) },
                                 onNavigateToTask = onNavigateToTask,
-                                onNavigateToMeeting = onNavigateToMeeting,
-                                projectId = state.project.id
+                                onNavigateToMeeting = onNavigateToMeeting
                             )
                         }
                         is ProjectDetailUiState.NoProject -> {
@@ -148,26 +160,20 @@ fun ProjectsScreen(
 }
 
 @Composable
-private fun ProjectDashboardContent(
-    projectName: String,
-    projectCode: String,
-    memberCount: Int,
-    taskCount: Int,
-    meetings: Int,
-    documents: Int,
+fun ProjectDashboardContent(
+    state: ProjectDashboardState,
     onSettingsClick: () -> Unit = {},
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
-    onNavigateToMeeting: (String) -> Unit = {},
-    projectId: String = ""
+    onNavigateToMeeting: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        ProjectHeaderCard(projectName, projectCode)
+        ProjectHeaderCard(state.projectName, state.projectCode)
         Spacer(modifier = Modifier.height(16.dp))
-        StatsBar(taskCount, meetings, documents, memberCount)
+        StatsBar(state.taskCount, state.meetings, state.documents, state.memberCount)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             "Chức năng chính",
@@ -176,7 +182,13 @@ private fun ProjectDashboardContent(
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(12.dp))
-        FeaturesGrid(onSettingsClick = onSettingsClick, onNavigateToTask = onNavigateToTask, onNavigateToMeeting = onNavigateToMeeting, projectId = projectId, projectName = projectName)
+        FeaturesGrid(
+            onSettingsClick = onSettingsClick,
+            onNavigateToTask = onNavigateToTask,
+            onNavigateToMeeting = onNavigateToMeeting,
+            projectId = state.projectId,
+            projectName = state.projectName
+        )
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
@@ -289,50 +301,20 @@ private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier
 @Preview(showBackground = true, name = "Giao diện Dashboard Dự án")
 @Composable
 fun ProjectsScreenPreview() {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     MaterialTheme {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ModalDrawerSheet {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Danh sách dự án", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Dự án NCKH", modifier = Modifier.padding(8.dp))
-                        Text("Dự án DATN", modifier = Modifier.padding(8.dp), color = Blue500)
-                    }
-                }
-            },
-            content = {
-                Scaffold(
-                    topBar = {
-                        CenterAlignedTopAppBar(
-                            title = { Text("Dự án NCKH", fontWeight = FontWeight.Bold) },
-                            navigationIcon = {
-                                IconButton(onClick = {}) {
-                                    Icon(Icons.Default.Menu, contentDescription = null)
-                                }
-                            }
-                        )
-                    }
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .background(Color(0xFFF5F5F5))
-                    ) {
-                        ProjectDashboardContent(
-                            projectName = "Dự án NCKH",
-                            projectCode = "PRJ-D22DD5FB",
-                            memberCount = 5,
-                            taskCount = 4,
-                            meetings = 7,
-                            documents = 14
-                        )
-                    }
-                }
-            }
+        ProjectDashboardContent(
+            state = ProjectDashboardState(
+                projectId = "proj123",
+                projectName = "Dự án NCKH",
+                projectCode = "PRJ-D22DD5FB",
+                memberCount = 5,
+                taskCount = 4,
+                meetings = 7,
+                documents = 14
+            ),
+            onSettingsClick = {},
+            onNavigateToTask = { _, _ -> },
+            onNavigateToMeeting = {}
         )
     }
 }

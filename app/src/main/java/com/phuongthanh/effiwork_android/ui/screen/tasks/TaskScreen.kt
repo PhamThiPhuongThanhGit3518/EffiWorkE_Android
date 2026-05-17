@@ -6,15 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,9 +24,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import kotlinx.coroutines.flow.collectLatest
+
+data class TaskScreenState(
+    val projectName: String = "NCKH",
+    val projectId: String = "",
+    val uiState: TaskUiState = TaskUiState.Idle,
+    val selectedTab: TaskTab = TaskTab.COMMON_TASKS,
+    val selectedCategory: TaskCategory = TaskCategory.ALL,
+    val searchQuery: String = ""
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,23 +55,50 @@ fun TaskScreen(
     LaunchedEffect(projectId, projectName, groupId) {
         viewModel.setProjectInfo(projectId, projectName)
         viewModel.setGroupId(groupId)
-        val sectionId = if (groupId.isNotBlank()) groupId else null
+        val sectionId = groupId.ifBlank { null }
         viewModel.loadTasks(sectionId)
     }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is TaskEffect.ShowToast -> {
-                    // Handle toast - would need a SnackbarHost or similar
-                }
-                is TaskEffect.TaskCreated -> {
-                    // Task created, list will refresh via loadTasks
-                }
+                is TaskEffect.ShowToast -> {}
+                is TaskEffect.TaskCreated -> {}
             }
         }
     }
 
+    TaskScreenContent(
+        state = TaskScreenState(
+            projectName = currentProjectName,
+            projectId = projectId,
+            uiState = uiState,
+            selectedTab = selectedTab,
+            selectedCategory = selectedCategory,
+            searchQuery = searchQuery
+        ),
+        onBackClick = onBackClick,
+        onNavigateToCreateTask = onNavigateToCreateTask,
+        onNavigateToTaskDetail = onNavigateToTaskDetail,
+        onTabSelect = { viewModel.selectTab(it) },
+        onCategorySelect = { viewModel.selectCategory(it) },
+        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+        onSubtaskToggle = { taskId, subtaskId -> viewModel.toggleSubtask(taskId, subtaskId) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskScreenContent(
+    state: TaskScreenState,
+    onBackClick: () -> Unit,
+    onNavigateToCreateTask: (String) -> Unit,
+    onNavigateToTaskDetail: (String, String) -> Unit,
+    onTabSelect: (TaskTab) -> Unit,
+    onCategorySelect: (TaskCategory) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSubtaskToggle: (String, String) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -83,7 +116,7 @@ fun TaskScreen(
                             color = Blue500.copy(alpha = 0.1f)
                         ) {
                             Text(
-                                text = currentProjectName,
+                                text = state.projectName,
                                 color = Blue500,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
@@ -94,11 +127,11 @@ fun TaskScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Menu options */ }) {
+                    IconButton(onClick = { }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                     }
                 },
@@ -111,7 +144,7 @@ fun TaskScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { onNavigateToCreateTask(projectId) },
+                onClick = { onNavigateToCreateTask(state.projectId) },
                 containerColor = Blue500,
                 contentColor = Color.White
             ) {
@@ -127,43 +160,45 @@ fun TaskScreen(
                 .padding(innerPadding)
                 .background(Color(0xFFF5F5F5))
         ) {
-            // Search and Filter Bar
             SearchAndFilterBar(
-                searchQuery = searchQuery,
-                onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-                onFilterClick = { /* Open filter dialog */ }
+                searchQuery = state.searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                onFilterClick = {}
             )
 
-            // Tab Row
             TabRow(
-                selectedTabIndex = if (selectedTab == TaskTab.COMMON_TASKS) 0 else 1,
+                selectedTabIndex = if (state.selectedTab == TaskTab.COMMON_TASKS) 0 else 1,
                 containerColor = Color.White,
                 contentColor = Blue500
             ) {
                 Tab(
-                    selected = selectedTab == TaskTab.COMMON_TASKS,
-                    onClick = { viewModel.selectTab(TaskTab.COMMON_TASKS) },
+                    selected = state.selectedTab == TaskTab.COMMON_TASKS,
+                    onClick = { onTabSelect(TaskTab.COMMON_TASKS) },
                     text = {
                         Text(
                             "Công việc chung",
-                            color = if (selectedTab == TaskTab.COMMON_TASKS) Blue500 else Color.Gray
+                            color = if (state.selectedTab == TaskTab.COMMON_TASKS) Blue500 else Color.Gray
                         )
                     }
                 )
                 Tab(
-                    selected = selectedTab == TaskTab.ASSIGNED_TO_ME,
-                    onClick = { viewModel.selectTab(TaskTab.ASSIGNED_TO_ME) },
+                    selected = state.selectedTab == TaskTab.ASSIGNED_TO_ME,
+                    onClick = { onTabSelect(TaskTab.ASSIGNED_TO_ME) },
                     text = {
                         Text(
                             "Được giao",
-                            color = if (selectedTab == TaskTab.ASSIGNED_TO_ME) Blue500 else Color.Gray
+                            color = if (state.selectedTab == TaskTab.ASSIGNED_TO_ME) Blue500 else Color.Gray
                         )
                     }
                 )
             }
 
-            // Task List
-            when (val state = uiState) {
+            ChipFilters(
+                selectedCategory = state.selectedCategory,
+                onCategorySelect = onCategorySelect
+            )
+
+            when (val uiState = state.uiState) {
                 is TaskUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -173,22 +208,18 @@ fun TaskScreen(
                     }
                 }
                 is TaskUiState.Success -> {
-                    val filteredTasks = state.tasks.filter { task ->
-                        val matchesSearch = searchQuery.isEmpty() ||
-                            task.name.contains(searchQuery, ignoreCase = true) ||
-                            task.description.contains(searchQuery, ignoreCase = true)
-                        val matchesCategory = selectedCategory == TaskCategory.ALL ||
-                            task.category == selectedCategory.displayName
+                    val filteredTasks = uiState.tasks.filter { task ->
+                        val matchesSearch = state.searchQuery.isEmpty() ||
+                            task.name.contains(state.searchQuery, ignoreCase = true) ||
+                            task.description.contains(state.searchQuery, ignoreCase = true)
+                        val matchesCategory = state.selectedCategory == TaskCategory.ALL ||
+                            task.category == state.selectedCategory.displayName
                         matchesSearch && matchesCategory
                     }
                     TaskList(
                         tasks = filteredTasks,
-                        onSubtaskToggle = { taskId, subtaskId ->
-                            viewModel.toggleSubtask(taskId, subtaskId)
-                        },
-                        onTaskClick = { taskId ->
-                            onNavigateToTaskDetail(projectId, taskId)
-                        }
+                        onSubtaskToggle = onSubtaskToggle,
+                        onTaskClick = { onNavigateToTaskDetail(state.projectId, it) }
                     )
                 }
                 is TaskUiState.Error -> {
@@ -196,7 +227,7 @@ fun TaskScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(state.message, color = Color.Red)
+                        Text(uiState.message, color = Color.Red)
                     }
                 }
                 else -> {}
@@ -250,6 +281,31 @@ private fun SearchAndFilterBar(
 }
 
 @Composable
+private fun ChipFilters(
+    selectedCategory: TaskCategory,
+    onCategorySelect: (TaskCategory) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(TaskCategory.entries) { category ->
+            FilterChip(
+                selected = category == selectedCategory,
+                onClick = { onCategorySelect(category) },
+                label = { Text(category.displayName) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Blue500,
+                    selectedLabelColor = Color.White
+                )
+            )
+        }
+    }
+}
+
+@Composable
 private fun TaskList(
     tasks: List<Task>,
     onSubtaskToggle: (String, String) -> Unit,
@@ -294,12 +350,11 @@ private fun TaskCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                StatusDropdown(task.status)
+                StatusBadge(task.status)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Description
             Text(
                 text = task.description,
                 style = MaterialTheme.typography.bodyMedium,
@@ -310,12 +365,10 @@ private fun TaskCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Task details row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Assignee
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Person,
@@ -331,7 +384,6 @@ private fun TaskCard(
                     )
                 }
 
-                // Time
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.DateRange,
@@ -348,7 +400,6 @@ private fun TaskCard(
                 }
             }
 
-            // Participants
             if (task.participants.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -367,7 +418,6 @@ private fun TaskCard(
                 }
             }
 
-            // Subtasks
             if (task.subtasks.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Box(
@@ -389,46 +439,41 @@ private fun TaskCard(
 }
 
 @Composable
-private fun StatusDropdown(currentStatus: TaskStatus) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        Surface(
-            modifier = Modifier.clickable { expanded = true },
-            shape = RoundedCornerShape(4.dp),
-            color = when (currentStatus) {
-                TaskStatus.NOT_STARTED -> Color.Gray.copy(alpha = 0.1f)
-                TaskStatus.IN_PROGRESS -> Color(0xFF2196F3).copy(alpha = 0.1f)
-                TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-                TaskStatus.ON_HOLD -> Color(0xFFFF9800).copy(alpha = 0.1f)
-            }
+private fun StatusBadge(currentStatus: TaskStatus) {
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = when (currentStatus) {
+            TaskStatus.NOT_STARTED -> Color.Gray.copy(alpha = 0.1f)
+            TaskStatus.IN_PROGRESS -> Color(0xFF2196F3).copy(alpha = 0.1f)
+            TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+            TaskStatus.ON_HOLD -> Color(0xFFFF9800).copy(alpha = 0.1f)
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = currentStatus.displayName,
-                    fontSize = 12.sp,
-                    color = when (currentStatus) {
-                        TaskStatus.NOT_STARTED -> Color.Gray
-                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                        TaskStatus.ON_HOLD -> Color(0xFFFF9800)
-                    }
-                )
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = when (currentStatus) {
-                        TaskStatus.NOT_STARTED -> Color.Gray
-                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                        TaskStatus.ON_HOLD -> Color(0xFFFF9800)
-                    }
-                )
-            }
+            Text(
+                text = currentStatus.displayName,
+                fontSize = 12.sp,
+                color = when (currentStatus) {
+                    TaskStatus.NOT_STARTED -> Color.Gray
+                    TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                    TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                    TaskStatus.ON_HOLD -> Color(0xFFFF9800)
+                }
+            )
+            Icon(
+                Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = when (currentStatus) {
+                    TaskStatus.NOT_STARTED -> Color.Gray
+                    TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                    TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                    TaskStatus.ON_HOLD -> Color(0xFFFF9800)
+                }
+            )
         }
     }
 }
@@ -443,7 +488,6 @@ private fun SubtaskItem(
         modifier = modifier.padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Tree line
         Box(
             modifier = Modifier
                 .width(16.dp)
@@ -479,89 +523,56 @@ private fun SubtaskItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val previewTasks = listOf(
+    Task(
+        id = "1",
+        name = "Thiết kế giao diện",
+        description = "Thiết kế UI/UX cho màn hình chính",
+        status = TaskStatus.IN_PROGRESS,
+        assignee = "Phuong Thanh",
+        participants = listOf("Nguyen Van A", "Tran Van B"),
+        startDate = "20/05",
+        endDate = "25/05",
+        category = "Thiết kế giao diện",
+        subtasks = listOf(
+            Subtask("s1", "Thiết kế mockup", false, "22/05"),
+            Subtask("s2", "Review design", true, "24/05")
+        )
+    ),
+    Task(
+        id = "2",
+        name = "Phát triển tính năng đăng nhập",
+        description = "Implement OAuth login flow",
+        status = TaskStatus.NOT_STARTED,
+        assignee = "Minh Hoàng",
+        participants = listOf("Hoàng Nam"),
+        startDate = "26/05",
+        endDate = "30/05",
+        category = "Thực hiện code",
+        subtasks = emptyList()
+    )
+)
+
 @Preview(showBackground = true, name = "Task Screen")
 @Composable
 fun TaskScreenPreview() {
     MaterialTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
-        ) {
-            // Top App Bar simulation
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Công việc",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Blue500.copy(alpha = 0.1f)
-                    ) {
-                        Text(
-                            text = "NCKH",
-                            color = Blue500,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            // Tab Row
-            TabRow(
-                selectedTabIndex = 0,
-                containerColor = Color.White,
-                contentColor = Blue500
-            ) {
-                Tab(selected = true, onClick = {}, text = { Text("Công việc chung", color = Blue500) })
-                Tab(selected = false, onClick = {}, text = { Text("Được giao", color = Color.Gray) })
-            }
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Thiết kế giao diện",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Thiết kế UI/UX cho màn hình chính",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Phuong Thanh", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("20/05 - 25/05", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    }
-                }
-            }
-        }
+        TaskScreenContent(
+            state = TaskScreenState(
+                projectName = "NCKH",
+                projectId = "proj123",
+                uiState = TaskUiState.Success(previewTasks),
+                selectedTab = TaskTab.COMMON_TASKS,
+                selectedCategory = TaskCategory.ALL,
+                searchQuery = ""
+            ),
+            onBackClick = {},
+            onNavigateToCreateTask = {},
+            onNavigateToTaskDetail = { _, _ -> },
+            onTabSelect = {},
+            onCategorySelect = {},
+            onSearchQueryChange = {},
+            onSubtaskToggle = { _, _ -> }
+        )
     }
 }

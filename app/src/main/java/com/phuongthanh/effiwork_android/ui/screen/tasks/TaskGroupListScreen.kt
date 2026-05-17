@@ -29,6 +29,15 @@ import com.phuongthanh.effiwork_android.viewmodel.task.TaskGroupItem
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskGroupUiState
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskGroupViewModel
 
+data class TaskGroupScreenState(
+    val projectId: String = "",
+    val projectName: String = "",
+    val uiState: TaskGroupUiState = TaskGroupUiState.Idle,
+    val showAddDialog: Boolean = false,
+    val newGroupName: String = "",
+    val selectedColor: Color = Color(0xFF2196F3)
+)
+
 data class TaskGroupColor(
     val name: String,
     val icon: ImageVector,
@@ -53,10 +62,7 @@ fun TaskGroupListScreen(
     onNavigateToTask: (String, String, String) -> Unit = { _, _, _ -> },
     viewModel: TaskGroupViewModel = hiltViewModel()
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
-    var newGroupName by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf(Color(0xFF2196F3)) }
-
+    var screenState by remember { mutableStateOf(TaskGroupScreenState()) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, projectName) {
@@ -64,29 +70,53 @@ fun TaskGroupListScreen(
         viewModel.loadTaskGroups()
     }
 
-    if (showAddDialog) {
+    LaunchedEffect(uiState) {
+        screenState = screenState.copy(uiState = uiState)
+    }
+
+    TaskGroupListScreenContent(
+        state = screenState,
+        onBackClick = onBackClick,
+        onNavigateToTask = onNavigateToTask,
+        onShowAddDialog = { screenState = screenState.copy(showAddDialog = true) },
+        onDismissAddDialog = {
+            screenState = screenState.copy(showAddDialog = false, newGroupName = "", selectedColor = Color(0xFF2196F3))
+        },
+        onNewGroupNameChange = { screenState = screenState.copy(newGroupName = it) },
+        onColorSelect = { screenState = screenState.copy(selectedColor = it) },
+        onSaveGroup = { name ->
+            viewModel.createTaskGroup(
+                name = name,
+                onSuccess = {
+                    screenState = screenState.copy(showAddDialog = false, newGroupName = "", selectedColor = Color(0xFF2196F3))
+                },
+                onError = {}
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskGroupListScreenContent(
+    state: TaskGroupScreenState,
+    onBackClick: () -> Unit,
+    onNavigateToTask: (String, String, String) -> Unit,
+    onShowAddDialog: () -> Unit,
+    onDismissAddDialog: () -> Unit,
+    onNewGroupNameChange: (String) -> Unit,
+    onColorSelect: (Color) -> Unit,
+    onSaveGroup: (String) -> Unit
+) {
+    if (state.showAddDialog) {
         AddTaskGroupDialog(
-            groupName = newGroupName,
-            onGroupNameChange = { newGroupName = it },
+            groupName = state.newGroupName,
+            onGroupNameChange = onNewGroupNameChange,
             groupColors = groupColors,
-            selectedColor = selectedColor,
-            onColorSelect = { selectedColor = it },
-            onCancel = {
-                newGroupName = ""
-                showAddDialog = false
-            },
-            onSave = {
-                viewModel.createTaskGroup(
-                    name = newGroupName,
-                    onSuccess = {
-                        newGroupName = ""
-                        showAddDialog = false
-                    },
-                    onError = { errorMessage ->
-                        // Could show snackbar here
-                    }
-                )
-            }
+            selectedColor = state.selectedColor,
+            onColorSelect = onColorSelect,
+            onCancel = onDismissAddDialog,
+            onSave = { onSaveGroup(state.newGroupName) }
         )
     }
 
@@ -107,10 +137,10 @@ fun TaskGroupListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Search */ }) {
+                    IconButton(onClick = {}) {
                         Icon(Icons.Default.Search, contentDescription = "Tìm kiếm")
                     }
-                    IconButton(onClick = { /* More options */ }) {
+                    IconButton(onClick = {}) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                     }
                 },
@@ -123,7 +153,7 @@ fun TaskGroupListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = onShowAddDialog,
                 containerColor = Blue500,
                 contentColor = Color.White
             ) {
@@ -131,7 +161,7 @@ fun TaskGroupListScreen(
             }
         }
     ) { innerPadding ->
-        when (val state = uiState) {
+        when (val uiState = state.uiState) {
             is TaskGroupUiState.Loading -> {
                 Box(
                     modifier = Modifier
@@ -151,10 +181,10 @@ fun TaskGroupListScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(state.groups) { group ->
+                    items(uiState.groups) { group ->
                         TaskGroupCard(
                             group = group,
-                            onClick = { onNavigateToTask(projectId, projectName, group.id) }
+                            onClick = { onNavigateToTask(state.projectId, state.projectName, group.id) }
                         )
                     }
                 }
@@ -166,7 +196,7 @@ fun TaskGroupListScreen(
                         .padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(state.message, color = Color.Red)
+                    Text(uiState.message, color = Color.Red)
                 }
             }
             else -> {}
@@ -299,77 +329,6 @@ private fun AddTaskGroupDialog(
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun TaskGroupListScreenPreview() {
-    MaterialTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
-        ) {
-            // Top App Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Nhóm công việc",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(3) { index ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val colors = listOf(Color(0xFF2196F3), Color(0xFF4CAF50), Color(0xFF9C27B0))
-                            val icons = listOf(Icons.Default.Folder, Icons.Default.Edit, Icons.Default.Code)
-                            val names = listOf("Thiết kế giao diện", "Thực hiện code", "Kiểm thử")
-                            val counts = listOf(5, 8, 3)
-
-                            Surface(
-                                modifier = Modifier.size(48.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                color = colors[index].copy(alpha = 0.1f)
-                            ) {
-                                Icon(
-                                    imageVector = icons[index],
-                                    contentDescription = null,
-                                    tint = colors[index],
-                                    modifier = Modifier.padding(12.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(names[index], fontWeight = FontWeight.Bold)
-                                Text("${counts[index]} công việc", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun ColorOption(
     color: Color,
@@ -396,5 +355,35 @@ private fun ColorOption(
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Task Group List Screen")
+@Composable
+fun TaskGroupListScreenPreview() {
+    MaterialTheme {
+        TaskGroupListScreenContent(
+            state = TaskGroupScreenState(
+                projectId = "proj123",
+                projectName = "NCKH",
+                uiState = TaskGroupUiState.Success(
+                    listOf(
+                        TaskGroupItem("g1", "Thiết kế giao diện", Icons.Default.Folder, Color(0xFF2196F3), 5),
+                        TaskGroupItem("g2", "Thực hiện code", Icons.Default.Edit, Color(0xFF4CAF50), 8),
+                        TaskGroupItem("g3", "Kiểm thử", Icons.Default.Code, Color(0xFF9C27B0), 3)
+                    )
+                ),
+                showAddDialog = false,
+                newGroupName = "",
+                selectedColor = Color(0xFF2196F3)
+            ),
+            onBackClick = {},
+            onNavigateToTask = { _, _, _ -> },
+            onShowAddDialog = {},
+            onDismissAddDialog = {},
+            onNewGroupNameChange = {},
+            onColorSelect = {},
+            onSaveGroup = {}
+        )
     }
 }

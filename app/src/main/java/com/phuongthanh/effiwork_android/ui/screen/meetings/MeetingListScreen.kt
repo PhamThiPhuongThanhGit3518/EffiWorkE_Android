@@ -3,9 +3,7 @@ package com.phuongthanh.effiwork_android.ui.screen.meetings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,6 +24,14 @@ import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.meeting.*
 import kotlinx.coroutines.flow.collectLatest
 
+data class MeetingListScreenState(
+    val projectId: String = "",
+    val uiState: MeetingUiState = MeetingUiState.Idle,
+    val selectedTab: MeetingFilterTab = MeetingFilterTab.ALL,
+    val selectedFormat: String? = null,
+    val searchQuery: String = ""
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MeetingListScreen(
@@ -35,6 +40,7 @@ fun MeetingListScreen(
     onCreateClick: () -> Unit = {},
     viewModel: MeetingViewModel = hiltViewModel()
 ) {
+    var screenState by remember { mutableStateOf(MeetingListScreenState(projectId = projectId)) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val selectedFormat by viewModel.selectedFormat.collectAsStateWithLifecycle()
@@ -45,16 +51,38 @@ fun MeetingListScreen(
         viewModel.loadMeetings()
     }
 
+    LaunchedEffect(uiState) {
+        screenState = screenState.copy(uiState = uiState)
+    }
+
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is MeetingEffect.ShowToast -> {
-                    // Handle toast
-                }
+                is MeetingEffect.ShowToast -> {}
             }
         }
     }
 
+    MeetingListScreenContent(
+        state = screenState,
+        onBackClick = onBackClick,
+        onCreateClick = onCreateClick,
+        onTabSelect = { viewModel.selectTab(it) },
+        onFormatSelect = { viewModel.selectFormat(it) },
+        onSearchQueryChange = { viewModel.updateSearchQuery(it) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MeetingListScreenContent(
+    state: MeetingListScreenState,
+    onBackClick: () -> Unit,
+    onCreateClick: () -> Unit,
+    onTabSelect: (MeetingFilterTab) -> Unit,
+    onFormatSelect: (String?) -> Unit,
+    onSearchQueryChange: (String) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,35 +119,33 @@ fun MeetingListScreen(
                 .padding(innerPadding)
                 .background(Color(0xFFF5F5F5))
         ) {
-            // Tab Row
             TabRow(
-                selectedTabIndex = if (selectedTab == MeetingFilterTab.ALL) 0 else 1,
+                selectedTabIndex = if (state.selectedTab == MeetingFilterTab.ALL) 0 else 1,
                 containerColor = Color.White,
                 contentColor = Blue500
             ) {
                 Tab(
-                    selected = selectedTab == MeetingFilterTab.ALL,
-                    onClick = { viewModel.selectTab(MeetingFilterTab.ALL) },
+                    selected = state.selectedTab == MeetingFilterTab.ALL,
+                    onClick = { onTabSelect(MeetingFilterTab.ALL) },
                     text = {
                         Text(
                             "Tất cả",
-                            color = if (selectedTab == MeetingFilterTab.ALL) Blue500 else Color.Gray
+                            color = if (state.selectedTab == MeetingFilterTab.ALL) Blue500 else Color.Gray
                         )
                     }
                 )
                 Tab(
-                    selected = selectedTab == MeetingFilterTab.JOINED,
-                    onClick = { viewModel.selectTab(MeetingFilterTab.JOINED) },
+                    selected = state.selectedTab == MeetingFilterTab.JOINED,
+                    onClick = { onTabSelect(MeetingFilterTab.JOINED) },
                     text = {
                         Text(
                             "Đã tham gia",
-                            color = if (selectedTab == MeetingFilterTab.JOINED) Blue500 else Color.Gray
+                            color = if (state.selectedTab == MeetingFilterTab.JOINED) Blue500 else Color.Gray
                         )
                     }
                 )
             }
 
-            // Search and Format Filter Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,8 +153,8 @@ fun MeetingListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    value = state.searchQuery,
+                    onValueChange = onSearchQueryChange,
                     modifier = Modifier.weight(1f),
                     placeholder = {
                         Text("Tìm theo tên hoặc nội dung cuộc họp")
@@ -145,13 +171,12 @@ fun MeetingListScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 FormatFilterDropdown(
-                    selectedFormat = selectedFormat,
-                    onFormatSelect = { viewModel.selectFormat(it) }
+                    selectedFormat = state.selectedFormat,
+                    onFormatSelect = onFormatSelect
                 )
             }
 
-            // Meeting List
-            when (val state = uiState) {
+            when (val uiState = state.uiState) {
                 is MeetingUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -161,12 +186,12 @@ fun MeetingListScreen(
                     }
                 }
                 is MeetingUiState.Success -> {
-                    val filteredMeetings = state.meetings.filter { meeting ->
-                        val matchesSearch = searchQuery.isEmpty() ||
-                            meeting.title.contains(searchQuery, ignoreCase = true) ||
-                            meeting.description.contains(searchQuery, ignoreCase = true)
-                        val matchesFormat = selectedFormat == null ||
-                            meeting.format.displayName == selectedFormat
+                    val filteredMeetings = uiState.meetings.filter { meeting ->
+                        val matchesSearch = state.searchQuery.isEmpty() ||
+                            meeting.title.contains(state.searchQuery, ignoreCase = true) ||
+                            meeting.description.contains(state.searchQuery, ignoreCase = true)
+                        val matchesFormat = state.selectedFormat == null ||
+                            meeting.format.displayName == state.selectedFormat
                         matchesSearch && matchesFormat
                     }
                     MeetingList(meetings = filteredMeetings)
@@ -176,7 +201,7 @@ fun MeetingListScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(state.message, color = Color.Red)
+                        Text(uiState.message, color = Color.Red)
                     }
                 }
                 else -> {}
@@ -266,7 +291,6 @@ private fun MeetingCard(meeting: Meeting) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Format icon
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = RoundedCornerShape(12.dp),
@@ -300,7 +324,6 @@ private fun MeetingCard(meeting: Meeting) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Status badges
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     shape = RoundedCornerShape(4.dp),
@@ -324,12 +347,10 @@ private fun MeetingCard(meeting: Meeting) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Meeting details
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Organizer
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Person,
@@ -345,7 +366,6 @@ private fun MeetingCard(meeting: Meeting) {
                     )
                 }
 
-                // Time
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.DateRange,
@@ -362,7 +382,6 @@ private fun MeetingCard(meeting: Meeting) {
                 }
             }
 
-            // Participants
             if (meeting.participants.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -386,124 +405,49 @@ private fun MeetingCard(meeting: Meeting) {
     }
 }
 
+private val previewMeetings = listOf(
+    Meeting(
+        id = "m1",
+        title = "Họp kick-off dự án",
+        description = "Thảo luận kế hoạch triển khai",
+        format = MeetingFormat.ONLINE,
+        status = MeetingStatus.UPCOMING,
+        organizer = "Nguyễn Văn Minh",
+        date = "20/05/2026",
+        time = "14:00",
+        participants = listOf("Phạm Thị Phương Thanh", "Trần Văn Hoàng")
+    ),
+    Meeting(
+        id = "m2",
+        title = "Review sprint 1",
+        description = "Đánh giá tiến độ sprint đầu tiên",
+        format = MeetingFormat.OFFLINE,
+        status = MeetingStatus.ENDED,
+        organizer = "Lê Thị Mai",
+        date = "15/05/2026",
+        time = "09:00",
+        participants = listOf("Hoàng Nam", "Minh Hoàng")
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "Meeting List Screen")
 @Composable
 fun MeetingListScreenPreview() {
     MaterialTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
-        ) {
-            // Top App Bar simulation
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Cuộc họp",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            // Tab Row
-            TabRow(
-                selectedTabIndex = 0,
-                containerColor = Color.White,
-                contentColor = Blue500
-            ) {
-                Tab(selected = true, onClick = {}, text = { Text("Tất cả", color = Blue500) })
-                Tab(selected = false, onClick = {}, text = { Text("Đã tham gia", color = Color.Gray) })
-            }
-
-            // Search bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp)
-                        .background(Color.White, RoundedCornerShape(8.dp))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Tìm theo tên hoặc nội dung cuộc họp", color = Color.Gray)
-                    }
-                }
-            }
-
-            // Meeting Card preview
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            modifier = Modifier.size(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF2196F3).copy(alpha = 0.1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Videocam,
-                                contentDescription = null,
-                                tint = Color(0xFF2196F3),
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Họp kick-off dự án",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Thảo luận kế hoạch triển khai",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFF2196F3).copy(alpha = 0.1f)
-                        ) {
-                            Text(
-                                text = "Online",
-                                color = Color(0xFF2196F3),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Sắp tới",
-                            color = Color(0xFFFF9800),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
-        }
+        MeetingListScreenContent(
+            state = MeetingListScreenState(
+                projectId = "proj123",
+                uiState = MeetingUiState.Success(previewMeetings),
+                selectedTab = MeetingFilterTab.ALL,
+                selectedFormat = null,
+                searchQuery = ""
+            ),
+            onBackClick = {},
+            onCreateClick = {},
+            onTabSelect = {},
+            onFormatSelect = {},
+            onSearchQueryChange = {}
+        )
     }
 }
