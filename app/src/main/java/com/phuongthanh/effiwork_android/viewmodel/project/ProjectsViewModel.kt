@@ -6,6 +6,8 @@ import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.local.AppPreferences
 import com.phuongthanh.effiwork_android.data.model.response.toProjectResponse
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
+import com.phuongthanh.effiwork_android.data.repository.TaskRepository
+import com.phuongthanh.effiwork_android.data.repository.MeetingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProjectsViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
+    private val taskRepository: TaskRepository,
+    private val meetingRepository: MeetingRepository,
     private val appPreferences: AppPreferences
 ) : ViewModel() {
 

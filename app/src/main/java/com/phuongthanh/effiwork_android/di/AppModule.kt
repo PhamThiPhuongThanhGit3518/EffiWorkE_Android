@@ -6,8 +6,12 @@ import com.phuongthanh.effiwork_android.data.local.AppPreferences
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.AuthRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.MeetingRepository
+import com.phuongthanh.effiwork_android.data.repository.MeetingRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.TaskRepository
+import com.phuongthanh.effiwork_android.data.repository.TaskRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -51,5 +55,21 @@ object AppModule {
         projectRepository: ProjectRepositoryImpl
     ): ProjectRepository {
         return projectRepository
+    }
+
+    @Provides
+    @Singleton
+    fun provideTaskRepository(
+        taskRepositoryImpl: TaskRepositoryImpl
+    ): TaskRepository {
+        return taskRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideMeetingRepository(
+        meetingRepositoryImpl: MeetingRepositoryImpl
+    ): MeetingRepository {
+        return meetingRepositoryImpl
     }
 }

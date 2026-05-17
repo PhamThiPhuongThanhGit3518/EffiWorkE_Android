@@ -1,0 +1,25 @@
+package com.phuongthanh.effiwork_android.data.repository
+
+import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
+import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
+import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
+import com.phuongthanh.effiwork_android.data.model.response.*
+
+interface TaskRepository {
+    suspend fun getTasks(projectId: String, sectionId: String? = null, status: String? = null, assigneeId: String? = null): ApiResult<List<TaskResponse>>
+    suspend fun getTaskDetail(projectId: String, taskId: String): ApiResult<TaskDetailResponse>
+    suspend fun getTaskComments(projectId: String, taskId: String): ApiResult<List<CommentResponse>>
+    suspend fun createTaskComment(projectId: String, taskId: String, content: String): ApiResult<CommentResponse>
+    suspend fun getTaskGroups(projectId: String): ApiResult<List<SectionResponse>>
+    suspend fun createSection(projectId: String, request: CreateSectionRequest): ApiResult<SectionResponse>
+    suspend fun getMembers(projectId: String): ApiResult<List<MemberResponse>>
+    suspend fun createTask(projectId: String, request: CreateTaskRequest): ApiResult<TaskResponse>
+    suspend fun updateTaskStatus(projectId: String, taskId: String, request: UpdateTaskStatusRequest): ApiResult<TaskResponse>
+}
+
+interface MeetingRepository {
+    suspend fun getMeetings(projectId: String, format: String? = null): ApiResult<List<MeetingResponse>>
+    suspend fun createMeeting(projectId: String, request: CreateMeetingRequest): ApiResult<MeetingResponse>
+}

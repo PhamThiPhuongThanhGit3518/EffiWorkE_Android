@@ -5,7 +5,9 @@ import com.google.gson.GsonBuilder
 import com.phuongthanh.effiwork_android.BuildConfig
 import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
+import com.phuongthanh.effiwork_android.api.MeetingService
 import com.phuongthanh.effiwork_android.api.ProjectService
+import com.phuongthanh.effiwork_android.api.TaskService
 import com.phuongthanh.effiwork_android.api.TokenAuthenticator
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import dagger.Module
@@ -85,5 +87,17 @@ object NetworkModule {
     @Singleton
     fun provideProjectService(retrofit: Retrofit): ProjectService {
         return retrofit.create(ProjectService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTaskService(retrofit: Retrofit): TaskService {
+        return retrofit.create(TaskService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMeetingService(retrofit: Retrofit): MeetingService {
+        return retrofit.create(MeetingService::class.java)
     }
 }
