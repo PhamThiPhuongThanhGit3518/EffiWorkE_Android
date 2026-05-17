@@ -38,7 +38,9 @@ fun ProjectsScreen(
     detailViewModel: ProjectDetailViewModel = hiltViewModel(),
     onNavigateToJoinByCode: () -> Unit = {},
     onNavigateToCreateProject: () -> Unit = {},
-    onNavigateToSettings: (String) -> Unit = {}
+    onNavigateToSettings: (String) -> Unit = {},
+    onNavigateToTask: (String, String) -> Unit = { _, _ -> },
+    onNavigateToMeeting: (String) -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -121,7 +123,10 @@ fun ProjectsScreen(
                                 taskCount = state.project.taskCount,
                                 meetings = state.project.meetingsCount,
                                 documents = state.project.documentsCount,
-                                onSettingsClick = { onNavigateToSettings(state.project.id) }
+                                onSettingsClick = { onNavigateToSettings(state.project.id) },
+                                onNavigateToTask = onNavigateToTask,
+                                onNavigateToMeeting = onNavigateToMeeting,
+                                projectId = state.project.id
                             )
                         }
                         is ProjectDetailUiState.NoProject -> {
@@ -150,7 +155,10 @@ private fun ProjectDashboardContent(
     taskCount: Int,
     meetings: Int,
     documents: Int,
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onNavigateToTask: (String, String) -> Unit = { _, _ -> },
+    onNavigateToMeeting: (String) -> Unit = {},
+    projectId: String = ""
 ) {
     Column(
         modifier = Modifier
@@ -168,7 +176,7 @@ private fun ProjectDashboardContent(
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(12.dp))
-        FeaturesGrid(onSettingsClick = onSettingsClick)
+        FeaturesGrid(onSettingsClick = onSettingsClick, onNavigateToTask = onNavigateToTask, onNavigateToMeeting = onNavigateToMeeting, projectId = projectId, projectName = projectName)
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
@@ -225,7 +233,11 @@ private fun StatDivider() {
 
 @Composable
 private fun FeaturesGrid(
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onNavigateToTask: (String, String) -> Unit = { _, _ -> },
+    onNavigateToMeeting: (String) -> Unit = {},
+    projectId: String = "",
+    projectName: String = ""
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         val features = listOf(
@@ -239,8 +251,12 @@ private fun FeaturesGrid(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { (label, icon, color) ->
                     val onClick: () -> Unit =
-                        if (label == "Cài đặt") onSettingsClick
-                        else { {} }
+                        when (label) {
+                            "Cài đặt" -> onSettingsClick
+                            "Công việc" -> { { onNavigateToTask(projectId, projectName) } }
+                            "Cuộc họp" -> { { onNavigateToMeeting(projectId) } }
+                            else -> { {} }
+                        }
                     FeatureCard(icon, label, color, Modifier.weight(1f), onClick = onClick)
                 }
                 if (rowItems.size < 3) Spacer(Modifier.weight(3f - rowItems.size))
