@@ -34,7 +34,7 @@ data class CreateTaskFormState(
     val taskName: String = "",
     val selectedGroupId: String = "",
     val description: String = "",
-    val taskLevel: String = "Công việc lớn của dự án",
+    val taskLevel: String = "", // Used for display, empty when creating subtask
     val assigneeId: String = "",
     val startDate: String = "",
     val endDate: String = "",
@@ -56,6 +56,8 @@ fun CreateTaskListScreen(
     projectId: String = "",
     taskId: String? = null,
     preselectedGroupId: String = "",
+    parentTaskId: String = "",
+    parentTaskName: String = "",
     onBackClick: () -> Unit = {},
     onCreateClick: (String) -> Unit = { _ -> },
     onUpdateClick: (String) -> Unit = { _ -> },
@@ -67,6 +69,7 @@ fun CreateTaskListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val isEditMode = taskId != null
+    val isSubtaskMode = parentTaskId.isNotBlank()
 
     LaunchedEffect(projectId) {
         viewModel.setProjectInfo(projectId, "")
@@ -94,7 +97,7 @@ fun CreateTaskListScreen(
                         startDate = task.startDate,
                         endDate = task.endDate,
                         selectedGroupId = task.category,
-                        assigneeId = task.assignee.takeIf { it.isNotBlank() } ?: ""
+                        assigneeId = task.assigneeId.takeIf { it.isNotBlank() } ?: ""
                     )
                 }
             }
@@ -123,9 +126,10 @@ fun CreateTaskListScreen(
         onFormStateChange = { formState = it },
         onBackClick = onBackClick,
         onCreateClick = {
-            viewModel.createTask(
+            viewModel.createSubtask(
                 name = formState.taskName,
                 description = formState.description,
+                parentTaskId = parentTaskId,
                 groupId = formState.selectedGroupId.ifBlank { null },
                 assigneeId = formState.assigneeId,
                 startDate = formState.startDate,
@@ -149,7 +153,9 @@ fun CreateTaskListScreen(
                 )
             }
         },
-        isEditMode = isEditMode
+        isEditMode = isEditMode,
+        isSubtaskMode = isSubtaskMode,
+        parentTaskName = parentTaskName
     )
 }
 
@@ -163,10 +169,18 @@ fun CreateTaskListScreenContent(
     onBackClick: () -> Unit,
     onCreateClick: (String) -> Unit,
     onUpdateClick: () -> Unit = {},
-    isEditMode: Boolean = false
+    isEditMode: Boolean = false,
+    isSubtaskMode: Boolean = false,
+    parentTaskName: String = ""
 ) {
     val statuses = listOf("Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng")
-    val taskLevels = listOf("Công việc lớn của dự án", "Công việc cấp 1", "Công việc cấp 2")
+    val taskLevels = listOf("Công việc lớn của dự án", "Công việc nhỏ")
+
+    val screenTitle = when {
+        isEditMode -> "Chỉnh sửa công việc"
+        isSubtaskMode -> "Thêm công việc con"
+        else -> "Tạo công việc"
+    }
 
     Scaffold(
         topBar = {
@@ -174,7 +188,7 @@ fun CreateTaskListScreenContent(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Text(
-                        text = if (isEditMode) "Chỉnh sửa công việc" else "Tạo công việc",
+                        text = screenTitle,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -246,7 +260,9 @@ fun CreateTaskListScreenContent(
                 formState = formState,
                 onFormStateChange = onFormStateChange,
                 taskLevels = taskLevels,
-                taskMembers = taskMembers
+                taskMembers = taskMembers,
+                isSubtaskMode = isSubtaskMode,
+                parentTaskName = parentTaskName
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -351,7 +367,9 @@ private fun AssignmentCard(
     formState: CreateTaskFormState,
     onFormStateChange: (CreateTaskFormState) -> Unit,
     taskLevels: List<String>,
-    taskMembers: List<TaskMember>
+    taskMembers: List<TaskMember>,
+    isSubtaskMode: Boolean = false,
+    parentTaskName: String = ""
 ) {
     val statuses = listOf("Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng")
 
@@ -371,32 +389,43 @@ private fun AssignmentCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            ExposedDropdownMenuBox(
-                expanded = formState.levelExpanded,
-                onExpandedChange = { onFormStateChange(formState.copy(levelExpanded = it)) }
-            ) {
+            if (isSubtaskMode) {
                 OutlinedTextField(
-                    value = formState.taskLevel,
+                    value = parentTaskName,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Cấp công việc") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = formState.levelExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
-                ExposedDropdownMenu(
+            } else {
+                ExposedDropdownMenuBox(
                     expanded = formState.levelExpanded,
-                    onDismissRequest = { onFormStateChange(formState.copy(levelExpanded = false)) }
+                    onExpandedChange = { onFormStateChange(formState.copy(levelExpanded = it)) }
                 ) {
-                    taskLevels.forEach { level ->
-                        DropdownMenuItem(
-                            text = { Text(level) },
-                            onClick = {
-                                onFormStateChange(formState.copy(taskLevel = level, levelExpanded = false))
-                            }
-                        )
+                    OutlinedTextField(
+                        value = formState.taskLevel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Cấp công việc") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = formState.levelExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = formState.levelExpanded,
+                        onDismissRequest = { onFormStateChange(formState.copy(levelExpanded = false)) }
+                    ) {
+                        taskLevels.forEach { level ->
+                            DropdownMenuItem(
+                                text = { Text(level) },
+                                onClick = {
+                                    onFormStateChange(formState.copy(taskLevel = level, levelExpanded = false))
+                                }
+                            )
+                        }
                     }
                 }
             }

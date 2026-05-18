@@ -33,11 +33,12 @@ data class Task(
     val name: String,
     val description: String,
     val status: TaskStatus,
-    val assignee: String,
+    val assignee: String, // assigneeName
+    val assigneeId: String = "", // assigneeId for update
     val participants: List<String>,
     val startDate: String,
     val endDate: String,
-    val category: String,
+    val category: String, // sectionId for update
     val subtasks: List<Subtask> = emptyList()
 )
 
@@ -289,6 +290,53 @@ class TaskViewModel @Inject constructor(
         }
     }
 
+    fun createSubtask(
+        name: String,
+        description: String,
+        parentTaskId: String,
+        groupId: String?,
+        assigneeId: String,
+        startDate: String,
+        endDate: String,
+        reminderTime: String?,
+        participantIds: List<String>
+    ) {
+        viewModelScope.launch {
+            _uiState.value = TaskUiState.Loading
+            val projectIdValue = _projectId.value
+
+            Log.d(TAG, "createSubtask: projectId=$projectIdValue, parentTaskId=$parentTaskId")
+
+            val request = CreateTaskRequest(
+                title = name,
+                description = description,
+                sectionId = groupId,
+                parentTaskId = parentTaskId,
+                ownerId = assigneeId,
+                startDate = startDate.takeIf { it.isNotBlank() },
+                dueDate = endDate.takeIf { it.isNotBlank() },
+                reminderAt = reminderTime?.takeIf { it.isNotBlank() },
+                participantIds = participantIds
+            )
+
+            when (val result = taskRepository.createTask(projectIdValue, request)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "Create subtask success: ${result.data.id}, title: ${result.data.name}")
+                    _effect.emit(TaskEffect.ShowToast("Tạo công việc con thành công"))
+                    _effect.emit(TaskEffect.TaskCreated(name))
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    _uiState.value = TaskUiState.Error(result.message)
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {
+                    _uiState.value = TaskUiState.Loading
+                }
+            }
+        }
+    }
+
     fun updateTask(
         taskId: String,
         name: String,
@@ -405,6 +453,7 @@ class TaskViewModel @Inject constructor(
             description = description ?: "",
             status = TaskStatus.fromString(status ?: ""),
             assignee = assigneeName ?: "",
+            assigneeId = assigneeId ?: "",
             participants = participants?.map { it.userName ?: "" } ?: emptyList(),
             startDate = startDate ?: "",
             endDate = endDate ?: "",

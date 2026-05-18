@@ -51,6 +51,7 @@ object NavRoutes {
     const val TASK_SCREEN = "task/{projectId}/{projectName}/{groupId}"
     const val TASK_DETAIL = "task_detail/{projectId}/{taskId}"
     const val CREATE_TASK = "create_task/{projectId}/{groupId}"
+    const val CREATE_SUBTASK = "create_subtask/{projectId}/{parentTaskId}/{parentTaskName}"
     const val EDIT_TASK = "edit_task/{projectId}/{taskId}"
     const val MEETING_LIST = "meeting_list/{projectId}"
     const val CREATE_MEETING = "create_meeting/{projectId}"
@@ -60,6 +61,7 @@ object NavRoutes {
     fun taskScreen(projectId: String, projectName: String, groupId: String) = "task/$projectId/$projectName/$groupId"
     fun taskDetail(projectId: String, taskId: String) = "task_detail/$projectId/$taskId"
     fun createTask(projectId: String, groupId: String = "") = "create_task/$projectId/$groupId"
+    fun createSubtask(projectId: String, parentTaskId: String, parentTaskName: String) = "create_subtask/$projectId/$parentTaskId/$parentTaskName"
     fun editTask(projectId: String, taskId: String) = "edit_task/$projectId/$taskId"
     fun meetingList(projectId: String) = "meeting_list/$projectId"
     fun createMeeting(projectId: String) = "create_meeting/$projectId"
@@ -222,6 +224,9 @@ fun MainScreen(
                     onBackClick = { navController.popBackStack() },
                     onEditTask = { pid, tid ->
                         navController.navigate(NavRoutes.editTask(pid, tid))
+                    },
+                    onAddSubtask = { pid, parentId, parentName ->
+                        navController.navigate(NavRoutes.createSubtask(pid, parentId, parentName))
                     }
                 )
             }
@@ -237,6 +242,31 @@ fun MainScreen(
                 CreateTaskListScreen(
                     projectId = projectId,
                     preselectedGroupId = groupId,
+                    onBackClick = { navController.popBackStack() },
+                    onCreateClick = {
+                        navController.popBackStack()
+                    },
+                    onUpdateClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.CREATE_SUBTASK,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("parentTaskId") { type = NavType.StringType },
+                    navArgument("parentTaskName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val parentTaskId = backStackEntry.arguments?.getString("parentTaskId") ?: ""
+                val parentTaskName = backStackEntry.arguments?.getString("parentTaskName") ?: ""
+                CreateTaskListScreen(
+                    projectId = projectId,
+                    preselectedGroupId = "",
+                    parentTaskId = parentTaskId,
+                    parentTaskName = parentTaskName,
                     onBackClick = { navController.popBackStack() },
                     onCreateClick = {
                         navController.popBackStack()

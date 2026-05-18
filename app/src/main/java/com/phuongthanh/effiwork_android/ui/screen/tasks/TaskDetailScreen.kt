@@ -39,6 +39,7 @@ fun TaskDetailScreen(
     taskId: String = "",
     onBackClick: () -> Unit = {},
     onEditTask: (String, String) -> Unit = { _, _ -> },
+    onAddSubtask: (String, String, String) -> Unit = { _, _, _ -> }, // projectId, parentTaskId, parentTaskName
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
@@ -66,12 +67,14 @@ fun TaskDetailScreen(
         }
     }
 
+    val parentTaskName = (uiState as? TaskDetailUiState.Success)?.taskDetail?.title ?: ""
+
     TaskDetailScreenContent(
         state = screenState,
         onBackClick = onBackClick,
         onCommentTextChange = { screenState = screenState.copy(commentText = it) },
         onPostComment = { viewModel.postComment(screenState.commentText) },
-        onAddSubtask = {},
+        onAddSubtask = { onAddSubtask(projectId, taskId, parentTaskName) },
         onEditTask = { onEditTask(projectId, taskId) },
         onDeleteTask = { viewModel.deleteTask() }
     )
