@@ -227,6 +227,9 @@ fun MainScreen(
                     },
                     onAddSubtask = { pid, parentId, parentName, groupId ->
                         navController.navigate(NavRoutes.createSubtask(pid, parentId, parentName, groupId))
+                    },
+                    onNavigateToSubtaskDetail = { pid, subtaskId ->
+                        navController.navigate(NavRoutes.taskDetail(pid, subtaskId))
                     }
                 )
             }

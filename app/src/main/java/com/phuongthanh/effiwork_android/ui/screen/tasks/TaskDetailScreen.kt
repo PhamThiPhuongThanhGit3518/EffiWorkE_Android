@@ -1,12 +1,14 @@
 package com.phuongthanh.effiwork_android.ui.screen.tasks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -46,6 +48,7 @@ fun TaskDetailScreen(
     onBackClick: () -> Unit = {},
     onEditTask: (String, String) -> Unit = { _, _ -> },
     onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onNavigateToSubtaskDetail: (String, String) -> Unit = { _, _ -> },
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
@@ -88,7 +91,8 @@ fun TaskDetailScreen(
         onAddSubtask = { onAddSubtask(projectId, taskId, parentTaskInfo.name, parentTaskInfo.groupId) },
         onEditTask = { onEditTask(projectId, taskId) },
         onDeleteTask = { viewModel.deleteTask() },
-        onSubtaskToggle = { subtaskId -> viewModel.toggleSubtask(subtaskId) }
+        onSubtaskToggle = { subtaskId -> viewModel.toggleSubtask(subtaskId) },
+        onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) }
     )
 }
 
@@ -104,7 +108,8 @@ fun TaskDetailScreenContent(
     onAddSubtask: () -> Unit = {},
     onEditTask: () -> Unit = {},
     onDeleteTask: () -> Unit = {},
-    onSubtaskToggle: (String) -> Unit = {}
+    onSubtaskToggle: (String) -> Unit = {},
+    onSubtaskClick: (String) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -278,7 +283,8 @@ fun TaskDetailScreenContent(
                         2 -> TaskSubtasksTabContent(
                             subtasks = uiState.taskDetail.subtasks,
                             onAddSubtask = onAddSubtask,
-                            onSubtaskToggle = onSubtaskToggle
+                            onSubtaskToggle = onSubtaskToggle,
+                            onSubtaskClick = onSubtaskClick
                         )
                     }
                 }
@@ -330,7 +336,8 @@ private fun TaskCommentsTabContent(comments: List<CommentItem>) {
 private fun TaskSubtasksTabContent(
     subtasks: List<SubtaskItem>,
     onAddSubtask: () -> Unit,
-    onSubtaskToggle: (String) -> Unit
+    onSubtaskToggle: (String) -> Unit,
+    onSubtaskClick: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -378,63 +385,60 @@ private fun TaskSubtasksTabContent(
 
         items(subtasks.size) { index ->
             val subtask = subtasks[index]
-            SubtaskCard(
-                subtask = subtask,
-                onToggle = { onSubtaskToggle(subtask.id) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun SubtaskCard(
-    subtask: SubtaskItem,
-    onToggle: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = subtask.isCompleted,
-                onCheckedChange = { onToggle() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = Color(0xFF4CAF50),
-                    uncheckedColor = Color.Gray
-                )
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = subtask.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (subtask.isCompleted) Color.Gray else Color.DarkGray,
-                    fontWeight = FontWeight.Medium
-                )
-                if (subtask.dueDate.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(14.dp)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSubtaskClick(subtask.id) },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = subtask.isCompleted,
+                        onCheckedChange = { onSubtaskToggle(subtask.id) },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Color(0xFF4CAF50),
+                            uncheckedColor = Color.Gray
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = subtask.dueDate,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            text = subtask.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (subtask.isCompleted) Color.Gray else Color.DarkGray,
+                            fontWeight = FontWeight.Medium
                         )
+                        if (subtask.dueDate.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = subtask.dueDate,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
                     }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

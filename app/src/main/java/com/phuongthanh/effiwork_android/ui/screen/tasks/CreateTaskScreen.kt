@@ -126,17 +126,30 @@ fun CreateTaskListScreen(
         onFormStateChange = { formState = it },
         onBackClick = onBackClick,
         onCreateClick = {
-            viewModel.createSubtask(
-                name = formState.taskName,
-                description = formState.description,
-                parentTaskId = parentTaskId,
-                groupId = formState.selectedGroupId.ifBlank { null },
-                assigneeId = formState.assigneeId,
-                startDate = formState.startDate,
-                endDate = formState.endDate,
-                reminderTime = formState.reminder.ifBlank { null },
-                participantIds = formState.participantIds
-            )
+            if (parentTaskId.isNotBlank()) {
+                viewModel.createSubtask(
+                    name = formState.taskName,
+                    description = formState.description,
+                    parentTaskId = parentTaskId,
+                    groupId = formState.selectedGroupId.ifBlank { null },
+                    assigneeId = formState.assigneeId,
+                    startDate = formState.startDate,
+                    endDate = formState.endDate,
+                    reminderTime = formState.reminder.ifBlank { null },
+                    participantIds = formState.participantIds
+                )
+            } else {
+                viewModel.createTask(
+                    name = formState.taskName,
+                    description = formState.description,
+                    groupId = formState.selectedGroupId.ifBlank { null },
+                    assigneeId = formState.assigneeId,
+                    startDate = formState.startDate,
+                    endDate = formState.endDate,
+                    reminderTime = formState.reminder.ifBlank { null },
+                    participantIds = formState.participantIds
+                )
+            }
         },
         onUpdateClick = {
             taskId?.let { id ->
@@ -611,6 +624,8 @@ private fun CollaboratorsCard(
     onFormStateChange: (CreateTaskFormState) -> Unit,
     taskMembers: List<TaskMember>
 ) {
+    var participantDropdownExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -628,25 +643,60 @@ private fun CollaboratorsCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             ExposedDropdownMenuBox(
-                expanded = false,
-                onExpandedChange = {}
+                expanded = participantDropdownExpanded,
+                onExpandedChange = { participantDropdownExpanded = it }
             ) {
                 OutlinedTextField(
                     value = formState.participantSearchQuery,
                     onValueChange = { onFormStateChange(formState.copy(participantSearchQuery = it)) },
                     placeholder = { Text("Tìm và chọn người tham gia") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
-                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = participantDropdownExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp)
                 )
+                ExposedDropdownMenu(
+                    expanded = participantDropdownExpanded,
+                    onDismissRequest = { participantDropdownExpanded = false }
+                ) {
+                    val filteredMembers = taskMembers.filter { member ->
+                        !formState.participantIds.contains(member.userId) &&
+                        member.fullName.contains(formState.participantSearchQuery, ignoreCase = true)
+                    }
+                    if (filteredMembers.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("Không có thành viên phù hợp") },
+                            onClick = {},
+                            enabled = false
+                        )
+                    } else {
+                        filteredMembers.forEach { member ->
+                            DropdownMenuItem(
+                                text = { Text(member.fullName) },
+                                onClick = {
+                                    onFormStateChange(
+                                        formState.copy(
+                                            participantIds = formState.participantIds + member.userId,
+                                            participantSearchQuery = ""
+                                        )
+                                    )
+                                    participantDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 taskMembers.filter { formState.participantIds.contains(it.userId) }.forEach { member ->
                     InputChip(

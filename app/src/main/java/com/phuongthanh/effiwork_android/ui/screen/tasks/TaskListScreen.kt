@@ -95,7 +95,6 @@ fun TaskListScreen(
         onTabSelect = { viewModel.selectTab(it) },
         onCategorySelect = { viewModel.selectCategory(it) },
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-        onSubtaskToggle = { taskId, subtaskId -> viewModel.toggleSubtask(taskId, subtaskId) },
         onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) }
     )
 }
@@ -110,7 +109,6 @@ fun TaskListScreenContent(
     onTabSelect: (TaskTab) -> Unit,
     onCategorySelect: (TaskCategory) -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onSubtaskToggle: (String, String) -> Unit,
     onStatusChange: (String, TaskStatus) -> Unit
 ) {
     Scaffold(
@@ -225,7 +223,6 @@ fun TaskListScreenContent(
                     }
                     TaskList(
                         tasks = filteredTasks,
-                        onSubtaskToggle = onSubtaskToggle,
                         onTaskClick = { onNavigateToTaskDetail(state.projectId, it) },
                         onStatusChange = onStatusChange
                     )
@@ -291,7 +288,6 @@ private fun SearchAndFilterBar(
 @Composable
 private fun TaskList(
     tasks: List<Task>,
-    onSubtaskToggle: (String, String) -> Unit,
     onTaskClick: (String) -> Unit,
     onStatusChange: (String, TaskStatus) -> Unit
 ) {
@@ -303,7 +299,6 @@ private fun TaskList(
         items(tasks, key = { it.id }) { task ->
             TaskCard(
                 task = task,
-                onSubtaskToggle = { subtaskId -> onSubtaskToggle(task.id, subtaskId) },
                 onClick = { onTaskClick(task.id) },
                 onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) }
             )
@@ -312,9 +307,8 @@ private fun TaskList(
 }
 
 @Composable
-private fun TaskCard(
+fun TaskCard(
     task: Task,
-    onSubtaskToggle: (String) -> Unit,
     onClick: () -> Unit,
     onStatusChange: (TaskStatus) -> Unit
 ) {
@@ -400,23 +394,6 @@ private fun TaskCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-            }
-
-            if (task.subtasks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 8.dp)
-                ) {
-                    task.subtasks.forEachIndexed { index, subtask ->
-                        SubtaskItem(
-                            subtask = subtask,
-                            onToggle = { onSubtaskToggle(subtask.id) },
-                            modifier = Modifier.padding(start = (index * 16).dp)
-                        )
-                    }
-                }
             }
         }
     }
@@ -507,51 +484,6 @@ private fun StatusBadge(
     }
 }
 
-@Composable
-private fun SubtaskItem(
-    subtask: Subtask,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .width(16.dp)
-                .height(24.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(1.dp)
-                    .background(Color.LightGray)
-            )
-        }
-        Checkbox(
-            checked = subtask.isCompleted,
-            onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(
-                checkedColor = Color(0xFF4CAF50),
-                uncheckedColor = Color.Gray
-            )
-        )
-        Text(
-            text = subtask.name,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (subtask.isCompleted) Color.Gray else Color.DarkGray,
-            modifier = Modifier.padding(start = 4.dp)
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = subtask.dueDate,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-    }
-}
-
 private val previewTasks = listOf(
     Task(
         id = "1",
@@ -601,7 +533,6 @@ fun TaskListScreenPreview() {
             onTabSelect = {},
             onCategorySelect = {},
             onSearchQueryChange = {},
-            onSubtaskToggle = { _, _ -> },
             onStatusChange = { _, _ -> }
         )
     }
