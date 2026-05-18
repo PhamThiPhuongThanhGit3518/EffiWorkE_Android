@@ -38,6 +38,7 @@ fun TaskDetailScreen(
     projectId: String = "",
     taskId: String = "",
     onBackClick: () -> Unit = {},
+    onEditTask: (String, String) -> Unit = { _, _ -> },
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
@@ -58,6 +59,9 @@ fun TaskDetailScreen(
                     screenState = screenState.copy(commentText = "")
                 }
                 is TaskDetailEffect.ShowToast -> {}
+                is TaskDetailEffect.TaskDeleted -> {
+                    onBackClick()
+                }
             }
         }
     }
@@ -68,8 +72,8 @@ fun TaskDetailScreen(
         onCommentTextChange = { screenState = screenState.copy(commentText = it) },
         onPostComment = { viewModel.postComment(screenState.commentText) },
         onAddSubtask = {},
-        onEditTask = {},
-        onDeleteTask = {}
+        onEditTask = { onEditTask(projectId, taskId) },
+        onDeleteTask = { viewModel.deleteTask() }
     )
 }
 
@@ -85,6 +89,30 @@ fun TaskDetailScreenContent(
     onDeleteTask: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xóa công việc") },
+            text = { Text("Bạn có chắc chắn muốn xóa công việc này? Hành động này không thể hoàn tác.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDeleteTask()
+                    }
+                ) {
+                    Text("Xóa", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -137,7 +165,7 @@ fun TaskDetailScreenContent(
                                 text = { Text("Xóa") },
                                 onClick = {
                                     showMenu = false
-                                    onDeleteTask()
+                                    showDeleteDialog = true
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)

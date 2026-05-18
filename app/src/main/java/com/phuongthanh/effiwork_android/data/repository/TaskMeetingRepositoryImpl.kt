@@ -7,6 +7,7 @@ import com.phuongthanh.effiwork_android.api.TaskService
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,48 @@ class TaskRepositoryImpl @Inject constructor(
                 } else {
                     ApiResult.Error(e.message ?: "Unknown error")
                 }
+            }
+        }
+    }
+
+    override suspend fun updateTask(projectId: String, taskId: String, request: UpdateTaskRequest): ApiResult<TaskResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "updateTask called: projectId=$projectId, taskId=$taskId")
+                Log.d(TAG, "  title=${request.title}, description=${request.description}")
+                Log.d(TAG, "  sectionId=${request.sectionId}, ownerId=${request.ownerId}")
+                Log.d(TAG, "  startDate=${request.startDate}, dueDate=${request.dueDate}")
+                Log.d(TAG, "  participantIds=${request.participantIds}")
+
+                val response = taskService.updateTask(projectId, taskId, request)
+                Log.d(TAG, "updateTask response: success=${response.success}, message=${response.message}")
+                if (response.success && response.data != null) {
+                    ApiResult.Success(response.data)
+                } else {
+                    Log.e(TAG, "updateTask failed: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "updateTask EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun deleteTask(projectId: String, taskId: String): ApiResult<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "deleteTask called: projectId=$projectId, taskId=$taskId")
+                val response = taskService.deleteTask(projectId, taskId)
+                Log.d(TAG, "deleteTask response: success=${response.success}")
+                if (response.success) {
+                    ApiResult.Success(Unit)
+                } else {
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteTask EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
             }
         }
     }

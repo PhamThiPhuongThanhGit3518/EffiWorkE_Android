@@ -50,7 +50,8 @@ object NavRoutes {
     const val TASK_GROUP_LIST = "task_group_list/{projectId}/{projectName}"
     const val TASK_SCREEN = "task/{projectId}/{projectName}/{groupId}"
     const val TASK_DETAIL = "task_detail/{projectId}/{taskId}"
-    const val CREATE_TASK = "create_task/{projectId}"
+    const val CREATE_TASK = "create_task/{projectId}/{groupId}"
+    const val EDIT_TASK = "edit_task/{projectId}/{taskId}"
     const val MEETING_LIST = "meeting_list/{projectId}"
     const val CREATE_MEETING = "create_meeting/{projectId}"
 
@@ -58,7 +59,8 @@ object NavRoutes {
     fun taskGroupList(projectId: String, projectName: String) = "task_group_list/$projectId/$projectName"
     fun taskScreen(projectId: String, projectName: String, groupId: String) = "task/$projectId/$projectName/$groupId"
     fun taskDetail(projectId: String, taskId: String) = "task_detail/$projectId/$taskId"
-    fun createTask(projectId: String) = "create_task/$projectId"
+    fun createTask(projectId: String, groupId: String = "") = "create_task/$projectId/$groupId"
+    fun editTask(projectId: String, taskId: String) = "edit_task/$projectId/$taskId"
     fun meetingList(projectId: String) = "meeting_list/$projectId"
     fun createMeeting(projectId: String) = "create_meeting/$projectId"
 }
@@ -197,8 +199,8 @@ fun MainScreen(
                     projectName = projectName,
                     groupId = groupId,
                     onBackClick = { navController.popBackStack() },
-                    onNavigateToCreateTask = { pid ->
-                        navController.navigate(NavRoutes.createTask(pid))
+                    onNavigateToCreateTask = { pid, gid ->
+                        navController.navigate(NavRoutes.createTask(pid, gid))
                     },
                     onNavigateToTaskDetail = { pid, tid ->
                         navController.navigate(NavRoutes.taskDetail(pid, tid))
@@ -217,18 +219,50 @@ fun MainScreen(
                 TaskDetailScreen(
                     projectId = projectId,
                     taskId = taskId,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onEditTask = { pid, tid ->
+                        navController.navigate(NavRoutes.editTask(pid, tid))
+                    }
                 )
             }
             composable(
                 route = NavRoutes.CREATE_TASK,
-                arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("groupId") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
                 val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
                 CreateTaskListScreen(
                     projectId = projectId,
+                    preselectedGroupId = groupId,
                     onBackClick = { navController.popBackStack() },
                     onCreateClick = {
+                        navController.popBackStack()
+                    },
+                    onUpdateClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.EDIT_TASK,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("taskId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
+                CreateTaskListScreen(
+                    projectId = projectId,
+                    taskId = taskId,
+                    onBackClick = { navController.popBackStack() },
+                    onCreateClick = {
+                        navController.popBackStack()
+                    },
+                    onUpdateClick = {
                         navController.popBackStack()
                     }
                 )

@@ -3,6 +3,7 @@ package com.phuongthanh.effiwork_android.api
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
 import retrofit2.http.*
@@ -63,6 +64,19 @@ interface TaskService {
         @Path("taskId") taskId: String,
         @Body request: UpdateTaskStatusRequest
     ): ApiResponse<TaskResponse>
+
+    @PATCH("v1/projects/{projectId}/tasks/{taskId}")
+    suspend fun updateTask(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String,
+        @Body request: UpdateTaskRequest
+    ): ApiResponse<TaskResponse>
+
+    @DELETE("v1/projects/{projectId}/tasks/{taskId}")
+    suspend fun deleteTask(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String
+    ): ApiResponse<Unit>
 }
 
 interface MeetingService {

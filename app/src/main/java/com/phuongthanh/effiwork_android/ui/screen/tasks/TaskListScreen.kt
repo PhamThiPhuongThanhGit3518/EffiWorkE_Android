@@ -47,7 +47,7 @@ fun TaskListScreen(
     groupId: String = "",
     viewModel: TaskViewModel = hiltViewModel(),
     onBackClick: () -> Unit = {},
-    onNavigateToCreateTask: (String) -> Unit = {},
+    onNavigateToCreateTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> }
 ) {
     var screenState by remember { mutableStateOf(TaskListScreenState(projectId = projectId, projectName = projectName, groupId = groupId)) }
@@ -81,6 +81,8 @@ fun TaskListScreen(
             when (effect) {
                 is TaskEffect.ShowToast -> {}
                 is TaskEffect.TaskCreated -> {}
+                is TaskEffect.TaskUpdated -> {}
+                is TaskEffect.TaskDeleted -> {}
             }
         }
     }
@@ -103,7 +105,7 @@ fun TaskListScreen(
 fun TaskListScreenContent(
     state: TaskListScreenState,
     onBackClick: () -> Unit,
-    onNavigateToCreateTask: (String) -> Unit,
+    onNavigateToCreateTask: (String, String) -> Unit,
     onNavigateToTaskDetail: (String, String) -> Unit,
     onTabSelect: (TaskTab) -> Unit,
     onCategorySelect: (TaskCategory) -> Unit,
@@ -156,7 +158,7 @@ fun TaskListScreenContent(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { onNavigateToCreateTask(state.projectId) },
+                onClick = { onNavigateToCreateTask(state.projectId, state.groupId) },
                 containerColor = Blue500,
                 contentColor = Color.White
             ) {
@@ -596,7 +598,7 @@ fun TaskListScreenPreview() {
                 searchQuery = ""
             ),
             onBackClick = {},
-            onNavigateToCreateTask = {},
+            onNavigateToCreateTask = { _, _ -> },
             onNavigateToTaskDetail = { _, _ -> },
             onTabSelect = {},
             onCategorySelect = {},

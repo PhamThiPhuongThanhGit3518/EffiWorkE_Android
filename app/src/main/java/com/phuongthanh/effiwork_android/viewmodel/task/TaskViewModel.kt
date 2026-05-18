@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.TaskResponse
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
@@ -89,6 +90,8 @@ enum class TaskCategory(val displayName: String) {
 sealed class TaskEffect {
     data class ShowToast(val message: String) : TaskEffect()
     data class TaskCreated(val taskName: String) : TaskEffect()
+    data class TaskUpdated(val taskName: String) : TaskEffect()
+    data object TaskDeleted : TaskEffect()
 }
 
 data class TaskGroup(
@@ -187,6 +190,24 @@ class TaskViewModel @Inject constructor(
         }
     }
 
+    fun loadTaskDetailForEdit(taskId: String) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) return@launch
+
+            when (val result = taskRepository.getTasks(projectIdValue, null)) {
+                is ApiResult.Success -> {
+                    val tasks = result.data.map { it.toTask() }
+                    _uiState.value = TaskUiState.Success(tasks)
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
     fun loadTaskGroupsForCreate() {
         viewModelScope.launch {
             val projectIdValue = _projectId.value
@@ -268,6 +289,77 @@ class TaskViewModel @Inject constructor(
         }
     }
 
+    fun updateTask(
+        taskId: String,
+        name: String,
+        description: String,
+        groupId: String?,
+        assigneeId: String,
+        startDate: String,
+        endDate: String,
+        reminderTime: String?,
+        participantIds: List<String>
+    ) {
+        viewModelScope.launch {
+            _uiState.value = TaskUiState.Loading
+            val projectIdValue = _projectId.value
+            Log.d(TAG, "updateTask: projectId=$projectIdValue, taskId=$taskId")
+            Log.d(TAG, "updateTask: name=$name, groupId=$groupId")
+            Log.d(TAG, "updateTask: assigneeId=$assigneeId")
+
+            val request = UpdateTaskRequest(
+                title = name.takeIf { it.isNotBlank() },
+                description = description.takeIf { it.isNotBlank() },
+                sectionId = groupId,
+                ownerId = assigneeId.takeIf { it.isNotBlank() },
+                startDate = startDate.takeIf { it.isNotBlank() },
+                dueDate = endDate.takeIf { it.isNotBlank() },
+                reminderAt = reminderTime?.takeIf { it.isNotBlank() },
+                participantIds = participantIds.takeIf { it.isNotEmpty() }
+            )
+
+            Log.d(TAG, "updateTask: request=$request")
+            when (val result = taskRepository.updateTask(projectIdValue, taskId, request)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "Update task success: ${result.data.id}")
+                    _effect.emit(TaskEffect.ShowToast("Cập nhật công việc thành công"))
+                    _effect.emit(TaskEffect.TaskUpdated(name))
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    _uiState.value = TaskUiState.Error(result.message)
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {
+                    _uiState.value = TaskUiState.Loading
+                }
+            }
+        }
+    }
+
+    fun deleteTask(taskId: String) {
+        viewModelScope.launch {
+            _uiState.value = TaskUiState.Loading
+            val projectIdValue = _projectId.value
+
+            when (val result = taskRepository.deleteTask(projectIdValue, taskId)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "Delete task success")
+                    _effect.emit(TaskEffect.ShowToast("Xóa công việc thành công"))
+                    _effect.emit(TaskEffect.TaskDeleted)
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    _uiState.value = TaskUiState.Error(result.message)
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {
+                    _uiState.value = TaskUiState.Loading
+                }
+            }
+        }
+    }
+
     fun toggleSubtask(taskId: String, subtaskId: String) {
         val currentState = _uiState.value
         if (currentState is TaskUiState.Success) {
@@ -316,7 +408,7 @@ class TaskViewModel @Inject constructor(
             participants = participants?.map { it.userName ?: "" } ?: emptyList(),
             startDate = startDate ?: "",
             endDate = endDate ?: "",
-            category = groupName ?: group?.name ?: "",
+            category = groupId ?: "", // Use sectionId for update
             subtasks = subtasks?.map { Subtask(it.id, it.name, it.isCompleted, it.dueDate) } ?: emptyList()
         )
     }

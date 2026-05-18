@@ -52,6 +52,7 @@ data class CommentItem(
 sealed class TaskDetailEffect {
     data class ShowToast(val message: String) : TaskDetailEffect()
     object CommentPosted : TaskDetailEffect()
+    object TaskDeleted : TaskDetailEffect()
 }
 
 @HiltViewModel
@@ -128,6 +129,24 @@ class TaskDetailViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "Failed to post comment: ${result.message}")
+                    _effect.emit(TaskDetailEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun deleteTask() {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
+
+        viewModelScope.launch {
+            when (val result = taskRepository.deleteTask(currentProjectId, currentTaskId)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "Task deleted successfully")
+                    _effect.emit(TaskDetailEffect.TaskDeleted)
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "Failed to delete task: ${result.message}")
                     _effect.emit(TaskDetailEffect.ShowToast(result.message))
                 }
                 is ApiResult.Loading -> {}

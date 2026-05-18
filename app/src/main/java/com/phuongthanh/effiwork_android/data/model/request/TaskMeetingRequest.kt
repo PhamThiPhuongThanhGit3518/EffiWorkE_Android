@@ -28,6 +28,25 @@ data class UpdateTaskStatusRequest(
     val status: String
 )
 
+data class UpdateTaskRequest(
+    @SerializedName("title")
+    val title: String?,
+    @SerializedName("description")
+    val description: String?,
+    @SerializedName("sectionId")
+    val sectionId: String?,
+    @SerializedName("ownerId")
+    val ownerId: String?,
+    @SerializedName("startDate")
+    val startDate: String?,
+    @SerializedName("dueDate")
+    val dueDate: String?,
+    @SerializedName("reminderAt")
+    val reminderAt: String?,
+    @SerializedName("participantIds")
+    val participantIds: List<String>?
+)
+
 data class CreateMeetingRequest(
     @SerializedName("projectId")
     val projectId: String,

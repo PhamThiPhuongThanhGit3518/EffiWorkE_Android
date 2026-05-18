@@ -24,6 +24,7 @@ import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskEffect
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskGroup
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskMember
+import com.phuongthanh.effiwork_android.viewmodel.task.TaskUiState
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskViewModel
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
@@ -53,18 +54,51 @@ data class CreateTaskFormState(
 @Composable
 fun CreateTaskListScreen(
     projectId: String = "",
+    taskId: String? = null,
+    preselectedGroupId: String = "",
     onBackClick: () -> Unit = {},
     onCreateClick: (String) -> Unit = { _ -> },
+    onUpdateClick: (String) -> Unit = { _ -> },
     viewModel: TaskViewModel = hiltViewModel()
 ) {
-    var formState by remember { mutableStateOf(CreateTaskFormState()) }
+    var formState by remember { mutableStateOf(CreateTaskFormState(selectedGroupId = preselectedGroupId)) }
     val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
     val taskMembers by viewModel.taskMembers.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val isEditMode = taskId != null
 
     LaunchedEffect(projectId) {
         viewModel.setProjectInfo(projectId, "")
         viewModel.loadTaskGroupsForCreate()
         viewModel.loadMembersForCreate()
+    }
+
+    // Load task details if in edit mode
+    LaunchedEffect(taskId) {
+        if (taskId != null) {
+            viewModel.loadTaskDetailForEdit(taskId)
+        }
+    }
+
+    // Populate form when task detail is loaded
+    LaunchedEffect(uiState, taskId) {
+        if (taskId != null) {
+            val currentState = uiState
+            if (currentState is TaskUiState.Success) {
+                val task = currentState.tasks.firstOrNull { t -> t.id == taskId }
+                if (task != null) {
+                    formState = formState.copy(
+                        taskName = task.name,
+                        description = task.description,
+                        startDate = task.startDate,
+                        endDate = task.endDate,
+                        selectedGroupId = task.category,
+                        assigneeId = task.assignee.takeIf { it.isNotBlank() } ?: ""
+                    )
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -74,6 +108,10 @@ fun CreateTaskListScreen(
                 is TaskEffect.TaskCreated -> {
                     onCreateClick(effect.taskName)
                 }
+                is TaskEffect.TaskUpdated -> {
+                    onUpdateClick(effect.taskName)
+                }
+                is TaskEffect.TaskDeleted -> {}
             }
         }
     }
@@ -95,7 +133,23 @@ fun CreateTaskListScreen(
                 reminderTime = formState.reminder.ifBlank { null },
                 participantIds = formState.participantIds
             )
-        }
+        },
+        onUpdateClick = {
+            taskId?.let { id ->
+                viewModel.updateTask(
+                    taskId = id,
+                    name = formState.taskName,
+                    description = formState.description,
+                    groupId = formState.selectedGroupId.ifBlank { null },
+                    assigneeId = formState.assigneeId,
+                    startDate = formState.startDate,
+                    endDate = formState.endDate,
+                    reminderTime = formState.reminder.ifBlank { null },
+                    participantIds = formState.participantIds
+                )
+            }
+        },
+        isEditMode = isEditMode
     )
 }
 
@@ -107,7 +161,9 @@ fun CreateTaskListScreenContent(
     taskMembers: List<TaskMember>,
     onFormStateChange: (CreateTaskFormState) -> Unit,
     onBackClick: () -> Unit,
-    onCreateClick: (String) -> Unit
+    onCreateClick: (String) -> Unit,
+    onUpdateClick: () -> Unit = {},
+    isEditMode: Boolean = false
 ) {
     val statuses = listOf("Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng")
     val taskLevels = listOf("Công việc lớn của dự án", "Công việc cấp 1", "Công việc cấp 2")
@@ -118,7 +174,7 @@ fun CreateTaskListScreenContent(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Text(
-                        text = "Tạo công việc",
+                        text = if (isEditMode) "Chỉnh sửa công việc" else "Tạo công việc",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -142,7 +198,7 @@ fun CreateTaskListScreenContent(
                 color = Color.White
             ) {
                 Button(
-                    onClick = { onCreateClick(formState.taskName) },
+                    onClick = { if (isEditMode) onUpdateClick() else onCreateClick(formState.taskName) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
@@ -155,7 +211,7 @@ fun CreateTaskListScreenContent(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "Tạo công việc",
+                        text = if (isEditMode) "Cập nhật công việc" else "Tạo công việc",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
