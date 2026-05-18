@@ -66,7 +66,10 @@ fun TaskDetailScreen(
         state = screenState,
         onBackClick = onBackClick,
         onCommentTextChange = { screenState = screenState.copy(commentText = it) },
-        onPostComment = { viewModel.postComment(screenState.commentText) }
+        onPostComment = { viewModel.postComment(screenState.commentText) },
+        onAddSubtask = {},
+        onEditTask = {},
+        onDeleteTask = {}
     )
 }
 
@@ -76,8 +79,13 @@ fun TaskDetailScreenContent(
     state: TaskDetailScreenState,
     onBackClick: () -> Unit,
     onCommentTextChange: (String) -> Unit,
-    onPostComment: () -> Unit
+    onPostComment: () -> Unit,
+    onAddSubtask: () -> Unit = {},
+    onEditTask: () -> Unit = {},
+    onDeleteTask: () -> Unit = {}
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -92,7 +100,52 @@ fun TaskDetailScreenContent(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Thêm tùy chọn",
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Thêm công việc con") },
+                                onClick = {
+                                    showMenu = false
+                                    onAddSubtask()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Chỉnh sửa") },
+                                onClick = {
+                                    showMenu = false
+                                    onEditTask()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Xóa") },
+                                onClick = {
+                                    showMenu = false
+                                    onDeleteTask()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                                }
+                            )
+                        }
+                    }
+                }
             )
         },
         bottomBar = {
@@ -476,7 +529,10 @@ fun TaskDetailScreenPreview() {
             ),
             onBackClick = {},
             onCommentTextChange = {},
-            onPostComment = {}
+            onPostComment = {},
+            onAddSubtask = {},
+            onEditTask = {},
+            onDeleteTask = {}
         )
     }
 }
