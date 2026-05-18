@@ -32,6 +32,12 @@ data class TaskDetailScreenState(
     val commentText: String = ""
 )
 
+data class ParentTaskInfo(
+    val id: String,
+    val name: String,
+    val groupId: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailScreen(
@@ -39,7 +45,7 @@ fun TaskDetailScreen(
     taskId: String = "",
     onBackClick: () -> Unit = {},
     onEditTask: (String, String) -> Unit = { _, _ -> },
-    onAddSubtask: (String, String, String) -> Unit = { _, _, _ -> }, // projectId, parentTaskId, parentTaskName
+    onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> }, // projectId, parentTaskId, parentTaskName, groupId
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
@@ -67,14 +73,16 @@ fun TaskDetailScreen(
         }
     }
 
-    val parentTaskName = (uiState as? TaskDetailUiState.Success)?.taskDetail?.title ?: ""
+    val parentTaskInfo = (uiState as? TaskDetailUiState.Success)?.taskDetail?.let { detail ->
+        ParentTaskInfo(detail.id, detail.title, detail.groupId)
+    } ?: ParentTaskInfo("", "", "")
 
     TaskDetailScreenContent(
         state = screenState,
         onBackClick = onBackClick,
         onCommentTextChange = { screenState = screenState.copy(commentText = it) },
         onPostComment = { viewModel.postComment(screenState.commentText) },
-        onAddSubtask = { onAddSubtask(projectId, taskId, parentTaskName) },
+        onAddSubtask = { onAddSubtask(projectId, taskId, parentTaskInfo.name, parentTaskInfo.groupId) },
         onEditTask = { onEditTask(projectId, taskId) },
         onDeleteTask = { viewModel.deleteTask() }
     )
@@ -541,6 +549,7 @@ fun TaskDetailScreenPreview() {
                         title = "Thiết kế giao diện màn hình chính",
                         description = "Thiết kế UI/UX cho màn hình chính của ứng dụng. Bao gồm các màn hình: Home, Profile, Settings.",
                         status = "IN_PROGRESS",
+                        groupId = "g1",
                         groupName = "Thiết kế giao diện",
                         assigneeName = "Phạm Thị Phương Thanh",
                         creatorName = "Nguyễn Văn Minh",
