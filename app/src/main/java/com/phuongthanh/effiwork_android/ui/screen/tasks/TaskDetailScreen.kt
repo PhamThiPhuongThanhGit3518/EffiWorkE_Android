@@ -45,10 +45,11 @@ fun TaskDetailScreen(
     taskId: String = "",
     onBackClick: () -> Unit = {},
     onEditTask: (String, String) -> Unit = { _, _ -> },
-    onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> }, // projectId, parentTaskId, parentTaskName, groupId
+    onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, taskId) {
@@ -79,12 +80,15 @@ fun TaskDetailScreen(
 
     TaskDetailScreenContent(
         state = screenState,
+        selectedTabIndex = selectedTabIndex,
+        onTabSelected = { selectedTabIndex = it },
         onBackClick = onBackClick,
         onCommentTextChange = { screenState = screenState.copy(commentText = it) },
         onPostComment = { viewModel.postComment(screenState.commentText) },
         onAddSubtask = { onAddSubtask(projectId, taskId, parentTaskInfo.name, parentTaskInfo.groupId) },
         onEditTask = { onEditTask(projectId, taskId) },
-        onDeleteTask = { viewModel.deleteTask() }
+        onDeleteTask = { viewModel.deleteTask() },
+        onSubtaskToggle = { subtaskId -> viewModel.toggleSubtask(subtaskId) }
     )
 }
 
@@ -92,15 +96,19 @@ fun TaskDetailScreen(
 @Composable
 fun TaskDetailScreenContent(
     state: TaskDetailScreenState,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
     onBackClick: () -> Unit,
     onCommentTextChange: (String) -> Unit,
     onPostComment: () -> Unit,
     onAddSubtask: () -> Unit = {},
     onEditTask: () -> Unit = {},
-    onDeleteTask: () -> Unit = {}
+    onDeleteTask: () -> Unit = {},
+    onSubtaskToggle: (String) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val tabs = listOf("Thông tin", "Bình luận", "Công việc con")
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -188,86 +196,247 @@ fun TaskDetailScreenContent(
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 8.dp,
-                color = Color.White
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            if (selectedTabIndex == 1) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = Color.White
                 ) {
-                    OutlinedTextField(
-                        value = state.commentText,
-                        onValueChange = onCommentTextChange,
-                        placeholder = { Text("Viết bình luận...") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedBorderColor = Blue500
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(
-                        onClick = onPostComment,
-                        enabled = state.commentText.isNotBlank()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .navigationBarsPadding(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Gửi",
-                            tint = if (state.commentText.isNotBlank()) Blue500 else Color.Gray
+                        OutlinedTextField(
+                            value = state.commentText,
+                            onValueChange = onCommentTextChange,
+                            placeholder = { Text("Viết bình luận...") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedBorderColor = Blue500
+                            )
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = onPostComment,
+                            enabled = state.commentText.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Gửi",
+                                tint = if (state.commentText.isNotBlank()) Blue500 else Color.Gray
+                            )
+                        }
                     }
                 }
             }
         }
     ) { innerPadding ->
-        when (val uiState = state.uiState) {
-            is TaskDetailUiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Blue500)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFFF5F5F5))
+        ) {
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.White,
+                contentColor = Blue500
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { onTabSelected(index) },
+                        text = {
+                            Text(
+                                text = title,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTabIndex == index) Blue500 else Color.Gray
+                            )
+                        }
+                    )
                 }
             }
-            is TaskDetailUiState.Success -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .background(Color(0xFFF5F5F5))
-                ) {
-                    item {
-                        TaskDetailHeader(uiState.taskDetail)
+
+            when (val uiState = state.uiState) {
+                is TaskDetailUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Blue500)
                     }
-                    item {
-                        TaskDescriptionSection(uiState.taskDetail.description)
+                }
+                is TaskDetailUiState.Success -> {
+                    when (selectedTabIndex) {
+                        0 -> TaskInfoTabContent(uiState.taskDetail)
+                        1 -> TaskCommentsTabContent(uiState.taskDetail.comments)
+                        2 -> TaskSubtasksTabContent(
+                            subtasks = uiState.taskDetail.subtasks,
+                            onAddSubtask = onAddSubtask,
+                            onSubtaskToggle = onSubtaskToggle
+                        )
                     }
-                    item {
-                        TaskInfoSection(uiState.taskDetail)
+                }
+                is TaskDetailUiState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(uiState.message, color = Color.Red)
                     }
-                    item {
-                        CommentsSection(uiState.taskDetail.comments)
+                }
+                else -> {}
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskInfoTabContent(task: TaskDetail) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 80.dp)
+    ) {
+        item {
+            TaskDetailHeader(task)
+        }
+        item {
+            TaskDescriptionSection(task.description)
+        }
+        item {
+            TaskInfoSection(task)
+        }
+    }
+}
+
+@Composable
+private fun TaskCommentsTabContent(comments: List<CommentItem>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        item {
+            CommentsSection(comments)
+        }
+    }
+}
+
+@Composable
+private fun TaskSubtasksTabContent(
+    subtasks: List<SubtaskItem>,
+    onAddSubtask: () -> Unit,
+    onSubtaskToggle: (String) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Công việc con",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${subtasks.size} công việc",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onAddSubtask,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Blue500),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Thêm công việc con")
                     }
                 }
             }
-            is TaskDetailUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(uiState.message, color = Color.Red)
+        }
+
+        items(subtasks.size) { index ->
+            val subtask = subtasks[index]
+            SubtaskCard(
+                subtask = subtask,
+                onToggle = { onSubtaskToggle(subtask.id) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SubtaskCard(
+    subtask: SubtaskItem,
+    onToggle: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = subtask.isCompleted,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color(0xFF4CAF50),
+                    uncheckedColor = Color.Gray
+                )
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = subtask.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (subtask.isCompleted) Color.Gray else Color.DarkGray,
+                    fontWeight = FontWeight.Medium
+                )
+                if (subtask.dueDate.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = subtask.dueDate,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
-            else -> {}
         }
     }
 }
@@ -453,8 +622,7 @@ private fun CommentsSection(comments: List<CommentItem>) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(top = 12.dp)
-            .padding(bottom = 80.dp),
+            .padding(top = 12.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -559,20 +727,29 @@ fun TaskDetailScreenPreview() {
                         participantNames = listOf("Trần Văn Hoàng", "Lê Thị Mai"),
                         commentCount = 2,
                         attachmentCount = 0,
+                        subtaskCount = 3,
                         comments = listOf(
                             CommentItem("c1", "Bản thiết kế đã sẵn sàng để review chưa?", "Nguyễn Văn Minh", null, "2026-05-16 14:20"),
                             CommentItem("c2", "Đã xong! Mình đã upload lên drive.", "Phạm Thị Phương Thanh", null, "2026-05-16 15:45")
+                        ),
+                        subtasks = listOf(
+                            SubtaskItem("s1", "Thiết kế mockup", false, "2026-05-22"),
+                            SubtaskItem("s2", "Review design", true, "2026-05-24"),
+                            SubtaskItem("s3", "Implement UI", false, "2026-05-25")
                         )
                     )
                 ),
                 commentText = ""
             ),
+            selectedTabIndex = 0,
+            onTabSelected = {},
             onBackClick = {},
             onCommentTextChange = {},
             onPostComment = {},
             onAddSubtask = {},
             onEditTask = {},
-            onDeleteTask = {}
+            onDeleteTask = {},
+            onSubtaskToggle = {}
         )
     }
 }

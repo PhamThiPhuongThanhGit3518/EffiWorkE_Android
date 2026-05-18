@@ -14,7 +14,8 @@ interface TaskService {
         @Path("projectId") projectId: String,
         @Query("sectionId") sectionId: String? = null,
         @Query("status") status: String? = null,
-        @Query("assigneeId") assigneeId: String? = null
+        @Query("assigneeId") assigneeId: String? = null,
+        @Query("parentTaskId") parentTaskId: String? = null
     ): ApiResponse<List<TaskResponse>>
 
     @GET("v1/projects/{projectId}/tasks/{taskId}")
@@ -22,6 +23,12 @@ interface TaskService {
         @Path("projectId") projectId: String,
         @Path("taskId") taskId: String
     ): ApiResponse<TaskDetailResponse>
+
+    @GET("v1/projects/{projectId}/tasks/{taskId}/subtasks")
+    suspend fun getSubtasks(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String
+    ): ApiResponse<List<TaskResponse>>
 
     @GET("v1/projects/{projectId}/tasks/{taskId}/comments")
     suspend fun getTaskComments(

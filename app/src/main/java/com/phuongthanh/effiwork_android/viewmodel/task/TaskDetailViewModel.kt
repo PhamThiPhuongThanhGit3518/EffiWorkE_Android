@@ -39,7 +39,16 @@ data class TaskDetail(
     val participantNames: List<String>,
     val commentCount: Int,
     val attachmentCount: Int,
-    val comments: List<CommentItem>
+    val subtaskCount: Int,
+    val comments: List<CommentItem>,
+    val subtasks: List<SubtaskItem>
+)
+
+data class SubtaskItem(
+    val id: String,
+    val name: String,
+    val isCompleted: Boolean,
+    val dueDate: String
 )
 
 data class CommentItem(
@@ -81,6 +90,29 @@ class TaskDetailViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val data = result.data
                     Log.d(TAG, "Task detail loaded: ${data.title}")
+
+                    val subtasks = when (val subtaskResult = taskRepository.getSubtasks(projectId, taskId)) {
+                        is ApiResult.Success -> {
+                            Log.d(TAG, "getSubtasks Success: ${subtaskResult.data.size} subtasks")
+                            subtaskResult.data.map { subtask ->
+                                SubtaskItem(
+                                    id = subtask.id,
+                                    name = subtask.name ?: "",
+                                    isCompleted = false,
+                                    dueDate = subtask.endDate?.take(10) ?: ""
+                                )
+                            }
+                        }
+                        is ApiResult.Error -> {
+                            Log.e(TAG, "getSubtasks Error: ${subtaskResult.message}")
+                            emptyList()
+                        }
+                        is ApiResult.Loading -> {
+                            Log.d(TAG, "getSubtasks Loading...")
+                            emptyList()
+                        }
+                    }
+
                     val taskDetail = TaskDetail(
                         id = data.id,
                         title = data.title ?: "",
@@ -96,6 +128,7 @@ class TaskDetailViewModel @Inject constructor(
                         participantNames = data.participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
                         commentCount = data.count?.comments ?: 0,
                         attachmentCount = data.count?.attachments ?: 0,
+                        subtaskCount = subtasks.size,
                         comments = data.comments?.map { comment ->
                             CommentItem(
                                 id = comment.id,
@@ -104,7 +137,8 @@ class TaskDetailViewModel @Inject constructor(
                                 userAvatar = comment.user?.avatarUrl,
                                 createdAt = comment.createdAt?.take(10) ?: ""
                             )
-                        } ?: emptyList()
+                        } ?: emptyList(),
+                        subtasks = subtasks
                     )
                     _uiState.value = TaskDetailUiState.Success(taskDetail)
                 }
@@ -152,6 +186,24 @@ class TaskDetailViewModel @Inject constructor(
                     _effect.emit(TaskDetailEffect.ShowToast(result.message))
                 }
                 is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun toggleSubtask(subtaskId: String) {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
+
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is TaskDetailUiState.Success) {
+                val updatedSubtasks = currentState.taskDetail.subtasks.map { subtask ->
+                    if (subtask.id == subtaskId) {
+                        subtask.copy(isCompleted = !subtask.isCompleted)
+                    } else subtask
+                }
+                _uiState.value = currentState.copy(
+                    taskDetail = currentState.taskDetail.copy(subtasks = updatedSubtasks)
+                )
             }
         }
     }

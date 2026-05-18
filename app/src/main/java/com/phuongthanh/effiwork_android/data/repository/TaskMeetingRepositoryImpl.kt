@@ -22,16 +22,19 @@ class TaskRepositoryImpl @Inject constructor(
     private val taskService: TaskService
 ) : TaskRepository {
 
-    override suspend fun getTasks(projectId: String, sectionId: String?, status: String?, assigneeId: String?): ApiResult<List<TaskResponse>> {
+    override suspend fun getTasks(projectId: String, sectionId: String?, status: String?, assigneeId: String?, parentTaskId: String?): ApiResult<List<TaskResponse>> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = taskService.getTasks(projectId, sectionId, status, assigneeId)
+                Log.d(TAG, "getTasks called: projectId=$projectId, parentTaskId=$parentTaskId")
+                val response = taskService.getTasks(projectId, sectionId, status, assigneeId, parentTaskId)
+                Log.d(TAG, "getTasks response: success=${response.success}, data=${response.data?.size} items")
                 if (response.success && response.data != null) {
                     ApiResult.Success(response.data)
                 } else {
                     ApiResult.Error(response.message)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "getTasks EXCEPTION: ${e.message}", e)
                 ApiResult.Error(e.message ?: "Unknown error")
             }
         }
@@ -193,6 +196,10 @@ class TaskRepositoryImpl @Inject constructor(
                 ApiResult.Error(e.message ?: "Unknown error")
             }
         }
+    }
+
+    override suspend fun getSubtasks(projectId: String, taskId: String): ApiResult<List<TaskResponse>> {
+        return getTasks(projectId, null, null, null, taskId)
     }
 
     override suspend fun getTaskComments(projectId: String, taskId: String): ApiResult<List<CommentResponse>> {
