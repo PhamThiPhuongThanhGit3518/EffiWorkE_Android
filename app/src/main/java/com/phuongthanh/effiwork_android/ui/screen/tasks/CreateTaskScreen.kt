@@ -26,6 +26,8 @@ import com.phuongthanh.effiwork_android.viewmodel.task.TaskGroup
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskMember
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskViewModel
 import kotlinx.coroutines.flow.collectLatest
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class CreateTaskFormState(
     val taskName: String = "",
@@ -42,7 +44,9 @@ data class CreateTaskFormState(
     val assigneeExpanded: Boolean = false,
     val statusExpanded: Boolean = false,
     val levelExpanded: Boolean = false,
-    val participantSearchQuery: String = ""
+    val participantSearchQuery: String = "",
+    val showStartDatePicker: Boolean = false,
+    val showEndDatePicker: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,7 +84,7 @@ fun CreateTaskListScreen(
         taskMembers = taskMembers,
         onFormStateChange = { formState = it },
         onBackClick = onBackClick,
-        onCreateClick = { name ->
+        onCreateClick = {
             viewModel.createTask(
                 name = formState.taskName,
                 description = formState.description,
@@ -91,7 +95,6 @@ fun CreateTaskListScreen(
                 reminderTime = formState.reminder.ifBlank { null },
                 participantIds = formState.participantIds
             )
-            onCreateClick(name)
         }
     )
 }
@@ -176,14 +179,8 @@ fun CreateTaskListScreenContent(
             )
 
             TaskInfoCard(
-                taskName = formState.taskName,
-                onTaskNameChange = { onFormStateChange(formState.copy(taskName = it)) },
-                selectedGroupId = formState.selectedGroupId,
-                onGroupIdChange = { onFormStateChange(formState.copy(selectedGroupId = it)) },
-                description = formState.description,
-                onDescriptionChange = { onFormStateChange(formState.copy(description = it)) },
-                groupExpanded = formState.groupExpanded,
-                onGroupExpandedChange = { onFormStateChange(formState.copy(groupExpanded = it)) },
+                formState = formState,
+                onFormStateChange = onFormStateChange,
                 taskGroups = taskGroups
             )
 
@@ -210,14 +207,8 @@ fun CreateTaskListScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskInfoCard(
-    taskName: String,
-    onTaskNameChange: (String) -> Unit,
-    selectedGroupId: String,
-    onGroupIdChange: (String) -> Unit,
-    description: String,
-    onDescriptionChange: (String) -> Unit,
-    groupExpanded: Boolean,
-    onGroupExpandedChange: (Boolean) -> Unit,
+    formState: CreateTaskFormState, // Thêm dòng này
+    onFormStateChange: (CreateTaskFormState) -> Unit, // Thêm dòng này
     taskGroups: List<TaskGroup>
 ) {
     Card(
@@ -237,8 +228,8 @@ private fun TaskInfoCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = taskName,
-                onValueChange = onTaskNameChange,
+                value = formState.taskName, // Đổi thành formState.taskName
+                onValueChange = { onFormStateChange(formState.copy(taskName = it)) }, // Sửa tại đây
                 label = { Text("Tên công việc") },
                 placeholder = { Text("Chuẩn bị tài liệu sprint review") },
                 modifier = Modifier.fillMaxWidth(),
@@ -248,30 +239,35 @@ private fun TaskInfoCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             ExposedDropdownMenuBox(
-                expanded = groupExpanded,
-                onExpandedChange = onGroupExpandedChange
+                expanded = formState.groupExpanded, // Đổi thành formState.groupExpanded
+                onExpandedChange = { onFormStateChange(formState.copy(groupExpanded = it)) } // Sửa tại đây
             ) {
                 OutlinedTextField(
-                    value = taskGroups.find { it.id == selectedGroupId }?.name ?: "",
+                    value = taskGroups.find { it.id == formState.selectedGroupId }?.name ?: "", // Sửa tại đây
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Nhóm công việc") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = groupExpanded) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = formState.groupExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(),
                     shape = RoundedCornerShape(8.dp)
                 )
                 ExposedDropdownMenu(
-                    expanded = groupExpanded,
-                    onDismissRequest = { onGroupExpandedChange(false) }
+                    expanded = formState.groupExpanded,
+                    onDismissRequest = { onFormStateChange(formState.copy(groupExpanded = false)) }
                 ) {
                     taskGroups.forEach { group ->
                         DropdownMenuItem(
                             text = { Text(group.name) },
                             onClick = {
-                                onGroupIdChange(group.id)
-                                onGroupExpandedChange(false)
+                                // Gom cụm cập nhật state an toàn, không bị ghi đè dữ liệu
+                                onFormStateChange(
+                                    formState.copy(
+                                        selectedGroupId = group.id,
+                                        groupExpanded = false
+                                    )
+                                )
                             }
                         )
                     }
@@ -280,8 +276,8 @@ private fun TaskInfoCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = description,
-                onValueChange = onDescriptionChange,
+                value = formState.description, // Đổi thành formState.description
+                onValueChange = { onFormStateChange(formState.copy(description = it)) }, // Sửa tại đây
                 label = { Text("Mô tả") },
                 placeholder = { Text("Nhập mô tả chi tiết mục tiêu, đầu ra hoặc các lưu ý triển khai...") },
                 modifier = Modifier
@@ -387,32 +383,90 @@ private fun AssignmentCard(
             ) {
                 OutlinedTextField(
                     value = formState.startDate,
-                    onValueChange = { onFormStateChange(formState.copy(startDate = it)) },
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Bắt đầu") },
                     placeholder = { Text("YYYY-MM-DD") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp),
                     trailingIcon = {
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = { onFormStateChange(formState.copy(showStartDatePicker = true)) }) {
                             Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.Gray)
                         }
                     }
                 )
                 OutlinedTextField(
                     value = formState.endDate,
-                    onValueChange = { onFormStateChange(formState.copy(endDate = it)) },
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Kết thúc") },
                     placeholder = { Text("YYYY-MM-DD") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp),
                     trailingIcon = {
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = { onFormStateChange(formState.copy(showEndDatePicker = true)) }) {
                             Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.Gray)
                         }
                     }
                 )
+            }
+
+            if (formState.showStartDatePicker) {
+                val initialMillis = formState.startDate.let {
+                    try { SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(it)?.time }
+                    catch (e: Exception) { null }
+                }
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+                DatePickerDialog(
+                    onDismissRequest = { onFormStateChange(formState.copy(showStartDatePicker = false)) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                onFormStateChange(formState.copy(startDate = sdf.format(Date(millis)), showStartDatePicker = false))
+                            } ?: onFormStateChange(formState.copy(showStartDatePicker = false))
+                        }) {
+                            Text("Chọn")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { onFormStateChange(formState.copy(showStartDatePicker = false)) }) {
+                            Text("Hủy")
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
+
+            if (formState.showEndDatePicker) {
+                val initialMillis = formState.endDate.let {
+                    try { SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(it)?.time }
+                    catch (e: Exception) { null }
+                }
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+                DatePickerDialog(
+                    onDismissRequest = { onFormStateChange(formState.copy(showEndDatePicker = false)) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                onFormStateChange(formState.copy(endDate = sdf.format(Date(millis)), showEndDatePicker = false))
+                            } ?: onFormStateChange(formState.copy(showEndDatePicker = false))
+                        }) {
+                            Text("Chọn")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { onFormStateChange(formState.copy(showEndDatePicker = false)) }) {
+                            Text("Hủy")
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
 

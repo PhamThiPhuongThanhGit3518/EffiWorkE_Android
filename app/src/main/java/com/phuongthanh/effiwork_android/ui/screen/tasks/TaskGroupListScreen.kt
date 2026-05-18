@@ -44,15 +44,6 @@ data class TaskGroupColor(
     val color: Color
 )
 
-private val groupColors = listOf(
-    TaskGroupColor("Xanh dương", Icons.Default.Folder, Color(0xFF2196F3)),
-    TaskGroupColor("Xanh lá", Icons.Default.Edit, Color(0xFF4CAF50)),
-    TaskGroupColor("Tím", Icons.Default.Code, Color(0xFF9C27B0)),
-    TaskGroupColor("Cam", Icons.Default.Science, Color(0xFFFF9800)),
-    TaskGroupColor("Hồng", Icons.Default.RocketLaunch, Color(0xFFE91E63)),
-    TaskGroupColor("Xám", Icons.Default.MoreHoriz, Color.Gray)
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskGroupListScreen(
@@ -84,7 +75,6 @@ fun TaskGroupListScreen(
             screenState = screenState.copy(showAddDialog = false, newGroupName = "", selectedColor = Color(0xFF2196F3))
         },
         onNewGroupNameChange = { screenState = screenState.copy(newGroupName = it) },
-        onColorSelect = { screenState = screenState.copy(selectedColor = it) },
         onSaveGroup = { name ->
             viewModel.createTaskGroup(
                 name = name,
@@ -106,16 +96,12 @@ fun TaskGroupListScreenContent(
     onShowAddDialog: () -> Unit,
     onDismissAddDialog: () -> Unit,
     onNewGroupNameChange: (String) -> Unit,
-    onColorSelect: (Color) -> Unit,
     onSaveGroup: (String) -> Unit
 ) {
     if (state.showAddDialog) {
         AddTaskGroupDialog(
             groupName = state.newGroupName,
             onGroupNameChange = onNewGroupNameChange,
-            groupColors = groupColors,
-            selectedColor = state.selectedColor,
-            onColorSelect = onColorSelect,
             onCancel = onDismissAddDialog,
             onSave = { onSaveGroup(state.newGroupName) }
         )
@@ -265,9 +251,6 @@ private fun TaskGroupCard(
 private fun AddTaskGroupDialog(
     groupName: String,
     onGroupNameChange: (String) -> Unit,
-    groupColors: List<TaskGroupColor>,
-    selectedColor: Color,
-    onColorSelect: (Color) -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -298,20 +281,6 @@ private fun AddTaskGroupDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(groupColors) { colorItem ->
-                        ColorOption(
-                            color = colorItem.color,
-                            isSelected = selectedColor == colorItem.color,
-                            onClick = { onColorSelect(colorItem.color) }
-                        )
-                    }
-                }
             }
         },
         confirmButton = {
@@ -383,7 +352,6 @@ fun TaskGroupListScreenPreview() {
             onShowAddDialog = {},
             onDismissAddDialog = {},
             onNewGroupNameChange = {},
-            onColorSelect = {},
             onSaveGroup = {}
         )
     }

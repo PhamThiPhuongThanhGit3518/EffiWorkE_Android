@@ -155,14 +155,12 @@ fun TaskListScreenContent(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = { onNavigateToCreateTask(state.projectId) },
                 containerColor = Blue500,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Tạo công việc")
             }
         }
     ) { innerPadding ->
