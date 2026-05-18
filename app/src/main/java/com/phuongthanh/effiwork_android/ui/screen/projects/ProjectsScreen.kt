@@ -1,6 +1,12 @@
 package com.phuongthanh.effiwork_android.ui.screen.projects
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -195,6 +202,8 @@ fun ProjectDashboardContent(
 
 @Composable
 private fun ProjectHeaderCard(projectName: String, projectCode: String) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         shape = RoundedCornerShape(16.dp),
@@ -204,7 +213,20 @@ private fun ProjectHeaderCard(projectName: String, projectCode: String) {
         Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(projectName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(projectCode, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                Text(
+                    text = projectCode,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Project Code", projectCode)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Đã sao chép mã dự án", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
                     Text(" Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50))
