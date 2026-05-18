@@ -161,10 +161,10 @@ class TaskViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
-    fun loadTasks(sectionId: String? = null) {
+    fun loadTasks(sectionId: String? = null, parentTaskId: String? = null) {
         viewModelScope.launch {
             val effectiveSectionId = sectionId ?: _groupId.value.ifBlank { null }
-            Log.d(TAG, "loadTasks called with sectionId=$effectiveSectionId")
+            Log.d(TAG, "loadTasks called with sectionId=$effectiveSectionId, parentTaskId=$parentTaskId")
             _uiState.value = TaskUiState.Loading
             val projectIdValue = _projectId.value
             Log.d(TAG, "loadTasks projectId=$projectIdValue")
@@ -173,7 +173,7 @@ class TaskViewModel @Inject constructor(
                 return@launch
             }
 
-            when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId)) {
+            when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, parentTaskId)) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Tasks loaded: ${result.data.size}")
                     result.data.forEach { Log.d(TAG, "  Task: id=${it.id}, name=${it.name}") }

@@ -63,7 +63,7 @@ fun TaskListScreen(
         viewModel.setGroupId(groupId)
         viewModel.loadTaskGroupsForCreate()
         val sectionId = groupId.ifBlank { null }
-        viewModel.loadTasks(sectionId)
+        viewModel.loadTasks(sectionId, "null")
         screenState = screenState.copy(projectId = projectId, projectName = projectName, groupId = groupId)
     }
 
