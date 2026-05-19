@@ -110,7 +110,9 @@ fun TaskDetailScreenContent(
     onEditTask: () -> Unit = {},
     onDeleteTask: () -> Unit = {},
     onSubtaskToggle: (String) -> Unit = {},
-    onSubtaskClick: (String) -> Unit = {}
+    onSubtaskClick: (String) -> Unit = {},
+    onSubtaskEdit: (String) -> Unit = {},
+    onSubtaskDelete: (String) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -285,7 +287,9 @@ fun TaskDetailScreenContent(
                             subtasks = uiState.taskDetail.subtasks,
                             onAddSubtask = onAddSubtask,
                             onSubtaskToggle = onSubtaskToggle,
-                            onSubtaskClick = onSubtaskClick
+                            onSubtaskClick = onSubtaskClick,
+                            onSubtaskEdit = onSubtaskClick,
+                            onSubtaskDelete = onSubtaskDelete
                         )
                     }
                 }
@@ -338,8 +342,38 @@ private fun TaskSubtasksTabContent(
     subtasks: List<SubtaskItem>,
     onAddSubtask: () -> Unit,
     onSubtaskToggle: (String) -> Unit,
-    onSubtaskClick: (String) -> Unit
+    onSubtaskClick: (String) -> Unit,
+    onSubtaskEdit: (String) -> Unit,
+    onSubtaskDelete: (String) -> Unit
 ) {
+    var selectedSubtaskId by remember { mutableStateOf<String?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xóa công việc con") },
+            text = { Text("Bạn có chắc chắn muốn xóa công việc con này? Hành động này không thể hoàn tác.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedSubtaskId?.let { onSubtaskDelete(it) }
+                        showDeleteDialog = false
+                        selectedSubtaskId = null
+                    }
+                ) {
+                    Text("Xóa", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -369,17 +403,6 @@ private fun TaskSubtasksTabContent(
                             color = Color.Gray
                         )
                     }
-//                    Spacer(modifier = Modifier.height(16.dp))
-//                    Button(
-//                        onClick = onAddSubtask,
-//                        modifier = Modifier.fillMaxWidth(),
-//                        colors = ButtonDefaults.buttonColors(containerColor = Blue500),
-//                        shape = RoundedCornerShape(8.dp)
-//                    ) {
-//                        Icon(Icons.Default.Add, contentDescription = null)
-//                        Spacer(modifier = Modifier.width(8.dp))
-//                        Text("Thêm công việc con")
-//                    }
                 }
             }
         }
@@ -404,11 +427,52 @@ private fun TaskSubtasksTabContent(
                 endDate = subtask.endDate,
                 category = subtask.groupName
             )
-            TaskCard(
-                task = task,
-                onClick = { onSubtaskClick(subtask.id) },
-                onStatusChange = { onSubtaskToggle(subtask.id) }
-            )
+            Box {
+                TaskCard(
+                    task = task,
+                    onMoreClick = {
+                        selectedSubtaskId = subtask.id
+                        showMenu = true
+                    },
+                    onClick = { onSubtaskClick(subtask.id) },
+                    onStatusChange = { onSubtaskToggle(subtask.id) }
+                )
+                DropdownMenu(
+                    expanded = showMenu && selectedSubtaskId == subtask.id,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Thêm công việc con") },
+                        onClick = {
+                            showMenu = false
+                            onAddSubtask()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Chỉnh sửa") },
+                        onClick = {
+                            showMenu = false
+                            selectedSubtaskId?.let { onSubtaskEdit(it) }
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Xóa") },
+                        onClick = {
+                            showMenu = false
+                            showDeleteDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -760,7 +824,10 @@ fun TaskDetailScreenPreview() {
             onAddSubtask = {},
             onEditTask = {},
             onDeleteTask = {},
-            onSubtaskToggle = {}
+            onSubtaskToggle = {},
+            onSubtaskClick = {},
+            onSubtaskEdit = {},
+            onSubtaskDelete = {}
         )
     }
 }
@@ -856,7 +923,9 @@ private fun TaskSubtasksTabPreview() {
             subtasks = sampleTaskDetail.subtasks,
             onAddSubtask = {},
             onSubtaskToggle = {},
-            onSubtaskClick = {}
+            onSubtaskClick = {},
+            onSubtaskEdit = {},
+            onSubtaskDelete = {}
         )
     }
 }

@@ -275,12 +275,6 @@ private fun AddTaskGroupDialog(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Màu sắc",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
             }
         },
         confirmButton = {

@@ -152,28 +152,28 @@ fun MeetingListScreenContent(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text("Tìm theo tên hoặc nội dung cuộc họp")
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = Blue500
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                FormatFilterDropdown(
-                    selectedFormat = state.selectedFormat,
-                    onFormatSelect = onFormatSelect
-                )
+//                OutlinedTextField(
+//                    value = state.searchQuery,
+//                    onValueChange = onSearchQueryChange,
+//                    modifier = Modifier.weight(1f),
+//                    placeholder = {
+//                        Text("Tìm theo tên hoặc nội dung cuộc họp")
+//                    },
+//                    leadingIcon = {
+//                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+//                    },
+//                    singleLine = true,
+//                    shape = RoundedCornerShape(8.dp),
+//                    colors = OutlinedTextFieldDefaults.colors(
+//                        unfocusedBorderColor = Color.LightGray,
+//                        focusedBorderColor = Blue500
+//                    )
+//                )
+//                Spacer(modifier = Modifier.width(8.dp))
+//                FormatFilterDropdown(
+//                    selectedFormat = state.selectedFormat,
+//                    onFormatSelect = onFormatSelect
+//                )
             }
 
             when (val uiState = state.uiState) {

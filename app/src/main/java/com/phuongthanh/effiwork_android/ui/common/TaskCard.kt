@@ -1,5 +1,6 @@
 package com.phuongthanh.effiwork_android.ui.common
 
+import androidx.collection.intIntMapOf
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,10 +15,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +38,7 @@ import com.phuongthanh.effiwork_android.viewmodel.task.TaskStatus
 fun TaskCard(
     task: Task,
     onClick: () -> Unit,
+    onMoreClick: () -> Unit = {},
     onStatusChange: (TaskStatus) -> Unit
 ) {
     Card(
@@ -56,6 +60,16 @@ fun TaskCard(
                     modifier = Modifier.weight(1f)
                 )
                 StatusBadge(task.status, onStatusChange)
+                IconButton(
+                    onClick = onMoreClick
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

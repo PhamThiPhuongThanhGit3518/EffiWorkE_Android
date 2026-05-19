@@ -433,16 +433,22 @@ class TaskViewModel @Inject constructor(
     fun updateTaskStatus(taskId: String, newStatus: TaskStatus) {
         viewModelScope.launch {
             val projectIdValue = _projectId.value
-            if (projectIdValue.isBlank()) return@launch
+            if (projectIdValue.isBlank()) {
+                Log.e(TAG, "updateTaskStatus: projectId is blank!")
+                return@launch
+            }
 
             val statusValue = newStatus.serverValue
+            Log.d(TAG, "updateTaskStatus: projectId=$projectIdValue, taskId=$taskId, newStatus=$newStatus, serverValue=$statusValue")
 
             when (val result = taskRepository.updateTaskStatus(projectIdValue, taskId, UpdateTaskStatusRequest(statusValue))) {
                 is ApiResult.Success -> {
+                    Log.d(TAG, "updateTaskStatus SUCCESS: taskId=$taskId, newStatus=$statusValue")
                     _effect.emit(TaskEffect.ShowToast("Cập nhật trạng thái thành công"))
                     loadTasks()
                 }
                 is ApiResult.Error -> {
+                    Log.e(TAG, "updateTaskStatus ERROR: ${result.message}")
                     _effect.emit(TaskEffect.ShowToast(result.message))
                 }
                 is ApiResult.Loading -> {}

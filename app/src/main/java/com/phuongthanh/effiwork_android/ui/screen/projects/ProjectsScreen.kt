@@ -277,7 +277,7 @@ private fun FeaturesGrid(
         val features = listOf(
             Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
             Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
-            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
+//            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
             Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
         )
 

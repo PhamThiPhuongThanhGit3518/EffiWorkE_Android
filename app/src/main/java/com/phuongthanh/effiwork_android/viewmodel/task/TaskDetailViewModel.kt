@@ -206,12 +206,37 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    fun toggleSubtask(subtaskId: String) {
+    fun deleteSubtask(subtaskId: String) {
         if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
 
         viewModelScope.launch {
+            when (val result = taskRepository.deleteSubtask(currentProjectId, currentTaskId, subtaskId)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "Subtask deleted successfully")
+                    loadTaskDetail(currentProjectId, currentTaskId)
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "Failed to delete subtask: ${result.message}")
+                    _effect.emit(TaskDetailEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun toggleSubtask(subtaskId: String) {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) {
+            Log.e(TAG, "toggleSubtask: projectId or taskId is blank!")
+            return
+        }
+
+        viewModelScope.launch {
+            Log.d(TAG, "toggleSubtask: currentTaskId=$currentTaskId, subtaskId=$subtaskId")
             val currentState = _uiState.value
             if (currentState is TaskDetailUiState.Success) {
+                val subtask = currentState.taskDetail.subtasks.find { it.id == subtaskId }
+                Log.d(TAG, "toggleSubtask: current isCompleted=${subtask?.isCompleted}")
+
                 val updatedSubtasks = currentState.taskDetail.subtasks.map { subtask ->
                     if (subtask.id == subtaskId) {
                         subtask.copy(isCompleted = !subtask.isCompleted)
@@ -220,6 +245,7 @@ class TaskDetailViewModel @Inject constructor(
                 _uiState.value = currentState.copy(
                     taskDetail = currentState.taskDetail.copy(subtasks = updatedSubtasks)
                 )
+                Log.d(TAG, "toggleSubtask: local state updated")
             }
         }
     }

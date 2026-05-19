@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.phuongthanh.effiwork_android.ui.common.StatusBadge
 import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
@@ -50,15 +51,17 @@ fun TaskListScreen(
     viewModel: TaskViewModel = hiltViewModel(),
     onBackClick: () -> Unit = {},
     onNavigateToCreateTask: (String, String) -> Unit = { _, _ -> },
-    onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> }
+    onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> },
+    onEditTask: (String) -> Unit = {},
+    onDeleteTask: (String) -> Unit = {}
 ) {
     var screenState by remember { mutableStateOf(TaskListScreenState(projectId = projectId, projectName = projectName, groupId = groupId)) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val currentProjectName by viewModel.projectName.collectAsStateWithLifecycle()
     val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, projectName, groupId) {
         viewModel.setProjectInfo(projectId, projectName)
@@ -76,6 +79,10 @@ fun TaskListScreen(
     LaunchedEffect(taskGroups) {
         val groupName = taskGroups.find { it.id == groupId }?.name ?: ""
         screenState = screenState.copy(groupName = groupName)
+    }
+
+    LaunchedEffect(searchQuery) {
+        screenState = screenState.copy(searchQuery = searchQuery)
     }
 
     LaunchedEffect(Unit) {
@@ -96,8 +103,13 @@ fun TaskListScreen(
         onNavigateToTaskDetail = onNavigateToTaskDetail,
         onTabSelect = { viewModel.selectTab(it) },
         onCategorySelect = { viewModel.selectCategory(it) },
-        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-        onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) }
+        onSearchQueryChange = { newQuery ->
+            screenState = screenState.copy(searchQuery = newQuery)
+            viewModel.updateSearchQuery(newQuery)
+        },
+        onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) },
+        onEditTask = onEditTask,
+        onDeleteTask = onDeleteTask
     )
 }
 
@@ -111,7 +123,9 @@ fun TaskListScreenContent(
     onTabSelect: (TaskTab) -> Unit,
     onCategorySelect: (TaskCategory) -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onStatusChange: (String, TaskStatus) -> Unit
+    onStatusChange: (String, TaskStatus) -> Unit,
+    onEditTask: (String) -> Unit = {},
+    onDeleteTask: (String) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -122,7 +136,10 @@ fun TaskListScreenContent(
                         Text(
                             text = state.groupName.ifBlank { "Công việc" },
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
@@ -226,7 +243,9 @@ fun TaskListScreenContent(
                     TaskList(
                         tasks = filteredTasks,
                         onTaskClick = { onNavigateToTaskDetail(state.projectId, it) },
-                        onStatusChange = onStatusChange
+                        onStatusChange = onStatusChange,
+                        onEditTask = onEditTask,
+                        onDeleteTask = onDeleteTask
                     )
                 }
                 is TaskUiState.Error -> {
@@ -291,19 +310,89 @@ private fun SearchAndFilterBar(
 private fun TaskList(
     tasks: List<Task>,
     onTaskClick: (String) -> Unit,
-    onStatusChange: (String, TaskStatus) -> Unit
+    onStatusChange: (String, TaskStatus) -> Unit,
+    onEditTask: (String) -> Unit,
+    onDeleteTask: (String) -> Unit
 ) {
+    var selectedTaskId by remember { mutableStateOf<String?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xóa công việc") },
+            text = { Text("Bạn có chắc chắn muốn xóa công việc này? Hành động này không thể hoàn tác.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedTaskId?.let { onDeleteTask(it) }
+                        showDeleteDialog = false
+                        selectedTaskId = null
+                    }
+                ) {
+                    Text("Xóa", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(tasks, key = { it.id }) { task ->
-            TaskCard(
-                task = task,
-                onClick = { onTaskClick(task.id) },
-                onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) }
-            )
+            Box {
+                TaskCard(
+                    task = task,
+                    onMoreClick = {
+                        selectedTaskId = task.id
+                        showMenu = true
+                    },
+                    onClick = { onTaskClick(task.id) },
+                    onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) }
+                )
+                DropdownMenu(
+                    expanded = showMenu && selectedTaskId == task.id,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Thêm công việc con") },
+                        onClick = {
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Chỉnh sửa") },
+                        onClick = {
+                            showMenu = false
+                            selectedTaskId?.let { onEditTask(it) }
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Xóa") },
+                        onClick = {
+                            showMenu = false
+                            showDeleteDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -357,7 +446,9 @@ fun TaskListScreenPreview() {
             onTabSelect = {},
             onCategorySelect = {},
             onSearchQueryChange = {},
-            onStatusChange = { _, _ -> }
+            onStatusChange = { _, _ -> },
+            onEditTask = {},
+            onDeleteTask = {}
         )
     }
 }

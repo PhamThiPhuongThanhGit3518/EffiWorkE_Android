@@ -126,16 +126,38 @@ class TaskRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteSubtask(projectId: String, taskId: String, subtaskId: String): ApiResult<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "deleteSubtask called: projectId=$projectId, taskId=$taskId, subtaskId=$subtaskId")
+                val response = taskService.deleteTask(projectId, subtaskId)
+                Log.d(TAG, "deleteSubtask response: success=${response.success}")
+                if (response.success) {
+                    ApiResult.Success(Unit)
+                } else {
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteSubtask EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
     override suspend fun updateTaskStatus(projectId: String, taskId: String, request: UpdateTaskStatusRequest): ApiResult<TaskResponse> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "updateTaskStatus: projectId=$projectId, taskId=$taskId, request=$request")
                 val response = taskService.updateTaskStatus(projectId, taskId, request)
+                Log.d(TAG, "updateTaskStatus response: success=${response.success}, message=${response.message}")
+                Log.d(TAG, "updateTaskStatus response data: ${response.data}")
                 if (response.success && response.data != null) {
                     ApiResult.Success(response.data)
                 } else {
                     ApiResult.Error(response.message)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "updateTaskStatus EXCEPTION: ${e.message}", e)
                 ApiResult.Error(e.message ?: "Unknown error")
             }
         }

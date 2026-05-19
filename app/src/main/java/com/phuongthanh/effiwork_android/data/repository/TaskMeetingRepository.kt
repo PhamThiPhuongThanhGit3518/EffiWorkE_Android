@@ -20,6 +20,7 @@ interface TaskRepository {
     suspend fun createTask(projectId: String, request: CreateTaskRequest): ApiResult<TaskResponse>
     suspend fun updateTask(projectId: String, taskId: String, request: UpdateTaskRequest): ApiResult<TaskResponse>
     suspend fun deleteTask(projectId: String, taskId: String): ApiResult<Unit>
+    suspend fun deleteSubtask(projectId: String, taskId: String, subtaskId: String): ApiResult<Unit>
     suspend fun updateTaskStatus(projectId: String, taskId: String, request: UpdateTaskStatusRequest): ApiResult<TaskResponse>
 }
 
