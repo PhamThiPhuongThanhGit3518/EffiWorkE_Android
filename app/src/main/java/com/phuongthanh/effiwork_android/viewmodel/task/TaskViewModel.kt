@@ -176,7 +176,11 @@ class TaskViewModel @Inject constructor(
             when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, parentTaskId)) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Tasks loaded: ${result.data.size}")
-                    result.data.forEach { Log.d(TAG, "  Task: id=${it.id}, name=${it.name}") }
+                    result.data.forEach { task ->
+                        Log.d(TAG, "  Task: id=${task.id}, name=${task.name}, status=${task.status}")
+                        Log.d(TAG, "    assigneeName=${task.assigneeName}, owner.fullName=${task.owner?.fullName}")
+                        Log.d(TAG, "    participants=${task.participants?.map { it.user?.fullName }}, description=${task.description?.take(50)}")
+                    }
                     val tasks = result.data.map { it.toTask() }
                     _uiState.value = TaskUiState.Success(tasks)
                     Log.d(TAG, "uiState set to Success with ${tasks.size} tasks")
@@ -447,18 +451,20 @@ class TaskViewModel @Inject constructor(
     }
 
     private fun TaskResponse.toTask(): Task {
-        return Task(
+        val task = Task(
             id = id,
             name = name ?: "",
             description = description ?: "",
             status = TaskStatus.fromString(status ?: ""),
-            assignee = assigneeName ?: "",
-            assigneeId = assigneeId ?: "",
-            participants = participants?.map { it.userName ?: "" } ?: emptyList(),
-            startDate = startDate ?: "",
-            endDate = endDate ?: "",
-            category = groupId ?: "", // Use sectionId for update
+            assignee = assigneeName ?: owner?.fullName ?: "",
+            assigneeId = assigneeId ?: owner?.id ?: "",
+            participants = participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
+            startDate = startDate?.take(10) ?: "",
+            endDate = endDate?.take(10) ?: "",
+            category = groupId ?: "",
             subtasks = subtasks?.map { Subtask(it.id, it.name, it.isCompleted, it.dueDate) } ?: emptyList()
         )
+        Log.d(TAG, "toTask mapped: id=$id, name=$name, assignee=${task.assignee}, participants=${task.participants}, startDate=${startDate}, endDate=${endDate}")
+        return task
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
 import kotlinx.coroutines.flow.collectLatest
@@ -368,79 +369,46 @@ private fun TaskSubtasksTabContent(
                             color = Color.Gray
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onAddSubtask,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Blue500),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Thêm công việc con")
-                    }
+//                    Spacer(modifier = Modifier.height(16.dp))
+//                    Button(
+//                        onClick = onAddSubtask,
+//                        modifier = Modifier.fillMaxWidth(),
+//                        colors = ButtonDefaults.buttonColors(containerColor = Blue500),
+//                        shape = RoundedCornerShape(8.dp)
+//                    ) {
+//                        Icon(Icons.Default.Add, contentDescription = null)
+//                        Spacer(modifier = Modifier.width(8.dp))
+//                        Text("Thêm công việc con")
+//                    }
                 }
             }
         }
 
         items(subtasks.size) { index ->
             val subtask = subtasks[index]
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSubtaskClick(subtask.id) },
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = subtask.isCompleted,
-                        onCheckedChange = { onSubtaskToggle(subtask.id) },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = Color(0xFF4CAF50),
-                            uncheckedColor = Color.Gray
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = subtask.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (subtask.isCompleted) Color.Gray else Color.DarkGray,
-                            fontWeight = FontWeight.Medium
-                        )
-                        if (subtask.dueDate.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.DateRange,
-                                    contentDescription = null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = subtask.dueDate,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            val taskStatus = when (subtask.status.uppercase()) {
+                "DONE", "COMPLETED" -> TaskStatus.COMPLETED
+                "IN_PROGRESS" -> TaskStatus.IN_PROGRESS
+                "REVIEW" -> TaskStatus.REVIEW
+                "CANCELLED" -> TaskStatus.CANCELLED
+                else -> TaskStatus.NOT_STARTED
             }
+            val task = Task(
+                id = subtask.id,
+                name = subtask.name,
+                description = subtask.description,
+                status = taskStatus,
+                assignee = subtask.assigneeName,
+                participants = subtask.participants,
+                startDate = subtask.startDate,
+                endDate = subtask.endDate,
+                category = subtask.groupName
+            )
+            TaskCard(
+                task = task,
+                onClick = { onSubtaskClick(subtask.id) },
+                onStatusChange = { onSubtaskToggle(subtask.id) }
+            )
         }
     }
 }
@@ -737,9 +705,48 @@ fun TaskDetailScreenPreview() {
                             CommentItem("c2", "Đã xong! Mình đã upload lên drive.", "Phạm Thị Phương Thanh", null, "2026-05-16 15:45")
                         ),
                         subtasks = listOf(
-                            SubtaskItem("s1", "Thiết kế mockup", false, "2026-05-22"),
-                            SubtaskItem("s2", "Review design", true, "2026-05-24"),
-                            SubtaskItem("s3", "Implement UI", false, "2026-05-25")
+                            SubtaskItem(
+                                id = "s1",
+                                name = "Thiết kế mockup",
+                                description = "Tạo các mockup cho màn hình chính",
+                                status = "IN_PROGRESS",
+                                groupId = "g1",
+                                groupName = "UI/UX",
+                                assigneeId = "u1",
+                                assigneeName = "Phạm Thị Phương Thanh",
+                                startDate = "2026-05-20",
+                                endDate = "2026-05-22",
+                                participants = listOf("Trần Văn Hoàng"),
+                                isCompleted = false
+                            ),
+                            SubtaskItem(
+                                id = "s2",
+                                name = "Review design",
+                                description = "Review và feedback thiết kế",
+                                status = "DONE",
+                                groupId = "g1",
+                                groupName = "UI/UX",
+                                assigneeId = "u2",
+                                assigneeName = "Nguyễn Văn Minh",
+                                startDate = "2026-05-21",
+                                endDate = "2026-05-24",
+                                participants = emptyList(),
+                                isCompleted = true
+                            ),
+                            SubtaskItem(
+                                id = "s3",
+                                name = "Implement UI",
+                                description = "Implement giao diện theo design",
+                                status = "TODO",
+                                groupId = "g1",
+                                groupName = "UI/UX",
+                                assigneeId = "u3",
+                                assigneeName = "Lê Thị Mai",
+                                startDate = "2026-05-25",
+                                endDate = "2026-05-25",
+                                participants = listOf("Trần Văn Hoàng", "Phạm Thị Phương Thanh"),
+                                isCompleted = false
+                            )
                         )
                     )
                 ),
@@ -754,6 +761,102 @@ fun TaskDetailScreenPreview() {
             onEditTask = {},
             onDeleteTask = {},
             onSubtaskToggle = {}
+        )
+    }
+}
+
+private val sampleTaskDetail = TaskDetail(
+    id = "task456",
+    title = "Thiết kế giao diện màn hình chính",
+    description = "Thiết kế UI/UX cho màn hình chính của ứng dụng. Bao gồm các màn hình: Home, Profile, Settings.",
+    status = "IN_PROGRESS",
+    groupId = "g1",
+    groupName = "Thiết kế giao diện",
+    assigneeName = "Phạm Thị Phương Thanh",
+    creatorName = "Nguyễn Văn Minh",
+    startDate = "2026-05-20",
+    endDate = "2026-05-25",
+    createdAt = "2026-05-15 10:30",
+    participantNames = listOf("Trần Văn Hoàng", "Lê Thị Mai"),
+    commentCount = 2,
+    attachmentCount = 0,
+    subtaskCount = 3,
+    comments = listOf(
+        CommentItem("c1", "Bản thiết kế đã sẵn sàng để review chưa?", "Nguyễn Văn Minh", null, "2026-05-16 14:20"),
+        CommentItem("c2", "Đã xong! Mình đã upload lên drive.", "Phạm Thị Phương Thanh", null, "2026-05-16 15:45"),
+        CommentItem("c3", "Tuyệt vời! Mình sẽ review ngay.", "Trần Văn Hoàng", null, "2026-05-16 16:00")
+    ),
+    subtasks = listOf(
+        SubtaskItem(
+            id = "s1",
+            name = "Thiết kế mockup",
+            description = "Tạo các mockup cho màn hình chính",
+            status = "IN_PROGRESS",
+            groupId = "g1",
+            groupName = "UI/UX",
+            assigneeId = "u1",
+            assigneeName = "Phạm Thị Phương Thanh",
+            startDate = "2026-05-20",
+            endDate = "2026-05-22",
+            participants = listOf("Trần Văn Hoàng"),
+            isCompleted = false
+        ),
+        SubtaskItem(
+            id = "s2",
+            name = "Review design",
+            description = "Review và feedback thiết kế",
+            status = "DONE",
+            groupId = "g1",
+            groupName = "UI/UX",
+            assigneeId = "u2",
+            assigneeName = "Nguyễn Văn Minh",
+            startDate = "2026-05-21",
+            endDate = "2026-05-24",
+            participants = emptyList(),
+            isCompleted = true
+        ),
+        SubtaskItem(
+            id = "s3",
+            name = "Implement UI",
+            description = "Implement giao diện theo design",
+            status = "TODO",
+            groupId = "g1",
+            groupName = "UI/UX",
+            assigneeId = "u3",
+            assigneeName = "Lê Thị Mai",
+            startDate = "2026-05-25",
+            endDate = "2026-05-25",
+            participants = listOf("Trần Văn Hoàng", "Phạm Thị Phương Thanh"),
+            isCompleted = false
+        )
+    )
+)
+
+@Preview(showBackground = true, name = "Thông tin tab")
+@Composable
+private fun TaskInfoTabPreview() {
+    MaterialTheme {
+        TaskInfoTabContent(sampleTaskDetail)
+    }
+}
+
+@Preview(showBackground = true, name = "Bình luận tab")
+@Composable
+private fun TaskCommentsTabPreview() {
+    MaterialTheme {
+        TaskCommentsTabContent(sampleTaskDetail.comments)
+    }
+}
+
+@Preview(showBackground = true, name = "Công việc con tab")
+@Composable
+private fun TaskSubtasksTabPreview() {
+    MaterialTheme {
+        TaskSubtasksTabContent(
+            subtasks = sampleTaskDetail.subtasks,
+            onAddSubtask = {},
+            onSubtaskToggle = {},
+            onSubtaskClick = {}
         )
     }
 }

@@ -14,6 +14,8 @@ data class TaskResponse(
     val status: String?,
     val assigneeId: String?,
     val assigneeName: String?,
+    @SerializedName("owner") val owner: MemberInfo?,
+    @SerializedName("creator") val creator: MemberInfo?,
     val startDate: String?,
     val endDate: String?,
     val reminderTime: String?,
@@ -25,7 +27,14 @@ data class TaskResponse(
 
 data class TaskParticipant(
     val userId: String,
-    val userName: String?
+    val user: TaskParticipantUser?
+)
+
+data class TaskParticipantUser(
+    val id: String,
+    val fullName: String?,
+    val email: String?,
+    val avatarUrl: String?
 )
 
 data class SubtaskResponse(

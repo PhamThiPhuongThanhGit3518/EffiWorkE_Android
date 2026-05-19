@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phuongthanh.effiwork_android.ui.common.StatusBadge
+import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
 import kotlinx.coroutines.flow.collectLatest
@@ -142,11 +144,11 @@ fun TaskListScreenContent(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                    }
-                },
+//                actions = {
+//                    IconButton(onClick = { }) {
+//                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+//                    }
+//                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -302,184 +304,6 @@ private fun TaskList(
                 onClick = { onTaskClick(task.id) },
                 onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) }
             )
-        }
-    }
-}
-
-@Composable
-fun TaskCard(
-    task: Task,
-    onClick: () -> Unit,
-    onStatusChange: (TaskStatus) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = task.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                StatusBadge(task.status, onStatusChange)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = task.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = task.assignee,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${task.startDate} - ${task.endDate}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Group,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = task.participants.joinToString(", "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusBadge(
-    currentStatus: TaskStatus,
-    onStatusChange: (TaskStatus) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        Surface(
-            modifier = Modifier.clickable { expanded = true },
-            shape = RoundedCornerShape(4.dp),
-            color = when (currentStatus) {
-                TaskStatus.NOT_STARTED -> Color.Gray.copy(alpha = 0.1f)
-                TaskStatus.IN_PROGRESS -> Color(0xFF2196F3).copy(alpha = 0.1f)
-                TaskStatus.REVIEW -> Color(0xFFFF9800).copy(alpha = 0.1f)
-                TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-                TaskStatus.CANCELLED -> Color(0xFFF44336).copy(alpha = 0.1f)
-            }
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = currentStatus.displayName,
-                    fontSize = 12.sp,
-                    color = when (currentStatus) {
-                        TaskStatus.NOT_STARTED -> Color.Gray
-                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                        TaskStatus.REVIEW -> Color(0xFFFF9800)
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                        TaskStatus.CANCELLED -> Color(0xFFF44336)
-                    }
-                )
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = when (currentStatus) {
-                        TaskStatus.NOT_STARTED -> Color.Gray
-                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                        TaskStatus.REVIEW -> Color(0xFFFF9800)
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                        TaskStatus.CANCELLED -> Color(0xFFF44336)
-                    }
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            TaskStatus.entries.forEach { status ->
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        when (status) {
-                                            TaskStatus.NOT_STARTED -> Color.Gray
-                                            TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                                            TaskStatus.REVIEW -> Color(0xFFFF9800)
-                                            TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                                            TaskStatus.CANCELLED -> Color(0xFFF44336)
-                                        }
-                                    )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(status.displayName)
-                        }
-                    },
-                    onClick = {
-                        onStatusChange(status)
-                        expanded = false
-                    }
-                )
-            }
         }
     }
 }

@@ -28,6 +28,14 @@ class TaskRepositoryImpl @Inject constructor(
                 Log.d(TAG, "getTasks called: projectId=$projectId, parentTaskId=$parentTaskId")
                 val response = taskService.getTasks(projectId, sectionId, status, assigneeId, parentTaskId)
                 Log.d(TAG, "getTasks response: success=${response.success}, data=${response.data?.size} items")
+                response.data?.forEachIndexed { index, task ->
+                    Log.d(TAG, "  Task[$index]: id=${task.id}, name=${task.name}, status=${task.status}")
+                    Log.d(TAG, "    assigneeId=${task.assigneeId}, assigneeName=${task.assigneeName}")
+                    Log.d(TAG, "    owner=${task.owner}, owner.fullName=${task.owner?.fullName}")
+                    Log.d(TAG, "    creator=${task.creator}, creator.fullName=${task.creator?.fullName}")
+                    Log.d(TAG, "    startDate=${task.startDate}, endDate=${task.endDate}")
+                    Log.d(TAG, "    participants=${task.participants?.map { "${it.userId}:${it.user?.fullName}" }}")
+                }
                 if (response.success && response.data != null) {
                     ApiResult.Success(response.data)
                 } else {

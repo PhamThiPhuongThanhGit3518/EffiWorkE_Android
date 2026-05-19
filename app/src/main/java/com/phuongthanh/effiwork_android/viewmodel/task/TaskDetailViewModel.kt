@@ -47,8 +47,16 @@ data class TaskDetail(
 data class SubtaskItem(
     val id: String,
     val name: String,
-    val isCompleted: Boolean,
-    val dueDate: String
+    val description: String,
+    val status: String,
+    val groupId: String,
+    val groupName: String,
+    val assigneeId: String,
+    val assigneeName: String,
+    val startDate: String,
+    val endDate: String,
+    val participants: List<String>,
+    val isCompleted: Boolean
 )
 
 data class CommentItem(
@@ -98,8 +106,16 @@ class TaskDetailViewModel @Inject constructor(
                                 SubtaskItem(
                                     id = subtask.id,
                                     name = subtask.name ?: "",
-                                    isCompleted = false,
-                                    dueDate = subtask.endDate?.take(10) ?: ""
+                                    description = subtask.description ?: "",
+                                    status = subtask.status ?: "",
+                                    groupId = subtask.groupId ?: "",
+                                    groupName = subtask.group?.name ?: "",
+                                    assigneeId = subtask.assigneeId ?: subtask.owner?.id ?: "",
+                                    assigneeName = subtask.assigneeName ?: subtask.owner?.fullName ?: "",
+                                    startDate = subtask.startDate?.take(10) ?: "",
+                                    endDate = subtask.endDate?.take(10) ?: "",
+                                    participants = subtask.participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
+                                    isCompleted = subtask.status == "DONE" || subtask.status == "COMPLETED"
                                 )
                             }
                         }
