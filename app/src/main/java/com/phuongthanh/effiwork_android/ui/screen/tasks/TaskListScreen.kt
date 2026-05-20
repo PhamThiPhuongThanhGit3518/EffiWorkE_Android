@@ -68,7 +68,7 @@ fun TaskListScreen(
         viewModel.setGroupId(groupId)
         viewModel.loadTaskGroupsForCreate()
         val sectionId = groupId.ifBlank { null }
-        viewModel.loadTasks(sectionId, "null")
+        viewModel.loadTasks(sectionId, null)
         screenState = screenState.copy(projectId = projectId, projectName = projectName, groupId = groupId)
     }
 
@@ -366,6 +366,7 @@ private fun TaskList(
                         text = { Text("Thêm công việc con") },
                         onClick = {
                             showMenu = false
+                            // TODO: Add subtask navigation
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Add, contentDescription = null)
@@ -375,7 +376,7 @@ private fun TaskList(
                         text = { Text("Chỉnh sửa") },
                         onClick = {
                             showMenu = false
-                            selectedTaskId?.let { onEditTask(it) }
+                            onEditTask(task.id)
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Edit, contentDescription = null)
@@ -385,6 +386,7 @@ private fun TaskList(
                         text = { Text("Xóa") },
                         onClick = {
                             showMenu = false
+                            selectedTaskId = task.id
                             showDeleteDialog = true
                         },
                         leadingIcon = {

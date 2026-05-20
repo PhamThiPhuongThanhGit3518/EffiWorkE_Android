@@ -123,14 +123,14 @@ fun TaskGroupListScreenContent(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
                     }
                 },
-                actions = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Search, contentDescription = "Tìm kiếm")
-                    }
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                    }
-                },
+//                actions = {
+//                    IconButton(onClick = {}) {
+//                        Icon(Icons.Default.Search, contentDescription = "Tìm kiếm")
+//                    }
+//                    IconButton(onClick = {}) {
+//                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+//                    }
+//                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,

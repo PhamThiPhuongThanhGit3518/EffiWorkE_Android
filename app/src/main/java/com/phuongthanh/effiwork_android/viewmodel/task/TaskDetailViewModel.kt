@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -224,28 +225,33 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    fun toggleSubtask(subtaskId: String) {
+    fun updateSubtaskStatus(subtaskId: String, newStatus: TaskStatus) {
         if (currentProjectId.isBlank() || currentTaskId.isBlank()) {
-            Log.e(TAG, "toggleSubtask: projectId or taskId is blank!")
+            Log.e(TAG, "updateSubtaskStatus: projectId or taskId is blank!")
             return
         }
 
         viewModelScope.launch {
-            Log.d(TAG, "toggleSubtask: currentTaskId=$currentTaskId, subtaskId=$subtaskId")
+            Log.d(TAG, "updateSubtaskStatus: currentTaskId=$currentTaskId, subtaskId=$subtaskId, newStatus=$newStatus")
             val currentState = _uiState.value
             if (currentState is TaskDetailUiState.Success) {
                 val subtask = currentState.taskDetail.subtasks.find { it.id == subtaskId }
-                Log.d(TAG, "toggleSubtask: current isCompleted=${subtask?.isCompleted}")
+                Log.d(TAG, "updateSubtaskStatus: current status=${subtask?.status}")
 
-                val updatedSubtasks = currentState.taskDetail.subtasks.map { subtask ->
-                    if (subtask.id == subtaskId) {
-                        subtask.copy(isCompleted = !subtask.isCompleted)
-                    } else subtask
+                when (val result = taskRepository.updateTaskStatus(
+                    currentProjectId, subtaskId, UpdateTaskStatusRequest(newStatus.serverValue)
+                )) {
+                    is ApiResult.Success -> {
+                        Log.d(TAG, "updateSubtaskStatus SUCCESS: subtaskId=$subtaskId, newStatus=$newStatus")
+                        _effect.emit(TaskDetailEffect.ShowToast("Cập nhật trạng thái thành công"))
+                        loadTaskDetail(currentProjectId, currentTaskId)
+                    }
+                    is ApiResult.Error -> {
+                        Log.e(TAG, "updateSubtaskStatus ERROR: ${result.message}")
+                        _effect.emit(TaskDetailEffect.ShowToast(result.message))
+                    }
+                    is ApiResult.Loading -> {}
                 }
-                _uiState.value = currentState.copy(
-                    taskDetail = currentState.taskDetail.copy(subtasks = updatedSubtasks)
-                )
-                Log.d(TAG, "toggleSubtask: local state updated")
             }
         }
     }

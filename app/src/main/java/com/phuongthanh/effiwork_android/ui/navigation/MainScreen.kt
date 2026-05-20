@@ -206,6 +206,12 @@ fun MainScreen(
                     },
                     onNavigateToTaskDetail = { pid, tid ->
                         navController.navigate(NavRoutes.taskDetail(pid, tid))
+                    },
+                    onEditTask = { tid ->
+                        navController.navigate(NavRoutes.editTask(projectId, tid))
+                    },
+                    onDeleteTask = { tid ->
+                        // Delete handled in ViewModel, will refresh list automatically
                     }
                 )
             }

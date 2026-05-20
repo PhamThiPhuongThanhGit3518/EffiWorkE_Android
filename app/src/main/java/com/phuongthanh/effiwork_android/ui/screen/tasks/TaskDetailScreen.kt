@@ -92,7 +92,7 @@ fun TaskDetailScreen(
         onAddSubtask = { onAddSubtask(projectId, taskId, parentTaskInfo.name, parentTaskInfo.groupId) },
         onEditTask = { onEditTask(projectId, taskId) },
         onDeleteTask = { viewModel.deleteTask() },
-        onSubtaskToggle = { subtaskId -> viewModel.toggleSubtask(subtaskId) },
+        onSubtaskStatusChange = { subtaskId, newStatus -> viewModel.updateSubtaskStatus(subtaskId, newStatus) },
         onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) }
     )
 }
@@ -109,7 +109,7 @@ fun TaskDetailScreenContent(
     onAddSubtask: () -> Unit = {},
     onEditTask: () -> Unit = {},
     onDeleteTask: () -> Unit = {},
-    onSubtaskToggle: (String) -> Unit = {},
+    onSubtaskStatusChange: (String, TaskStatus) -> Unit = { _, _ -> },
     onSubtaskClick: (String) -> Unit = {},
     onSubtaskEdit: (String) -> Unit = {},
     onSubtaskDelete: (String) -> Unit = {}
@@ -286,7 +286,7 @@ fun TaskDetailScreenContent(
                         2 -> TaskSubtasksTabContent(
                             subtasks = uiState.taskDetail.subtasks,
                             onAddSubtask = onAddSubtask,
-                            onSubtaskToggle = onSubtaskToggle,
+                            onSubtaskStatusChange = onSubtaskStatusChange,
                             onSubtaskClick = onSubtaskClick,
                             onSubtaskEdit = onSubtaskClick,
                             onSubtaskDelete = onSubtaskDelete
@@ -341,7 +341,7 @@ private fun TaskCommentsTabContent(comments: List<CommentItem>) {
 private fun TaskSubtasksTabContent(
     subtasks: List<SubtaskItem>,
     onAddSubtask: () -> Unit,
-    onSubtaskToggle: (String) -> Unit,
+    onSubtaskStatusChange: (String, TaskStatus) -> Unit,
     onSubtaskClick: (String) -> Unit,
     onSubtaskEdit: (String) -> Unit,
     onSubtaskDelete: (String) -> Unit
@@ -435,7 +435,7 @@ private fun TaskSubtasksTabContent(
                         showMenu = true
                     },
                     onClick = { onSubtaskClick(subtask.id) },
-                    onStatusChange = { onSubtaskToggle(subtask.id) }
+                    onStatusChange = { newStatus -> onSubtaskStatusChange(subtask.id, newStatus) }
                 )
                 DropdownMenu(
                     expanded = showMenu && selectedSubtaskId == subtask.id,
@@ -455,7 +455,7 @@ private fun TaskSubtasksTabContent(
                         text = { Text("Chỉnh sửa") },
                         onClick = {
                             showMenu = false
-                            selectedSubtaskId?.let { onSubtaskEdit(it) }
+                            onSubtaskEdit(subtask.id)
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Edit, contentDescription = null)
@@ -465,6 +465,7 @@ private fun TaskSubtasksTabContent(
                         text = { Text("Xóa") },
                         onClick = {
                             showMenu = false
+                            selectedSubtaskId = subtask.id
                             showDeleteDialog = true
                         },
                         leadingIcon = {
@@ -824,7 +825,7 @@ fun TaskDetailScreenPreview() {
             onAddSubtask = {},
             onEditTask = {},
             onDeleteTask = {},
-            onSubtaskToggle = {},
+            onSubtaskStatusChange = { _, _ -> },
             onSubtaskClick = {},
             onSubtaskEdit = {},
             onSubtaskDelete = {}
@@ -922,7 +923,7 @@ private fun TaskSubtasksTabPreview() {
         TaskSubtasksTabContent(
             subtasks = sampleTaskDetail.subtasks,
             onAddSubtask = {},
-            onSubtaskToggle = {},
+            onSubtaskStatusChange = { _, _ -> },
             onSubtaskClick = {},
             onSubtaskEdit = {},
             onSubtaskDelete = {}
