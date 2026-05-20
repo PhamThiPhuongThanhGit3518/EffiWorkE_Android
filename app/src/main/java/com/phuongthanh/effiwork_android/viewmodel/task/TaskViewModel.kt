@@ -173,7 +173,7 @@ class TaskViewModel @Inject constructor(
                 return@launch
             }
 
-            when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, parentTaskId)) {
+            when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, parentTaskId ?: "null")) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Tasks loaded: ${result.data.size}")
                     result.data.forEach { task ->
