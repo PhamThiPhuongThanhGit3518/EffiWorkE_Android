@@ -10,6 +10,7 @@ import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionReques
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.ExtensionRequestResponse
+import com.phuongthanh.effiwork_android.data.model.response.TaskDetailResponse
 import com.phuongthanh.effiwork_android.data.model.response.TaskResponse
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,6 +41,7 @@ data class Task(
     val assigneeId: String = "", // ownerId - DÙNG ĐỂ KIỂM TRA QUYỀN
     val creatorId: String = "", // creatorId - người tạo, KHÔNG có quyền đặc biệt
     val participants: List<String>,
+    val participantIds: List<String> = emptyList(), // Thêm để lưu participant IDs
     val startDate: String,
     val endDate: String,
     val category: String, // sectionId for update
@@ -210,10 +212,10 @@ class TaskViewModel @Inject constructor(
             val projectIdValue = _projectId.value
             if (projectIdValue.isBlank()) return@launch
 
-            when (val result = taskRepository.getTasks(projectIdValue, null)) {
+            when (val result = taskRepository.getTaskDetail(projectIdValue, taskId)) {
                 is ApiResult.Success -> {
-                    val tasks = result.data.map { it.toTask() }
-                    _uiState.value = TaskUiState.Success(tasks)
+                    val task = mapTaskDetailToTask(result.data)
+                    _uiState.value = TaskUiState.Success(listOf(task))
                 }
                 is ApiResult.Error -> {
                     _effect.emit(TaskEffect.ShowToast(result.message))
@@ -221,6 +223,24 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Loading -> {}
             }
         }
+    }
+
+    private fun mapTaskDetailToTask(detail: TaskDetailResponse): Task {
+        return Task(
+            id = detail.id,
+            name = detail.title ?: "",
+            description = detail.description ?: "",
+            status = TaskStatus.fromString(detail.status ?: ""),
+            assignee = detail.assignee?.fullName ?: "",
+            assigneeId = detail.assigneeId ?: "",
+            creatorId = detail.creator?.id ?: "",
+            participants = detail.participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
+            participantIds = detail.participants?.mapNotNull { it.user?.id } ?: emptyList(),
+            startDate = detail.startDate?.take(10) ?: "",
+            endDate = detail.endDate?.take(10) ?: "",
+            category = detail.groupId ?: "",
+            subtasks = emptyList()
+        )
     }
 
     fun loadTaskGroupsForCreate() {
@@ -568,6 +588,7 @@ class TaskViewModel @Inject constructor(
             assigneeId = assigneeId ?: owner?.id ?: "",
             creatorId = creator?.id ?: "",
             participants = participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
+            participantIds = participants?.mapNotNull { it.userId } ?: emptyList(),
             startDate = startDate?.take(10) ?: "",
             endDate = endDate?.take(10) ?: "",
             category = groupId ?: "",

@@ -210,11 +210,11 @@ fun MainScreen(
                     onNavigateToTaskDetail = { pid, tid ->
                         navController.navigate(NavRoutes.taskDetail(pid, tid))
                     },
-                    onEditTask = { tid ->
-                        navController.navigate(NavRoutes.editTask(projectId, tid))
+                    onNavigateToEditTask = { pid, tid ->
+                        navController.navigate(NavRoutes.editTask(pid, tid))
                     },
-                    onDeleteTask = { tid ->
-                        // Delete handled in ViewModel, will refresh list automatically
+                    onAddSubtask = { pid, parentId, parentName, gid ->
+                        navController.navigate(NavRoutes.createSubtask(pid, parentId, parentName, gid))
                     }
                 )
             }

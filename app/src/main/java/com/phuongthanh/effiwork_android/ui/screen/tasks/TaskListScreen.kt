@@ -50,7 +50,10 @@ data class TaskListScreenState(
     val uiState: TaskUiState = TaskUiState.Idle,
     val selectedTab: TaskTab = TaskTab.COMMON_TASKS,
     val selectedCategory: TaskCategory = TaskCategory.ALL,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val onDeleteTask: (String) -> Unit = {},
+    val onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    val onNavigateToEditTask: (String, String) -> Unit = { _, _ -> }
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,8 +67,9 @@ fun TaskListScreen(
     onBackClick: () -> Unit = {},
     onNavigateToCreateTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> },
-    onEditTask: (String) -> Unit = {},
-    onDeleteTask: (String) -> Unit = {}
+    onNavigateToEditTask: (String, String) -> Unit = { _, _ -> },
+    onDeleteTask: (String) -> Unit = {},
+    onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
     val currentUserId = authRepository?.getCurrentUserId() ?: ""
     var screenState by remember { mutableStateOf(TaskListScreenState(projectId = projectId, projectName = projectName, groupId = groupId)) }
@@ -76,13 +80,22 @@ fun TaskListScreen(
     val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
+    val onDeleteTask: (String) -> Unit = { taskId -> viewModel.deleteTask(taskId) }
+
     LaunchedEffect(projectId, projectName, groupId) {
         viewModel.setProjectInfo(projectId, projectName)
         viewModel.setGroupId(groupId)
         viewModel.loadTaskGroupsForCreate()
         val sectionId = groupId.ifBlank { null }
         viewModel.loadTasks(sectionId, null)
-        screenState = screenState.copy(projectId = projectId, projectName = projectName, groupId = groupId)
+        screenState = screenState.copy(
+            projectId = projectId,
+            projectName = projectName,
+            groupId = groupId,
+            onDeleteTask = onDeleteTask,
+            onAddSubtask = onAddSubtask,
+            onNavigateToEditTask = onNavigateToEditTask
+        )
     }
 
     LaunchedEffect(selectedTab, uiState) {
@@ -126,8 +139,9 @@ fun TaskListScreen(
             viewModel.updateSearchQuery(newQuery)
         },
         onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) },
-        onEditTask = onEditTask,
+        onNavigateToEditTask = { projectId, taskId -> screenState.onNavigateToEditTask(projectId, taskId) },
         onDeleteTask = onDeleteTask,
+        onAddSubtask = onAddSubtask,
         onRequestExtension = { taskId, newDueDate, reason -> viewModel.createExtensionRequest(taskId, newDueDate, reason) },
         onApproveExtension = { taskId, requestId -> viewModel.approveExtensionRequest(taskId, requestId) },
         onRejectExtension = { taskId, requestId -> viewModel.rejectExtensionRequest(taskId, requestId) },
@@ -146,8 +160,9 @@ fun TaskListScreenContent(
     onCategorySelect: (TaskCategory) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onStatusChange: (String, TaskStatus) -> Unit,
-    onEditTask: (String) -> Unit = {},
+    onNavigateToEditTask: (String, String) -> Unit = { _, _ -> },
     onDeleteTask: (String) -> Unit = {},
+    onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onRequestExtension: (String, String, String) -> Unit = { _, _, _ -> },
     onApproveExtension: (String, String) -> Unit = { _, _ -> },
     onRejectExtension: (String, String) -> Unit = { _, _ -> },
@@ -267,11 +282,13 @@ fun TaskListScreenContent(
                         matchesSearch && matchesCategory
                     }
                     TaskList(
+                        state = state,
                         tasks = filteredTasks,
                         onTaskClick = { onNavigateToTaskDetail(state.projectId, it) },
                         onStatusChange = onStatusChange,
-                        onEditTask = onEditTask,
+                        onNavigateToEditTask = onNavigateToEditTask,
                         onDeleteTask = onDeleteTask,
+                        onAddSubtask = onAddSubtask,
                         onRequestExtension = onRequestExtension,
                         onApproveExtension = onApproveExtension,
                         onRejectExtension = onRejectExtension,
@@ -340,11 +357,13 @@ private fun SearchAndFilterBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskList(
+    state: TaskListScreenState,
     tasks: List<Task>,
     onTaskClick: (String) -> Unit,
     onStatusChange: (String, TaskStatus) -> Unit,
-    onEditTask: (String) -> Unit,
+    onNavigateToEditTask: (String, String) -> Unit,
     onDeleteTask: (String) -> Unit,
+    onAddSubtask: (String, String, String, String) -> Unit,
     onRequestExtension: (String, String, String) -> Unit,
     onApproveExtension: (String, String) -> Unit,
     onRejectExtension: (String, String) -> Unit,
@@ -504,7 +523,8 @@ private fun TaskList(
                         text = { Text("Thêm công việc con") },
                         onClick = {
                             showMenu = false
-                            // TODO: Add subtask navigation
+                            val groupId = state.groupId
+                            onAddSubtask(state.projectId, task.id, task.name, groupId)
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Add, contentDescription = null)
@@ -514,7 +534,7 @@ private fun TaskList(
                         text = { Text("Chỉnh sửa") },
                         onClick = {
                             showMenu = false
-                            onEditTask(task.id)
+                            onNavigateToEditTask(state.projectId, task.id)
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Edit, contentDescription = null)
@@ -629,8 +649,9 @@ fun TaskListScreenPreview() {
             onCategorySelect = {},
             onSearchQueryChange = {},
             onStatusChange = { _, _ -> },
-            onEditTask = {},
+            onNavigateToEditTask = { _, _ -> },
             onDeleteTask = {},
+            onAddSubtask = { _, _, _, _ -> },
             onRequestExtension = { _, _, _ -> },
             onApproveExtension = { _, _ -> },
             onRejectExtension = { _, _ -> },

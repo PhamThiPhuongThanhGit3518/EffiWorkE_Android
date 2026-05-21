@@ -97,7 +97,8 @@ fun CreateTaskListScreen(
                         startDate = task.startDate,
                         endDate = task.endDate,
                         selectedGroupId = task.category,
-                        assigneeId = task.assigneeId.takeIf { it.isNotBlank() } ?: ""
+                        assigneeId = task.assigneeId.takeIf { it.isNotBlank() } ?: "",
+                        participantIds = task.participantIds
                     )
                 }
             }
@@ -642,6 +643,41 @@ private fun CollaboratorsCard(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                taskMembers.filter { formState.participantIds.contains(it.userId) }.forEach { member ->
+                    InputChip(
+                        selected = true,
+                        onClick = {},
+                        label = { Text(member.fullName, fontSize = 12.sp) },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Xóa",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable {
+                                        onFormStateChange(
+                                            formState.copy(
+                                                participantIds = formState.participantIds.filter { id -> id != member.userId }
+                                            )
+                                        )
+                                    }
+                            )
+                        },
+                        colors = InputChipDefaults.inputChipColors(
+                            selectedContainerColor = Blue500.copy(alpha = 0.1f),
+                            selectedLabelColor = Blue500
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             ExposedDropdownMenuBox(
                 expanded = participantDropdownExpanded,
                 onExpandedChange = { participantDropdownExpanded = it }
@@ -688,41 +724,6 @@ private fun CollaboratorsCard(
                             )
                         }
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                taskMembers.filter { formState.participantIds.contains(it.userId) }.forEach { member ->
-                    InputChip(
-                        selected = true,
-                        onClick = {},
-                        label = { Text(member.fullName, fontSize = 12.sp) },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Xóa",
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clickable {
-                                        onFormStateChange(
-                                            formState.copy(
-                                                participantIds = formState.participantIds.filter { id -> id != member.userId }
-                                            )
-                                        )
-                                    }
-                            )
-                        },
-                        colors = InputChipDefaults.inputChipColors(
-                            selectedContainerColor = Blue500.copy(alpha = 0.1f),
-                            selectedLabelColor = Blue500
-                        )
-                    )
                 }
             }
         }
