@@ -11,4 +11,6 @@ interface AuthRepository {
     suspend fun getCurrentUser(): ApiResult<UserResponse>
     suspend fun updateProfile(fullName: String?, phone: String?, avatarUrl: String?): ApiResult<UserResponse>
     fun isLoggedIn(): Boolean
+    fun getCurrentUserId(): String?
+    fun saveCurrentUserId(userId: String?)
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
@@ -50,8 +51,10 @@ fun TaskDetailScreen(
     onEditTask: (String, String) -> Unit = { _, _ -> },
     onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onNavigateToSubtaskDetail: (String, String) -> Unit = { _, _ -> },
-    viewModel: TaskDetailViewModel = hiltViewModel()
+    viewModel: TaskDetailViewModel = hiltViewModel(),
+    authRepository: AuthRepository? = null
 ) {
+    val currentUserId = authRepository?.getCurrentUserId() ?: ""
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -93,7 +96,8 @@ fun TaskDetailScreen(
         onEditTask = { onEditTask(projectId, taskId) },
         onDeleteTask = { viewModel.deleteTask() },
         onSubtaskStatusChange = { subtaskId, newStatus -> viewModel.updateSubtaskStatus(subtaskId, newStatus) },
-        onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) }
+        onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) },
+        currentUserId = currentUserId
     )
 }
 
@@ -112,7 +116,8 @@ fun TaskDetailScreenContent(
     onSubtaskStatusChange: (String, TaskStatus) -> Unit = { _, _ -> },
     onSubtaskClick: (String) -> Unit = {},
     onSubtaskEdit: (String) -> Unit = {},
-    onSubtaskDelete: (String) -> Unit = {}
+    onSubtaskDelete: (String) -> Unit = {},
+    currentUserId: String = ""
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -289,7 +294,8 @@ fun TaskDetailScreenContent(
                             onSubtaskStatusChange = onSubtaskStatusChange,
                             onSubtaskClick = onSubtaskClick,
                             onSubtaskEdit = onSubtaskClick,
-                            onSubtaskDelete = onSubtaskDelete
+                            onSubtaskDelete = onSubtaskDelete,
+                            currentUserId = currentUserId
                         )
                     }
                 }
@@ -344,7 +350,8 @@ private fun TaskSubtasksTabContent(
     onSubtaskStatusChange: (String, TaskStatus) -> Unit,
     onSubtaskClick: (String) -> Unit,
     onSubtaskEdit: (String) -> Unit,
-    onSubtaskDelete: (String) -> Unit
+    onSubtaskDelete: (String) -> Unit,
+    currentUserId: String = ""
 ) {
     var selectedSubtaskId by remember { mutableStateOf<String?>(null) }
     var showMenu by remember { mutableStateOf(false) }
@@ -422,11 +429,15 @@ private fun TaskSubtasksTabContent(
                 description = subtask.description,
                 status = taskStatus,
                 assignee = subtask.assigneeName,
+                assigneeId = subtask.assigneeId,
                 participants = subtask.participants,
                 startDate = subtask.startDate,
                 endDate = subtask.endDate,
                 category = subtask.groupName
             )
+            val isOwner = subtask.assigneeId == currentUserId
+            val isNotOwner = subtask.assigneeId != currentUserId
+
             Box {
                 TaskCard(
                     task = task,
@@ -435,7 +446,8 @@ private fun TaskSubtasksTabContent(
                         showMenu = true
                     },
                     onClick = { onSubtaskClick(subtask.id) },
-                    onStatusChange = { newStatus -> onSubtaskStatusChange(subtask.id, newStatus) }
+                    onStatusChange = { newStatus -> onSubtaskStatusChange(subtask.id, newStatus) },
+                    canChangeStatus = isOwner
                 )
                 DropdownMenu(
                     expanded = showMenu && selectedSubtaskId == subtask.id,
@@ -459,7 +471,8 @@ private fun TaskSubtasksTabContent(
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Edit, contentDescription = null)
-                        }
+                        },
+                        enabled = isOwner
                     )
                     DropdownMenuItem(
                         text = { Text("Xóa") },
@@ -470,7 +483,8 @@ private fun TaskSubtasksTabContent(
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                        }
+                        },
+                        enabled = isOwner
                     )
                 }
             }
@@ -757,6 +771,8 @@ fun TaskDetailScreenPreview() {
                         groupId = "g1",
                         groupName = "Thiết kế giao diện",
                         assigneeName = "Phạm Thị Phương Thanh",
+                        assigneeId = "u1",
+                        creatorId = "u2",
                         creatorName = "Nguyễn Văn Minh",
                         startDate = "2026-05-20",
                         endDate = "2026-05-25",
@@ -828,7 +844,8 @@ fun TaskDetailScreenPreview() {
             onSubtaskStatusChange = { _, _ -> },
             onSubtaskClick = {},
             onSubtaskEdit = {},
-            onSubtaskDelete = {}
+            onSubtaskDelete = {},
+            currentUserId = "u1"
         )
     }
 }
@@ -926,7 +943,8 @@ private fun TaskSubtasksTabPreview() {
             onSubtaskStatusChange = { _, _ -> },
             onSubtaskClick = {},
             onSubtaskEdit = {},
-            onSubtaskDelete = {}
+            onSubtaskDelete = {},
+            currentUserId = "u1"
         )
     }
 }

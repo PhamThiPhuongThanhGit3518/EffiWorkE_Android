@@ -33,13 +33,20 @@ data class Task(
     val name: String,
     val description: String,
     val status: TaskStatus,
-    val assignee: String, // assigneeName
-    val assigneeId: String = "", // assigneeId for update
+    val assignee: String, // assigneeName (người phụ trách)
+    val assigneeId: String = "", // ownerId - DÙNG ĐỂ KIỂM TRA QUYỀN
+    val creatorId: String = "", // creatorId - người tạo, KHÔNG có quyền đặc biệt
     val participants: List<String>,
     val startDate: String,
     val endDate: String,
     val category: String, // sectionId for update
-    val subtasks: List<Subtask> = emptyList()
+    val subtasks: List<Subtask> = emptyList(),
+    // === THÊM CHO EXTENSION REQUEST ===
+    val pendingExtensionRequestId: String? = null,
+    val pendingExtensionRequestStatus: String? = null,
+    val pendingExtensionRequestNewDueDate: String? = null,
+    val pendingExtensionRequestReason: String? = null,
+    val pendingExtensionRequestByName: String? = null
 )
 
 data class Subtask(
@@ -464,13 +471,14 @@ class TaskViewModel @Inject constructor(
             status = TaskStatus.fromString(status ?: ""),
             assignee = assigneeName ?: owner?.fullName ?: "",
             assigneeId = assigneeId ?: owner?.id ?: "",
+            creatorId = creator?.id ?: "",
             participants = participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
             startDate = startDate?.take(10) ?: "",
             endDate = endDate?.take(10) ?: "",
             category = groupId ?: "",
             subtasks = subtasks?.map { Subtask(it.id, it.name, it.isCompleted, it.dueDate) } ?: emptyList()
         )
-        Log.d(TAG, "toTask mapped: id=$id, name=$name, assignee=${task.assignee}, participants=${task.participants}, startDate=${startDate}, endDate=${endDate}")
+        Log.d(TAG, "toTask mapped: id=$id, name=$name, assignee=${task.assignee}, assigneeId=${task.assigneeId}, creatorId=${task.creatorId}, participants=${task.participants}, startDate=${startDate}, endDate=${endDate}")
         return task
     }
 }

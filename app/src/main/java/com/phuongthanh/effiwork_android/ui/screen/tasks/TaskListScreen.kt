@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.ui.common.StatusBadge
 import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
@@ -49,12 +50,14 @@ fun TaskListScreen(
     projectId: String = "",
     groupId: String = "",
     viewModel: TaskViewModel = hiltViewModel(),
+    authRepository: AuthRepository? = null,
     onBackClick: () -> Unit = {},
     onNavigateToCreateTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> },
     onEditTask: (String) -> Unit = {},
     onDeleteTask: (String) -> Unit = {}
 ) {
+    val currentUserId = authRepository?.getCurrentUserId() ?: ""
     var screenState by remember { mutableStateOf(TaskListScreenState(projectId = projectId, projectName = projectName, groupId = groupId)) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
@@ -72,8 +75,13 @@ fun TaskListScreen(
         screenState = screenState.copy(projectId = projectId, projectName = projectName, groupId = groupId)
     }
 
-    LaunchedEffect(uiState) {
+    LaunchedEffect(selectedTab, uiState) {
         screenState = screenState.copy(uiState = uiState)
+        android.util.Log.d("TaskListDebug", "selectedTab: $selectedTab, uiState: $uiState")
+    }
+
+    LaunchedEffect(currentUserId) {
+        android.util.Log.d("TaskListDebug", "currentUserId in TaskListScreen: $currentUserId")
     }
 
     LaunchedEffect(taskGroups) {
@@ -109,7 +117,8 @@ fun TaskListScreen(
         },
         onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) },
         onEditTask = onEditTask,
-        onDeleteTask = onDeleteTask
+        onDeleteTask = onDeleteTask,
+        currentUserId = currentUserId
     )
 }
 
@@ -125,7 +134,8 @@ fun TaskListScreenContent(
     onSearchQueryChange: (String) -> Unit,
     onStatusChange: (String, TaskStatus) -> Unit,
     onEditTask: (String) -> Unit = {},
-    onDeleteTask: (String) -> Unit = {}
+    onDeleteTask: (String) -> Unit = {},
+    currentUserId: String = ""
 ) {
     Scaffold(
         topBar = {
@@ -245,8 +255,10 @@ fun TaskListScreenContent(
                         onTaskClick = { onNavigateToTaskDetail(state.projectId, it) },
                         onStatusChange = onStatusChange,
                         onEditTask = onEditTask,
-                        onDeleteTask = onDeleteTask
+                        onDeleteTask = onDeleteTask,
+                        currentUserId = currentUserId
                     )
+                    android.util.Log.d("TaskListDebug", "filteredTasks count: ${filteredTasks.size}, currentUserId: $currentUserId")
                 }
                 is TaskUiState.Error -> {
                     Box(
@@ -312,8 +324,10 @@ private fun TaskList(
     onTaskClick: (String) -> Unit,
     onStatusChange: (String, TaskStatus) -> Unit,
     onEditTask: (String) -> Unit,
-    onDeleteTask: (String) -> Unit
+    onDeleteTask: (String) -> Unit,
+    currentUserId: String = ""
 ) {
+    android.util.Log.d("TaskListDebug", "TaskList called with ${tasks.size} tasks, currentUserId: $currentUserId")
     var selectedTaskId by remember { mutableStateOf<String?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -348,6 +362,11 @@ private fun TaskList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(tasks, key = { it.id }) { task ->
+            val isOwner = task.assigneeId == currentUserId
+            val isNotOwner = task.assigneeId != currentUserId
+            val hasPendingExtensionRequest = task.pendingExtensionRequestStatus == "PENDING"
+            android.util.Log.d("TaskListDebug", "Task: ${task.name}, assigneeId: ${task.assigneeId}, currentUserId: $currentUserId, isOwner: $isOwner")
+
             Box {
                 TaskCard(
                     task = task,
@@ -356,7 +375,8 @@ private fun TaskList(
                         showMenu = true
                     },
                     onClick = { onTaskClick(task.id) },
-                    onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) }
+                    onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) },
+                    canChangeStatus = isOwner
                 )
                 DropdownMenu(
                     expanded = showMenu && selectedTaskId == task.id,
@@ -380,7 +400,8 @@ private fun TaskList(
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Edit, contentDescription = null)
-                        }
+                        },
+                        enabled = isOwner
                     )
                     DropdownMenuItem(
                         text = { Text("Xóa") },
@@ -391,8 +412,43 @@ private fun TaskList(
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                        }
+                        },
+                        enabled = isOwner
                     )
+                    if (isNotOwner && !hasPendingExtensionRequest) {
+                        DropdownMenuItem(
+                            text = { Text("Xin gia hạn") },
+                            onClick = {
+                                showMenu = false
+                                // TODO: Handle request extension
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Schedule, contentDescription = null)
+                            }
+                        )
+                    }
+                    if (isOwner && hasPendingExtensionRequest) {
+                        DropdownMenuItem(
+                            text = { Text("Duyệt gia hạn") },
+                            onClick = {
+                                showMenu = false
+                                // TODO: Handle approve extension
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Từ chối gia hạn") },
+                            onClick = {
+                                showMenu = false
+                                // TODO: Handle reject extension
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Close, contentDescription = null)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -450,7 +506,8 @@ fun TaskListScreenPreview() {
             onSearchQueryChange = {},
             onStatusChange = { _, _ -> },
             onEditTask = {},
-            onDeleteTask = {}
+            onDeleteTask = {},
+            currentUserId = ""
         )
     }
 }

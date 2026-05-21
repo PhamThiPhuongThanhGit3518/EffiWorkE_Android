@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.ui.common.BottomNavigationBar
+import com.phuongthanh.effiwork_android.ui.common.rememberAuthRepository
 import com.phuongthanh.effiwork_android.ui.screen.notis.NotificationScreen
 import com.phuongthanh.effiwork_android.ui.screen.profile.ProfileScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
@@ -72,6 +73,7 @@ fun MainScreen(
     projectsViewModel: ProjectsViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
+    val authRepository = rememberAuthRepository()
     val navController = rememberNavController()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val navItems = listOf(
@@ -200,6 +202,7 @@ fun MainScreen(
                     projectId = projectId,
                     projectName = projectName,
                     groupId = groupId,
+                    authRepository = authRepository,
                     onBackClick = { navController.popBackStack() },
                     onNavigateToCreateTask = { pid, gid ->
                         navController.navigate(NavRoutes.createTask(pid, gid))
@@ -227,6 +230,7 @@ fun MainScreen(
                 TaskDetailScreen(
                     projectId = projectId,
                     taskId = taskId,
+                    authRepository = authRepository,
                     onBackClick = { navController.popBackStack() },
                     onEditTask = { pid, tid ->
                         navController.navigate(NavRoutes.editTask(pid, tid))

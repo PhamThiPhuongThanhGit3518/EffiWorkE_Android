@@ -1,6 +1,7 @@
 package com.phuongthanh.effiwork_android.ui.common
 
 import androidx.collection.intIntMapOf
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -42,7 +44,8 @@ fun TaskCard(
     task: Task,
     onClick: () -> Unit,
     onMoreClick: () -> Unit = {},
-    onStatusChange: (TaskStatus) -> Unit
+    onStatusChange: (TaskStatus) -> Unit,
+    canChangeStatus: Boolean = false
 ) {
     Card(
         modifier = Modifier
@@ -68,7 +71,7 @@ fun TaskCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                StatusBadge(task.status, onStatusChange)
+                StatusBadge(task.status, onStatusChange, canChangeStatus)
                 IconButton(
                     onClick = onMoreClick
                 ) {
@@ -139,6 +142,40 @@ fun TaskCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
+            }
+
+            // === HIỂN THỊ EXTENSION REQUEST PENDING ===
+            if (task.pendingExtensionRequestStatus == "PENDING") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF3E0))
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Xin gia hạn: ${task.pendingExtensionRequestNewDueDate}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE65100),
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (task.pendingExtensionRequestReason != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "(${task.pendingExtensionRequestReason})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFE65100)
+                        )
+                    }
+                }
             }
         }
     }

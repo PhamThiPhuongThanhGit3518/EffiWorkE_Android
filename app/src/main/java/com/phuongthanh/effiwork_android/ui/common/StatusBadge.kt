@@ -33,13 +33,14 @@ import com.phuongthanh.effiwork_android.viewmodel.task.TaskStatus
 @Composable
 fun StatusBadge(
     currentStatus: TaskStatus,
-    onStatusChange: (TaskStatus) -> Unit
+    onStatusChange: (TaskStatus) -> Unit,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
         Surface(
-            modifier = Modifier.clickable { expanded = true },
+            modifier = Modifier.clickable(enabled = enabled) { if (enabled) expanded = true },
             shape = RoundedCornerShape(4.dp),
             color = when (currentStatus) {
                 TaskStatus.NOT_STARTED -> Color.Gray.copy(alpha = 0.1f)
@@ -64,52 +65,56 @@ fun StatusBadge(
                         TaskStatus.CANCELLED -> Color(0xFFF44336)
                     }
                 )
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = when (currentStatus) {
-                        TaskStatus.NOT_STARTED -> Color.Gray
-                        TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                        TaskStatus.REVIEW -> Color(0xFFFF9800)
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                        TaskStatus.CANCELLED -> Color(0xFFF44336)
-                    }
-                )
+                if (enabled) {
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = when (currentStatus) {
+                            TaskStatus.NOT_STARTED -> Color.Gray
+                            TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                            TaskStatus.REVIEW -> Color(0xFFFF9800)
+                            TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                            TaskStatus.CANCELLED -> Color(0xFFF44336)
+                        }
+                    )
+                }
             }
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            TaskStatus.entries.forEach { status ->
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        when (status) {
-                                            TaskStatus.NOT_STARTED -> Color.Gray
-                                            TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
-                                            TaskStatus.REVIEW -> Color(0xFFFF9800)
-                                            TaskStatus.COMPLETED -> Color(0xFF4CAF50)
-                                            TaskStatus.CANCELLED -> Color(0xFFF44336)
-                                        }
-                                    )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(status.displayName)
+        if (enabled) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                TaskStatus.entries.forEach { status ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            when (status) {
+                                                TaskStatus.NOT_STARTED -> Color.Gray
+                                                TaskStatus.IN_PROGRESS -> Color(0xFF2196F3)
+                                                TaskStatus.REVIEW -> Color(0xFFFF9800)
+                                                TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                                                TaskStatus.CANCELLED -> Color(0xFFF44336)
+                                            }
+                                        )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(status.displayName)
+                            }
+                        },
+                        onClick = {
+                            onStatusChange(status)
+                            expanded = false
                         }
-                    },
-                    onClick = {
-                        onStatusChange(status)
-                        expanded = false
-                    }
-                )
+                    )
+                }
             }
         }
     }

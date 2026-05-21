@@ -24,8 +24,23 @@ class AppPreferences @Inject constructor(
         prefs.edit().remove(KEY_SELECTED_PROJECT_ID).apply()
     }
 
+    fun saveCurrentUserId(userId: String?) {
+        if (userId != null) {
+            prefs.edit().putString(KEY_CURRENT_USER_ID, userId).apply()
+        }
+    }
+
+    fun getCurrentUserId(): String? {
+        return prefs.getString(KEY_CURRENT_USER_ID, null)
+    }
+
+    fun clearCurrentUserId() {
+        prefs.edit().remove(KEY_CURRENT_USER_ID).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "effiwork_prefs"
         private const val KEY_SELECTED_PROJECT_ID = "selected_project_id"
+        private const val KEY_CURRENT_USER_ID = "current_user_id"
     }
 }

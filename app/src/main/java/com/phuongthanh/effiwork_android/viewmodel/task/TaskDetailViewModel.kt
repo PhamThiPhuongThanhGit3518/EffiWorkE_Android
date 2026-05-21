@@ -33,6 +33,8 @@ data class TaskDetail(
     val groupId: String,
     val groupName: String,
     val assigneeName: String,
+    val assigneeId: String = "", // ownerId - DÙNG ĐỂ KIỂM TRA QUYỀN
+    val creatorId: String = "", // creatorId - người tạo, KHÔNG có quyền đặc biệt
     val creatorName: String,
     val startDate: String,
     val endDate: String,
@@ -138,6 +140,8 @@ class TaskDetailViewModel @Inject constructor(
                         groupId = data.group?.id ?: "",
                         groupName = data.group?.name ?: "",
                         assigneeName = data.assignee?.fullName ?: "",
+                        assigneeId = data.assignee?.id ?: "", // ownerId
+                        creatorId = data.creator?.id ?: "", // creatorId
                         creatorName = data.creator?.fullName ?: "",
                         startDate = data.startDate?.take(10) ?: "",
                         endDate = data.endDate?.take(10) ?: "",

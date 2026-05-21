@@ -1,7 +1,9 @@
 package com.phuongthanh.effiwork_android.data.model.response
 
+import com.google.gson.annotations.SerializedName
+
 data class UserResponse(
-    val id: String,
+    @SerializedName("sub") val id: String,
     val email: String,
     val fullName: String?,
     val phone: String?,

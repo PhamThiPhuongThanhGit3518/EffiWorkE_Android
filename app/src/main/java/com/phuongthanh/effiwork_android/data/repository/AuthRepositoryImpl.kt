@@ -29,6 +29,9 @@ class AuthRepositoryImpl @Inject constructor(
                 if (response.success && response.data != null) {
                     android.util.Log.d("AuthDebug", "Login success, saving tokens...")
                     tokenManager.saveTokens(response.data.accessToken, response.data.refreshToken)
+                    android.util.Log.d("AuthDebug", "User ID from response: ${response.data.user.id}")
+                    android.util.Log.d("AuthDebug", "User fullName: ${response.data.user.fullName}")
+                    appPreferences.saveCurrentUserId(response.data.user.id)
                     android.util.Log.d("AuthDebug", "Tokens saved. Access token: ${response.data.accessToken.take(20)}...")
                     ApiResult.Success(response.data)
                 } else {
@@ -71,10 +74,12 @@ class AuthRepositoryImpl @Inject constructor(
                 }
                 tokenManager.clearTokens()
                 appPreferences.clearSelectedProjectId()
+                appPreferences.clearCurrentUserId()
                 ApiResult.Success(Unit)
             } catch (e: Exception) {
                 tokenManager.clearTokens()
                 appPreferences.clearSelectedProjectId()
+                appPreferences.clearCurrentUserId()
                 ApiResult.Success(Unit)
             }
         }
@@ -111,4 +116,8 @@ class AuthRepositoryImpl @Inject constructor(
             }
         }
     }
+
+    override fun getCurrentUserId(): String? = appPreferences.getCurrentUserId()
+
+    override fun saveCurrentUserId(userId: String?) = appPreferences.saveCurrentUserId(userId)
 }
