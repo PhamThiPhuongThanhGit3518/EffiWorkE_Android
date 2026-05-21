@@ -1,8 +1,10 @@
 package com.phuongthanh.effiwork_android.api
 
+import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
@@ -84,6 +86,36 @@ interface TaskService {
         @Path("projectId") projectId: String,
         @Path("taskId") taskId: String
     ): ApiResponse<Unit>
+
+    // Extension Request APIs
+    @GET("v1/projects/{projectId}/tasks/{taskId}/extension-requests")
+    suspend fun getExtensionRequests(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String
+    ): ApiResponse<List<ExtensionRequestResponse>>
+
+    @POST("v1/projects/{projectId}/tasks/{taskId}/extension-requests")
+    suspend fun createExtensionRequest(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String,
+        @Body request: CreateExtensionRequest
+    ): ApiResponse<ExtensionRequestResponse>
+
+    @POST("v1/projects/{projectId}/tasks/{taskId}/extension-requests/{requestId}/approve")
+    suspend fun approveExtensionRequest(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String,
+        @Path("requestId") requestId: String,
+        @Body request: ReviewExtensionRequest
+    ): ApiResponse<ExtensionRequestResponse>
+
+    @POST("v1/projects/{projectId}/tasks/{taskId}/extension-requests/{requestId}/reject")
+    suspend fun rejectExtensionRequest(
+        @Path("projectId") projectId: String,
+        @Path("taskId") taskId: String,
+        @Path("requestId") requestId: String,
+        @Body request: ReviewExtensionRequest
+    ): ApiResponse<ExtensionRequestResponse>
 }
 
 interface MeetingService {

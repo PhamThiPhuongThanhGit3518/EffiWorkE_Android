@@ -12,7 +12,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +39,8 @@ import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
 import kotlinx.coroutines.flow.collectLatest
+import java.text.SimpleDateFormat
+import java.util.Date
 
 data class TaskListScreenState(
     val projectName: String = "",
@@ -118,6 +128,9 @@ fun TaskListScreen(
         onStatusChange = { taskId, newStatus -> viewModel.updateTaskStatus(taskId, newStatus) },
         onEditTask = onEditTask,
         onDeleteTask = onDeleteTask,
+        onRequestExtension = { taskId, newDueDate, reason -> viewModel.createExtensionRequest(taskId, newDueDate, reason) },
+        onApproveExtension = { taskId, requestId -> viewModel.approveExtensionRequest(taskId, requestId) },
+        onRejectExtension = { taskId, requestId -> viewModel.rejectExtensionRequest(taskId, requestId) },
         currentUserId = currentUserId
     )
 }
@@ -135,6 +148,9 @@ fun TaskListScreenContent(
     onStatusChange: (String, TaskStatus) -> Unit,
     onEditTask: (String) -> Unit = {},
     onDeleteTask: (String) -> Unit = {},
+    onRequestExtension: (String, String, String) -> Unit = { _, _, _ -> },
+    onApproveExtension: (String, String) -> Unit = { _, _ -> },
+    onRejectExtension: (String, String) -> Unit = { _, _ -> },
     currentUserId: String = ""
 ) {
     Scaffold(
@@ -256,6 +272,9 @@ fun TaskListScreenContent(
                         onStatusChange = onStatusChange,
                         onEditTask = onEditTask,
                         onDeleteTask = onDeleteTask,
+                        onRequestExtension = onRequestExtension,
+                        onApproveExtension = onApproveExtension,
+                        onRejectExtension = onRejectExtension,
                         currentUserId = currentUserId
                     )
                     android.util.Log.d("TaskListDebug", "filteredTasks count: ${filteredTasks.size}, currentUserId: $currentUserId")
@@ -318,6 +337,7 @@ private fun SearchAndFilterBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskList(
     tasks: List<Task>,
@@ -325,12 +345,17 @@ private fun TaskList(
     onStatusChange: (String, TaskStatus) -> Unit,
     onEditTask: (String) -> Unit,
     onDeleteTask: (String) -> Unit,
+    onRequestExtension: (String, String, String) -> Unit,
+    onApproveExtension: (String, String) -> Unit,
+    onRejectExtension: (String, String) -> Unit,
     currentUserId: String = ""
 ) {
     android.util.Log.d("TaskListDebug", "TaskList called with ${tasks.size} tasks, currentUserId: $currentUserId")
     var selectedTaskId by remember { mutableStateOf<String?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showExtensionRequestDialog by remember { mutableStateOf(false) }
+    var selectedExtensionTaskId by remember { mutableStateOf<String?>(null) }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -350,6 +375,99 @@ private fun TaskList(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    // Extension Request Dialog
+    if (showExtensionRequestDialog && selectedExtensionTaskId != null) {
+        var newDueDate by remember { mutableStateOf("") }
+        var reason by remember { mutableStateOf("") }
+        var showDatePicker by remember { mutableStateOf(false) }
+        val sdf = remember { SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()) }
+
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState()
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                newDueDate = sdf.format(Date(millis))
+                            }
+                            showDatePicker = false
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Hủy")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { showExtensionRequestDialog = false },
+            title = { Text("Xin gia hạn công việc") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = newDueDate,
+                            onValueChange = { },
+                            label = { Text("Ngày gia hạn mới") },
+                            readOnly = true,
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Chọn ngày")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text("Lý do") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newDueDate.isNotBlank() && reason.isNotBlank()) {
+                            selectedExtensionTaskId?.let { onRequestExtension(it, newDueDate, reason) }
+                            showExtensionRequestDialog = false
+                            selectedExtensionTaskId = null
+                            newDueDate = ""
+                            reason = ""
+                        }
+                    }
+                ) {
+                    Text("Gửi yêu cầu")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showExtensionRequestDialog = false
+                    selectedExtensionTaskId = null
+                    newDueDate = ""
+                    reason = ""
+                }) {
                     Text("Hủy")
                 }
             }
@@ -420,7 +538,8 @@ private fun TaskList(
                             text = { Text("Xin gia hạn") },
                             onClick = {
                                 showMenu = false
-                                // TODO: Handle request extension
+                                selectedExtensionTaskId = task.id
+                                showExtensionRequestDialog = true
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Schedule, contentDescription = null)
@@ -428,11 +547,14 @@ private fun TaskList(
                         )
                     }
                     if (isOwner && hasPendingExtensionRequest) {
+                        val requestId = task.pendingExtensionRequestId ?: ""
                         DropdownMenuItem(
                             text = { Text("Duyệt gia hạn") },
                             onClick = {
                                 showMenu = false
-                                // TODO: Handle approve extension
+                                if (requestId.isNotBlank()) {
+                                    onApproveExtension(task.id, requestId)
+                                }
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Check, contentDescription = null)
@@ -442,7 +564,9 @@ private fun TaskList(
                             text = { Text("Từ chối gia hạn") },
                             onClick = {
                                 showMenu = false
-                                // TODO: Handle reject extension
+                                if (requestId.isNotBlank()) {
+                                    onRejectExtension(task.id, requestId)
+                                }
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Close, contentDescription = null)
@@ -507,6 +631,9 @@ fun TaskListScreenPreview() {
             onStatusChange = { _, _ -> },
             onEditTask = {},
             onDeleteTask = {},
+            onRequestExtension = { _, _, _ -> },
+            onApproveExtension = { _, _ -> },
+            onRejectExtension = { _, _ -> },
             currentUserId = ""
         )
     }

@@ -7,6 +7,8 @@ import com.phuongthanh.effiwork_android.api.TaskService
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
+import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
@@ -257,6 +259,81 @@ class TaskRepositoryImpl @Inject constructor(
                     ApiResult.Error(response.message)
                 }
             } catch (e: Exception) {
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    // Extension Request implementations
+    override suspend fun getExtensionRequests(projectId: String, taskId: String): ApiResult<List<ExtensionRequestResponse>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "getExtensionRequests: projectId=$projectId, taskId=$taskId")
+                val response = taskService.getExtensionRequests(projectId, taskId)
+                if (response.success && response.data != null) {
+                    ApiResult.Success(response.data)
+                } else {
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "getExtensionRequests EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun createExtensionRequest(projectId: String, taskId: String, request: CreateExtensionRequest): ApiResult<ExtensionRequestResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "createExtensionRequest: projectId=$projectId, taskId=$taskId, newDueDate=${request.newDueDate}")
+                val response = taskService.createExtensionRequest(projectId, taskId, request)
+                if (response.success && response.data != null) {
+                    Log.d(TAG, "createExtensionRequest SUCCESS")
+                    ApiResult.Success(response.data)
+                } else {
+                    Log.e(TAG, "createExtensionRequest FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "createExtensionRequest EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun approveExtensionRequest(projectId: String, taskId: String, requestId: String, note: String?): ApiResult<ExtensionRequestResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "approveExtensionRequest: projectId=$projectId, taskId=$taskId, requestId=$requestId")
+                val response = taskService.approveExtensionRequest(projectId, taskId, requestId, ReviewExtensionRequest(note))
+                if (response.success && response.data != null) {
+                    Log.d(TAG, "approveExtensionRequest SUCCESS")
+                    ApiResult.Success(response.data)
+                } else {
+                    Log.e(TAG, "approveExtensionRequest FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "approveExtensionRequest EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun rejectExtensionRequest(projectId: String, taskId: String, requestId: String, note: String?): ApiResult<ExtensionRequestResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "rejectExtensionRequest: projectId=$projectId, taskId=$taskId, requestId=$requestId")
+                val response = taskService.rejectExtensionRequest(projectId, taskId, requestId, ReviewExtensionRequest(note))
+                if (response.success && response.data != null) {
+                    Log.d(TAG, "rejectExtensionRequest SUCCESS")
+                    ApiResult.Success(response.data)
+                } else {
+                    Log.e(TAG, "rejectExtensionRequest FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "rejectExtensionRequest EXCEPTION: ${e.message}", e)
                 ApiResult.Error(e.message ?: "Unknown error")
             }
         }

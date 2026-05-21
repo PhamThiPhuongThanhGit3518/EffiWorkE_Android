@@ -4,9 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
+import com.phuongthanh.effiwork_android.data.model.response.ExtensionRequestResponse
 import com.phuongthanh.effiwork_android.data.model.response.TaskResponse
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -456,6 +459,98 @@ class TaskViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "updateTaskStatus ERROR: ${result.message}")
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun createExtensionRequest(taskId: String, newDueDate: String, reason: String) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) {
+                Log.e(TAG, "createExtensionRequest: projectId is blank!")
+                return@launch
+            }
+            val request = CreateExtensionRequest(newDueDate = newDueDate, reason = reason)
+            Log.d(TAG, "createExtensionRequest: projectId=$projectIdValue, taskId=$taskId, newDueDate=$newDueDate")
+            when (val result = taskRepository.createExtensionRequest(projectIdValue, taskId, request)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "createExtensionRequest SUCCESS")
+                    _effect.emit(TaskEffect.ShowToast("Đã gửi yêu cầu gia hạn"))
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "createExtensionRequest ERROR: ${result.message}")
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun approveExtensionRequest(taskId: String, requestId: String, note: String? = null) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) {
+                Log.e(TAG, "approveExtensionRequest: projectId is blank!")
+                return@launch
+            }
+            Log.d(TAG, "approveExtensionRequest: projectId=$projectIdValue, taskId=$taskId, requestId=$requestId")
+            when (val result = taskRepository.approveExtensionRequest(projectIdValue, taskId, requestId, note)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "approveExtensionRequest SUCCESS")
+                    _effect.emit(TaskEffect.ShowToast("Đã duyệt yêu cầu gia hạn"))
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "approveExtensionRequest ERROR: ${result.message}")
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun rejectExtensionRequest(taskId: String, requestId: String, note: String? = null) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) {
+                Log.e(TAG, "rejectExtensionRequest: projectId is blank!")
+                return@launch
+            }
+            Log.d(TAG, "rejectExtensionRequest: projectId=$projectIdValue, taskId=$taskId, requestId=$requestId")
+            when (val result = taskRepository.rejectExtensionRequest(projectIdValue, taskId, requestId, note)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "rejectExtensionRequest SUCCESS")
+                    _effect.emit(TaskEffect.ShowToast("Đã từ chối yêu cầu gia hạn"))
+                    loadTasks()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "rejectExtensionRequest ERROR: ${result.message}")
+                    _effect.emit(TaskEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun getExtensionRequests(taskId: String, onResult: (List<ExtensionRequestResponse>) -> Unit) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) {
+                Log.e(TAG, "getExtensionRequests: projectId is blank!")
+                return@launch
+            }
+            Log.d(TAG, "getExtensionRequests: projectId=$projectIdValue, taskId=$taskId")
+            when (val result = taskRepository.getExtensionRequests(projectIdValue, taskId)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "getExtensionRequests SUCCESS: ${result.data.size} requests")
+                    onResult(result.data)
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "getExtensionRequests ERROR: ${result.message}")
                     _effect.emit(TaskEffect.ShowToast(result.message))
                 }
                 is ApiResult.Loading -> {}

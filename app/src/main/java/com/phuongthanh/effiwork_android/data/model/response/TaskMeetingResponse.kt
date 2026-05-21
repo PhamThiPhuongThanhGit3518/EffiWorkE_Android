@@ -163,3 +163,18 @@ data class TaskCount(
     val attachments: Int?,
     val extensionRequests: Int?
 )
+
+data class ExtensionRequestResponse(
+    val id: String,
+    val taskId: String?,
+    val requestedById: String?,
+    val requestedBy: MemberInfo?,
+    val oldDueDate: String?,
+    val newDueDate: String?,
+    val reason: String?,
+    val status: String?,
+    val approvedById: String?,
+    val approvedBy: MemberInfo?,
+    val approvedAt: String?,
+    val createdAt: String?
+)

@@ -4,6 +4,8 @@ import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
+import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
+import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
@@ -22,6 +24,10 @@ interface TaskRepository {
     suspend fun deleteTask(projectId: String, taskId: String): ApiResult<Unit>
     suspend fun deleteSubtask(projectId: String, taskId: String, subtaskId: String): ApiResult<Unit>
     suspend fun updateTaskStatus(projectId: String, taskId: String, request: UpdateTaskStatusRequest): ApiResult<TaskResponse>
+    suspend fun getExtensionRequests(projectId: String, taskId: String): ApiResult<List<ExtensionRequestResponse>>
+    suspend fun createExtensionRequest(projectId: String, taskId: String, request: CreateExtensionRequest): ApiResult<ExtensionRequestResponse>
+    suspend fun approveExtensionRequest(projectId: String, taskId: String, requestId: String, note: String?): ApiResult<ExtensionRequestResponse>
+    suspend fun rejectExtensionRequest(projectId: String, taskId: String, requestId: String, note: String?): ApiResult<ExtensionRequestResponse>
 }
 
 interface MeetingRepository {

@@ -65,3 +65,15 @@ data class CreateMeetingRequest(
     @SerializedName("participantIds")
     val participantIds: List<String>
 )
+
+data class CreateExtensionRequest(
+    @SerializedName("newDueDate")
+    val newDueDate: String,
+    @SerializedName("reason")
+    val reason: String
+)
+
+data class ReviewExtensionRequest(
+    @SerializedName("note")
+    val note: String?
+)
