@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,13 @@ sealed class TaskDetailUiState {
     object Loading : TaskDetailUiState()
     data class Success(val taskDetail: TaskDetail) : TaskDetailUiState()
     data class Error(val message: String) : TaskDetailUiState()
+}
+
+sealed class ExtensionRequestUiState {
+    object Idle : ExtensionRequestUiState()
+    object Loading : ExtensionRequestUiState()
+    data class Success(val requests: List<ExtensionRequestItem>) : ExtensionRequestUiState()
+    data class Error(val message: String) : ExtensionRequestUiState()
 }
 
 data class TaskDetail(
@@ -70,6 +78,16 @@ data class CommentItem(
     val createdAt: String
 )
 
+data class ExtensionRequestItem(
+    val id: String,
+    val requesterName: String,
+    val oldDueDate: String,
+    val newDueDate: String,
+    val reason: String,
+    val status: String,
+    val createdAt: String
+)
+
 sealed class TaskDetailEffect {
     data class ShowToast(val message: String) : TaskDetailEffect()
     object CommentPosted : TaskDetailEffect()
@@ -83,6 +101,9 @@ class TaskDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<TaskDetailUiState>(TaskDetailUiState.Idle)
     val uiState: StateFlow<TaskDetailUiState> = _uiState.asStateFlow()
+
+    private val _extensionRequestsState = MutableStateFlow<ExtensionRequestUiState>(ExtensionRequestUiState.Idle)
+    val extensionRequestsState: StateFlow<ExtensionRequestUiState> = _extensionRequestsState.asStateFlow()
 
     private val _effect = MutableSharedFlow<TaskDetailEffect>()
     val effect: SharedFlow<TaskDetailEffect> = _effect.asSharedFlow()
@@ -256,6 +277,103 @@ class TaskDetailViewModel @Inject constructor(
                     }
                     is ApiResult.Loading -> {}
                 }
+            }
+        }
+    }
+
+    fun loadExtensionRequests() {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
+
+        viewModelScope.launch {
+            _extensionRequestsState.value = ExtensionRequestUiState.Loading
+            Log.d(TAG, "loadExtensionRequests: projectId=$currentProjectId, taskId=$currentTaskId")
+
+            when (val result = taskRepository.getExtensionRequests(currentProjectId, currentTaskId)) {
+                is ApiResult.Success -> {
+                    val requests = result.data.map { ext ->
+                        ExtensionRequestItem(
+                            id = ext.id,
+                            requesterName = ext.requestedBy?.fullName ?: "",
+                            oldDueDate = ext.oldDueDate?.take(10) ?: "",
+                            newDueDate = ext.newDueDate?.take(10) ?: "",
+                            reason = ext.reason ?: "",
+                            status = ext.status ?: "",
+                            createdAt = ext.createdAt?.take(10) ?: ""
+                        )
+                    }
+                    Log.d(TAG, "loadExtensionRequests: ${requests.size} requests")
+                    _extensionRequestsState.value = ExtensionRequestUiState.Success(requests)
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "loadExtensionRequests ERROR: ${result.message}")
+                    _extensionRequestsState.value = ExtensionRequestUiState.Error(result.message)
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun createExtensionRequest(newDueDate: String, reason: String) {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
+
+        viewModelScope.launch {
+            val request = CreateExtensionRequest(newDueDate = newDueDate, reason = reason)
+            Log.d(TAG, "createExtensionRequest: projectId=$currentProjectId, taskId=$currentTaskId, newDueDate=$newDueDate")
+
+            when (val result = taskRepository.createExtensionRequest(currentProjectId, currentTaskId, request)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "createExtensionRequest SUCCESS")
+                    _effect.emit(TaskDetailEffect.ShowToast("Đã gửi yêu cầu gia hạn"))
+                    loadExtensionRequests()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "createExtensionRequest ERROR: ${result.message}")
+                    _effect.emit(TaskDetailEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun approveExtensionRequest(requestId: String, note: String? = null) {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
+
+        viewModelScope.launch {
+            Log.d(TAG, "approveExtensionRequest: projectId=$currentProjectId, taskId=$currentTaskId, requestId=$requestId")
+
+            when (val result = taskRepository.approveExtensionRequest(currentProjectId, currentTaskId, requestId, note)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "approveExtensionRequest SUCCESS")
+                    _effect.emit(TaskDetailEffect.ShowToast("Đã duyệt yêu cầu gia hạn"))
+                    loadExtensionRequests()
+                    loadTaskDetail(currentProjectId, currentTaskId)
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "approveExtensionRequest ERROR: ${result.message}")
+                    _effect.emit(TaskDetailEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun rejectExtensionRequest(requestId: String, note: String? = null) {
+        if (currentProjectId.isBlank() || currentTaskId.isBlank()) return
+
+        viewModelScope.launch {
+            Log.d(TAG, "rejectExtensionRequest: projectId=$currentProjectId, taskId=$currentTaskId, requestId=$requestId")
+
+            when (val result = taskRepository.rejectExtensionRequest(currentProjectId, currentTaskId, requestId, note)) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "rejectExtensionRequest SUCCESS")
+                    _effect.emit(TaskDetailEffect.ShowToast("Đã từ chối yêu cầu gia hạn"))
+                    loadExtensionRequests()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "rejectExtensionRequest ERROR: ${result.message}")
+                    _effect.emit(TaskDetailEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
             }
         }
     }

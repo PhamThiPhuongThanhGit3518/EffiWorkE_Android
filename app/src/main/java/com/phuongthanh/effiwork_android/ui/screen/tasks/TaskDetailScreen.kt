@@ -58,9 +58,11 @@ fun TaskDetailScreen(
     var screenState by remember { mutableStateOf(TaskDetailScreenState(projectId = projectId, taskId = taskId)) }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val extensionRequestsState by viewModel.extensionRequestsState.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, taskId) {
         viewModel.loadTaskDetail(projectId, taskId)
+        viewModel.loadExtensionRequests()
     }
 
     LaunchedEffect(uiState) {
@@ -85,6 +87,11 @@ fun TaskDetailScreen(
         ParentTaskInfo(detail.id, detail.title, detail.groupId)
     } ?: ParentTaskInfo("", "", "")
 
+    val extensionRequests = when (val state = extensionRequestsState) {
+        is ExtensionRequestUiState.Success -> state.requests
+        else -> emptyList()
+    }
+
     TaskDetailScreenContent(
         state = screenState,
         selectedTabIndex = selectedTabIndex,
@@ -97,7 +104,11 @@ fun TaskDetailScreen(
         onDeleteTask = { viewModel.deleteTask() },
         onSubtaskStatusChange = { subtaskId, newStatus -> viewModel.updateSubtaskStatus(subtaskId, newStatus) },
         onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) },
-        currentUserId = currentUserId
+        currentUserId = currentUserId,
+        extensionRequests = extensionRequests,
+        onCreateExtensionRequest = { newDueDate, reason -> viewModel.createExtensionRequest(newDueDate, reason) },
+        onApproveExtension = { requestId -> viewModel.approveExtensionRequest(requestId) },
+        onRejectExtension = { requestId -> viewModel.rejectExtensionRequest(requestId) }
     )
 }
 
@@ -117,11 +128,15 @@ fun TaskDetailScreenContent(
     onSubtaskClick: (String) -> Unit = {},
     onSubtaskEdit: (String) -> Unit = {},
     onSubtaskDelete: (String) -> Unit = {},
-    currentUserId: String = ""
+    currentUserId: String = "",
+    extensionRequests: List<ExtensionRequestItem> = emptyList(),
+    onCreateExtensionRequest: (String, String) -> Unit = { _, _ -> },
+    onApproveExtension: (String) -> Unit = {},
+    onRejectExtension: (String) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val tabs = listOf("Thông tin", "Bình luận", "Công việc con")
+    val tabs = listOf("Thông tin", "Bình luận", "Công việc con", "Gia hạn")
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -296,6 +311,13 @@ fun TaskDetailScreenContent(
                             onSubtaskEdit = onSubtaskClick,
                             onSubtaskDelete = onSubtaskDelete,
                             currentUserId = currentUserId
+                        )
+                        3 -> TaskExtensionTabContent(
+                            requests = extensionRequests,
+                            isOwner = uiState.taskDetail.assigneeId == currentUserId,
+                            onCreate = onCreateExtensionRequest,
+                            onApprove = onApproveExtension,
+                            onReject = onRejectExtension
                         )
                     }
                 }
@@ -754,6 +776,200 @@ private fun CommentItem(comment: CommentItem) {
     }
 }
 
+@Composable
+private fun TaskExtensionTabContent(
+    requests: List<ExtensionRequestItem>,
+    isOwner: Boolean,
+    onCreate: (String, String) -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit
+) {
+    var showForm by remember { mutableStateOf(false) }
+    var newDueDate by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("") }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Yêu cầu gia hạn",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (isOwner) "Bạn là người phụ trách nên chỉ xử lý phê duyệt các yêu cầu gia hạn được gửi đến."
+                               else "Người tham gia có thể gửi yêu cầu gia hạn, người phụ trách xử lý phê duyệt.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+
+        if (!isOwner) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        if (showForm) {
+                            OutlinedTextField(
+                                value = newDueDate,
+                                onValueChange = { newDueDate = it },
+                                label = { Text("Ngày kết thúc mới") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = reason,
+                                onValueChange = { reason = it },
+                                label = { Text("Lý do") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                minLines = 3
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (newDueDate.isNotBlank() && reason.isNotBlank()) {
+                                            onCreate(newDueDate, reason)
+                                            newDueDate = ""
+                                            reason = ""
+                                            showForm = false
+                                        }
+                                    },
+                                    enabled = newDueDate.isNotBlank() && reason.isNotBlank(),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Gửi yêu cầu")
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        showForm = false
+                                        newDueDate = ""
+                                        reason = ""
+                                    }
+                                ) {
+                                    Text("Hủy")
+                                }
+                            }
+                        } else {
+                            Button(
+                                onClick = { showForm = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Schedule, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Xin gia hạn")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        items(requests.size) { index ->
+            val request = requests[index]
+            val isPending = request.status.uppercase() == "PENDING"
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = request.requesterName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Xin gia hạn đến ${request.newDueDate}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White
+                        ) {
+                            Text(
+                                text = request.status,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.DarkGray,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = request.reason,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray
+                    )
+                    if (isOwner && isPending) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onApprove(request.id) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Phê duyệt")
+                            }
+                            OutlinedButton(
+                                onClick = { onReject(request.id) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Từ chối")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (requests.isEmpty()) {
+            item {
+                Text(
+                    text = "Chưa có yêu cầu gia hạn nào.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, name = "Task Detail Screen")
 @Composable
 fun TaskDetailScreenPreview() {
@@ -845,7 +1061,11 @@ fun TaskDetailScreenPreview() {
             onSubtaskClick = {},
             onSubtaskEdit = {},
             onSubtaskDelete = {},
-            currentUserId = "u1"
+            currentUserId = "u1",
+            extensionRequests = emptyList(),
+            onCreateExtensionRequest = { _, _ -> },
+            onApproveExtension = {},
+            onRejectExtension = {}
         )
     }
 }
