@@ -43,7 +43,7 @@ import com.phuongthanh.effiwork_android.viewmodel.task.TaskStatus
 fun TaskCard(
     task: Task,
     onClick: () -> Unit,
-    onMoreClick: () -> Unit = {},
+    onMoreClick: (() -> Unit)? = null,
     onStatusChange: (TaskStatus) -> Unit,
     canChangeStatus: Boolean = false
 ) {
@@ -72,15 +72,15 @@ fun TaskCard(
                     modifier = Modifier.weight(1f)
                 )
                 StatusBadge(task.status, onStatusChange, canChangeStatus)
-                IconButton(
-                    onClick = onMoreClick
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
+                if (onMoreClick != null) {
+                    IconButton(onClick = onMoreClick) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 

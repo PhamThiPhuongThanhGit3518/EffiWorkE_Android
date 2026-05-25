@@ -509,97 +509,103 @@ private fun TaskList(
         items(tasks, key = { it.id }) { task ->
             val isOwner = task.assigneeId == currentUserId
             val isNotOwner = task.assigneeId != currentUserId
+            val isParticipant = task.participantIds.contains(currentUserId)
+            val isInvolved = isOwner || isParticipant
             val hasPendingExtensionRequest = task.pendingExtensionRequestStatus == "PENDING"
-            android.util.Log.d("TaskListDebug", "Task: ${task.name}, assigneeId: ${task.assigneeId}, currentUserId: $currentUserId, isOwner: $isOwner")
+            android.util.Log.d("TaskListDebug", "Task: ${task.name}, assigneeId: ${task.assigneeId}, participantIds: ${task.participantIds}, creatorId: ${task.creatorId}, currentUserId: $currentUserId, isOwner: $isOwner, isParticipant: $isParticipant, isInvolved: $isInvolved")
 
             Box {
                 TaskCard(
                     task = task,
-                    onMoreClick = {
-                        selectedTaskId = task.id
-                        showMenu = true
-                    },
+                    onMoreClick = if (isInvolved) {
+                        {
+                            selectedTaskId = task.id
+                            showMenu = true
+                        }
+                    } else null,
                     onClick = { onTaskClick(task.id) },
                     onStatusChange = { newStatus -> onStatusChange(task.id, newStatus) },
                     canChangeStatus = isOwner
                 )
-                DropdownMenu(
-                    expanded = showMenu && selectedTaskId == task.id,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Thêm công việc con") },
-                        onClick = {
-                            showMenu = false
-                            val groupId = state.groupId
-                            onAddSubtask(state.projectId, task.id, task.name, groupId)
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Add, contentDescription = null)
+                if (isInvolved) {
+                    DropdownMenu(
+                        expanded = showMenu && selectedTaskId == task.id,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Thêm công việc con") },
+                            onClick = {
+                                showMenu = false
+                                val groupId = state.groupId
+                                onAddSubtask(state.projectId, task.id, task.name, groupId)
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Chỉnh sửa") },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToEditTask(state.projectId, task.id)
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                            },
+                            enabled = isOwner
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Xóa") },
+                            onClick = {
+                                showMenu = false
+                                selectedTaskId = task.id
+                                showDeleteDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                            },
+                            enabled = isOwner
+                        )
+                        if (isNotOwner && !hasPendingExtensionRequest) {
+                            DropdownMenuItem(
+                                text = { Text("Xin gia hạn") },
+                                onClick = {
+                                    showMenu = false
+                                    selectedExtensionTaskId = task.id
+                                    showExtensionRequestDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Schedule, contentDescription = null)
+                                }
+                            )
                         }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Chỉnh sửa") },
-                        onClick = {
-                            showMenu = false
-                            onNavigateToEditTask(state.projectId, task.id)
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                        },
-                        enabled = isOwner
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Xóa") },
-                        onClick = {
-                            showMenu = false
-                            selectedTaskId = task.id
-                            showDeleteDialog = true
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                        },
-                        enabled = isOwner
-                    )
-                    if (isNotOwner && !hasPendingExtensionRequest) {
-                        DropdownMenuItem(
-                            text = { Text("Xin gia hạn") },
-                            onClick = {
-                                showMenu = false
-                                selectedExtensionTaskId = task.id
-                                showExtensionRequestDialog = true
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Schedule, contentDescription = null)
-                            }
-                        )
-                    }
-                    if (isOwner && hasPendingExtensionRequest) {
-                        val requestId = task.pendingExtensionRequestId ?: ""
-                        DropdownMenuItem(
-                            text = { Text("Duyệt gia hạn") },
-                            onClick = {
-                                showMenu = false
-                                if (requestId.isNotBlank()) {
-                                    onApproveExtension(task.id, requestId)
+                        if (isOwner && hasPendingExtensionRequest) {
+                            val requestId = task.pendingExtensionRequestId ?: ""
+                            DropdownMenuItem(
+                                text = { Text("Duyệt gia hạn") },
+                                onClick = {
+                                    showMenu = false
+                                    if (requestId.isNotBlank()) {
+                                        onApproveExtension(task.id, requestId)
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Check, contentDescription = null)
                                 }
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Từ chối gia hạn") },
-                            onClick = {
-                                showMenu = false
-                                if (requestId.isNotBlank()) {
-                                    onRejectExtension(task.id, requestId)
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Từ chối gia hạn") },
+                                onClick = {
+                                    showMenu = false
+                                    if (requestId.isNotBlank()) {
+                                        onRejectExtension(task.id, requestId)
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Close, contentDescription = null)
                                 }
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Close, contentDescription = null)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
