@@ -1,6 +1,7 @@
 package com.phuongthanh.effiwork_android.ui.screen.meetings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,8 +37,12 @@ data class MeetingListScreenState(
 @Composable
 fun MeetingListScreen(
     projectId: String = "",
+    currentUserId: String = "",
     onBackClick: () -> Unit = {},
     onCreateClick: () -> Unit = {},
+    onEditClick: (Meeting) -> Unit = {},
+    onDeleteClick: (Meeting) -> Unit = {},
+    onCardClick: (Meeting) -> Unit = {},
     viewModel: MeetingViewModel = hiltViewModel()
 ) {
     var screenState by remember { mutableStateOf(MeetingListScreenState(projectId = projectId)) }
@@ -48,6 +53,7 @@ fun MeetingListScreen(
 
     LaunchedEffect(projectId) {
         viewModel.setProjectId(projectId)
+        viewModel.setCurrentUserId(currentUserId)
         viewModel.loadMeetings()
     }
 
@@ -59,6 +65,8 @@ fun MeetingListScreen(
         viewModel.effect.collectLatest { effect ->
             when (effect) {
                 is MeetingEffect.ShowToast -> {}
+                is MeetingEffect.NavigateBack -> {}
+                is MeetingEffect.MeetingCreated -> {}
             }
         }
     }
@@ -69,7 +77,11 @@ fun MeetingListScreen(
         onCreateClick = onCreateClick,
         onTabSelect = { viewModel.selectTab(it) },
         onFormatSelect = { viewModel.selectFormat(it) },
-        onSearchQueryChange = { viewModel.updateSearchQuery(it) }
+        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+        isHost = { meeting -> viewModel.isHost(meeting) },
+        onCardClick = onCardClick,
+        onEditClick = onEditClick,
+        onDeleteClick = onDeleteClick
     )
 }
 
@@ -81,7 +93,11 @@ fun MeetingListScreenContent(
     onCreateClick: () -> Unit,
     onTabSelect: (MeetingFilterTab) -> Unit,
     onFormatSelect: (String?) -> Unit,
-    onSearchQueryChange: (String) -> Unit
+    onSearchQueryChange: (String) -> Unit,
+    isHost: (Meeting) -> Boolean,
+    onCardClick: (Meeting) -> Unit,
+    onEditClick: (Meeting) -> Unit,
+    onDeleteClick: (Meeting) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -149,31 +165,31 @@ fun MeetingListScreenContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-//                OutlinedTextField(
-//                    value = state.searchQuery,
-//                    onValueChange = onSearchQueryChange,
-//                    modifier = Modifier.weight(1f),
-//                    placeholder = {
-//                        Text("Tìm theo tên hoặc nội dung cuộc họp")
-//                    },
-//                    leadingIcon = {
-//                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-//                    },
-//                    singleLine = true,
-//                    shape = RoundedCornerShape(8.dp),
-//                    colors = OutlinedTextFieldDefaults.colors(
-//                        unfocusedBorderColor = Color.LightGray,
-//                        focusedBorderColor = Blue500
-//                    )
-//                )
-//                Spacer(modifier = Modifier.width(8.dp))
-//                FormatFilterDropdown(
-//                    selectedFormat = state.selectedFormat,
-//                    onFormatSelect = onFormatSelect
-//                )
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text("Tìm theo tên hoặc nội dung cuộc họp")
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedBorderColor = Blue500
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                FormatFilterDropdown(
+                    selectedFormat = state.selectedFormat,
+                    onFormatSelect = onFormatSelect
+                )
             }
 
             when (val uiState = state.uiState) {
@@ -194,14 +210,58 @@ fun MeetingListScreenContent(
                             meeting.format.displayName == state.selectedFormat
                         matchesSearch && matchesFormat
                     }
-                    MeetingList(meetings = filteredMeetings)
+                    if (filteredMeetings.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.EventBusy,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(64.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Chưa có cuộc họp nào",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    } else {
+                        MeetingList(
+                            meetings = filteredMeetings,
+                            isHost = isHost,
+                            onCardClick = onCardClick,
+                            onEditClick = onEditClick,
+                            onDeleteClick = onDeleteClick
+                        )
+                    }
                 }
                 is MeetingUiState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(uiState.message, color = Color.Red)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = Color.Red,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(uiState.message, color = Color.Red)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { /* Retry - handled by parent */ },
+                                colors = ButtonDefaults.buttonColors(containerColor = Blue500)
+                            ) {
+                                Text("Thử lại")
+                            }
+                        }
                     }
                 }
                 else -> {}
@@ -260,20 +320,38 @@ private fun FormatFilterDropdown(
 }
 
 @Composable
-private fun MeetingList(meetings: List<Meeting>) {
+private fun MeetingList(
+    meetings: List<Meeting>,
+    isHost: (Meeting) -> Boolean,
+    onCardClick: (Meeting) -> Unit,
+    onEditClick: (Meeting) -> Unit,
+    onDeleteClick: (Meeting) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(meetings, key = { it.id }) { meeting ->
-            MeetingCard(meeting = meeting)
+            MeetingCard(
+                meeting = meeting,
+                isHost = isHost(meeting),
+                onCardClick = { onCardClick(meeting) },
+                onEditClick = { onEditClick(meeting) },
+                onDeleteClick = { onDeleteClick(meeting) }
+            )
         }
     }
 }
 
 @Composable
-private fun MeetingCard(meeting: Meeting) {
+private fun MeetingCard(
+    meeting: Meeting,
+    isHost: Boolean,
+    onCardClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     val isOnline = meeting.format == MeetingFormat.ONLINE
     val formatColor = if (isOnline) Color(0xFF2196F3) else Color(0xFF9C27B0)
     val statusColor = when (meeting.status) {
@@ -284,7 +362,9 @@ private fun MeetingCard(meeting: Meeting) {
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -319,6 +399,39 @@ private fun MeetingCard(meeting: Meeting) {
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+                if (isHost) {
+                    var showMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Thêm")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Sửa") },
+                                onClick = {
+                                    showMenu = false
+                                    onEditClick()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Xóa") },
+                                onClick = {
+                                    showMenu = false
+                                    onDeleteClick()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -413,9 +526,12 @@ private val previewMeetings = listOf(
         format = MeetingFormat.ONLINE,
         status = MeetingStatus.UPCOMING,
         organizer = "Nguyễn Văn Minh",
+        organizerId = "user1",
         date = "20/05/2026",
         time = "14:00",
-        participants = listOf("Phạm Thị Phương Thanh", "Trần Văn Hoàng")
+        participants = listOf("Phạm Thị Phương Thanh", "Trần Văn Hoàng"),
+        notes = null,
+        meetingTime = null
     ),
     Meeting(
         id = "m2",
@@ -424,9 +540,12 @@ private val previewMeetings = listOf(
         format = MeetingFormat.OFFLINE,
         status = MeetingStatus.ENDED,
         organizer = "Lê Thị Mai",
+        organizerId = "user2",
         date = "15/05/2026",
         time = "09:00",
-        participants = listOf("Hoàng Nam", "Minh Hoàng")
+        participants = listOf("Hoàng Nam", "Minh Hoàng"),
+        notes = null,
+        meetingTime = null
     )
 )
 
@@ -447,7 +566,11 @@ fun MeetingListScreenPreview() {
             onCreateClick = {},
             onTabSelect = {},
             onFormatSelect = {},
-            onSearchQueryChange = {}
+            onSearchQueryChange = {},
+            isHost = { false },
+            onCardClick = {},
+            onEditClick = {},
+            onDeleteClick = {}
         )
     }
 }

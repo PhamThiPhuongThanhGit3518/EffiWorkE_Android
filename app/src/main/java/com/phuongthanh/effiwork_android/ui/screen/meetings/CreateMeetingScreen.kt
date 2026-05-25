@@ -1,5 +1,8 @@
 package com.phuongthanh.effiwork_android.ui.screen.meetings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,41 +18,94 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingEffect
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
+import com.phuongthanh.effiwork_android.viewmodel.meeting.ProjectMember
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateMeetingScreen(
     projectId: String = "",
+    meetingId: String? = null,
+    isEdit: Boolean = false,
     onBackClick: () -> Unit = {},
-    onCreateClick: (String) -> Unit = { _ -> },
+    onNavigateBack: () -> Unit = {},
     viewModel: MeetingViewModel = hiltViewModel()
 ) {
     var meetingTitle by remember { mutableStateOf("") }
-    var organizer by remember { mutableStateOf("") }
-    var meetingFormat by remember { mutableStateOf("") }
-    var dateTime by remember { mutableStateOf("") }
+    var organizerId by remember { mutableStateOf("") }
+    var meetingFormat by remember { mutableStateOf("Offline") }
+    var dateTime by remember { mutableStateOf<Long?>(null) }
+    var dateTimeText by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var selectedParticipantIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedFiles by remember { mutableStateOf(listOf<Uri>( )) }
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf("") }
+    var uploadedDocumentIds by remember { mutableStateOf(listOf<String>()) }
 
     var organizerExpanded by remember { mutableStateOf(false) }
     var formatExpanded by remember { mutableStateOf(false) }
+    var participantExpanded by remember { mutableStateOf(false) }
 
-    val organizers = listOf("Phạm Thị Phương Thanh", "Dương Hùng Phong", "Hoàng Thị Dương", "Nguyễn Văn A", "Trần Thị B")
-    val formats = listOf("Online", "Offline")
-    val participants = listOf("Phạm Thị Phương Thanh", "Dương Hùng Phong", "Hoàng Thị Dương", "Nguyễn Văn A", "Trần Thị B")
+    val context = LocalContext.current
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        selectedFiles = selectedFiles + uris
+    }
+
+    val members by viewModel.projectMembers.collectAsStateWithLifecycle()
+    val editingMeeting by viewModel.editingMeeting.collectAsStateWithLifecycle()
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(projectId) {
         viewModel.setProjectId(projectId)
+        viewModel.loadProjectMembers()
+    }
+
+    LaunchedEffect(projectId, meetingId, isEdit) {
+        if (isEdit && meetingId != null) {
+            viewModel.loadMeetingForEdit(projectId, meetingId)
+        } else {
+            viewModel.resetEditingMeeting()
+        }
+    }
+
+    LaunchedEffect(editingMeeting) {
+        editingMeeting?.let { meeting ->
+            if (isEdit) {
+                meetingTitle = meeting.title
+                content = meeting.description
+                meetingFormat = meeting.format.displayName
+                organizerId = meeting.organizerId
+                notes = meeting.notes ?: ""
+                selectedParticipantIds = emptySet()
+                meeting.meetingTime?.let { timeStr ->
+                    try {
+                        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+                        val date = inputFormat.parse(timeStr.replace("Z", ""))
+                        date?.let { dateTime = it.time }
+                    } catch (e: Exception) { }
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -57,6 +113,12 @@ fun CreateMeetingScreen(
             when (effect) {
                 is MeetingEffect.ShowToast -> {
                     // Handle toast
+                }
+                is MeetingEffect.NavigateBack -> {
+                    onNavigateBack()
+                }
+                is MeetingEffect.MeetingCreated -> {
+                    // Handle meeting created - attach documents
                 }
             }
         }
@@ -68,7 +130,7 @@ fun CreateMeetingScreen(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Text(
-                        text = "Tạo cuộc họp",
+                        text = if (isEdit) "Sửa cuộc họp" else "Tạo cuộc họp",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -93,34 +155,118 @@ fun CreateMeetingScreen(
             ) {
                 Button(
                     onClick = {
-                        val organizerId = organizers.indexOf(organizer).takeIf { it >= 0 }?.toString() ?: ""
-                        viewModel.createMeeting(
-                            title = meetingTitle,
-                            content = content,
-                            organizerId = organizerId,
-                            format = meetingFormat.lowercase(),
-                            scheduledTime = dateTime,
-                            notes = notes.takeIf { it.isNotBlank() },
-                            participantIds = participants.mapIndexedNotNull { index, _ -> index.toString() }
-                        )
-                        onCreateClick(meetingTitle)
+                        isUploading = true
+                        uploadProgress = "Đang tải tài liệu..."
+
+                        viewModel.viewModelScope.launch {
+                            try {
+                                val uploadedIds = mutableListOf<String>()
+                                selectedFiles.forEachIndexed { index, uri ->
+                                    uploadProgress = "Đang tải tài liệu ${index + 1}/${selectedFiles.size}..."
+                                    val fileName = uri.lastPathSegment ?: "file_${index + 1}"
+                                    val inputStream = context.contentResolver.openInputStream(uri)
+                                    val fileBytes = inputStream?.readBytes() ?: byteArrayOf()
+                                    inputStream?.close()
+
+                                    val result = viewModel.uploadDocument(fileName, fileBytes)
+                                    if (result is ApiResult.Success) {
+                                        uploadedIds.add(result.data.id)
+                                    }
+                                }
+
+                                uploadedDocumentIds = uploadedIds
+                                uploadProgress = "Đang tạo cuộc họp..."
+
+                                val formattedTime = dateTime?.let {
+                                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                                        timeZone = TimeZone.getTimeZone("UTC")
+                                    }.format(Date(it))
+                                } ?: ""
+
+                                if (isEdit && meetingId != null) {
+                                    val allParticipantIds = selectedParticipantIds.toMutableList()
+                                    if (!allParticipantIds.contains(organizerId)) {
+                                        allParticipantIds.add(organizerId)
+                                    }
+                                    viewModel.updateMeeting(
+                                        meetingId = meetingId,
+                                        title = meetingTitle,
+                                        content = content,
+                                        hostUserId = organizerId,
+                                        type = meetingFormat.uppercase(),
+                                        meetingTime = formattedTime,
+                                        notes = notes.takeIf { it.isNotBlank() },
+                                        participantIds = allParticipantIds
+                                    )
+                                    // Attach uploaded documents to meeting
+                                    if (uploadedDocumentIds.isNotEmpty()) {
+                                        viewModel.viewModelScope.launch {
+                                            uploadedDocumentIds.forEach { docId ->
+                                                viewModel.attachMeetingDocument(meetingId, docId)
+                                            }
+                                        }
+                                    }
+                                    isUploading = false
+                                    uploadProgress = ""
+                                    onNavigateBack()
+                                } else {
+                                    val allParticipantIds = selectedParticipantIds.toMutableList()
+                                    if (!allParticipantIds.contains(organizerId)) {
+                                        allParticipantIds.add(organizerId)
+                                    }
+                                    android.util.Log.d("MeetingDebug", "Calling createMeeting: title=$meetingTitle, organizerId=$organizerId, type=${meetingFormat.uppercase()}, time=$formattedTime")
+                                    viewModel.createMeeting(
+                                        title = meetingTitle,
+                                        content = content,
+                                        hostUserId = organizerId,
+                                        type = meetingFormat.uppercase(),
+                                        meetingTime = formattedTime,
+                                        notes = notes.takeIf { it.isNotBlank() },
+                                        participantIds = allParticipantIds
+                                    ) { meetingId ->
+                                        // Attach uploaded documents to meeting
+                                        viewModel.viewModelScope.launch {
+                                            uploadedDocumentIds.forEach { docId ->
+                                                viewModel.attachMeetingDocument(meetingId, docId)
+                                            }
+                                            isUploading = false
+                                            uploadProgress = ""
+                                            onNavigateBack()
+                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                isUploading = false
+                                uploadProgress = ""
+                            }
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                         .height(50.dp),
-                    enabled = meetingTitle.isNotBlank(),
+                    enabled = meetingTitle.isNotBlank() && organizerId.isNotBlank() && dateTime != null && !isUploading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Blue500,
                         disabledContainerColor = Blue500.copy(alpha = 0.5f)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        text = "Tạo cuộc họp",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (isUploading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = uploadProgress.ifEmpty { "Đang xử lý..." })
+                    } else {
+                        Text(
+                            text = if (isEdit) "Cập nhật" else "Tạo cuộc họp",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -133,7 +279,6 @@ fun CreateMeetingScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 80.dp)
         ) {
-            // Description text
             Text(
                 text = "Ghi lại thời gian, nội dung, người phụ trách và thành phần tham gia để buổi họp diễn ra có tổ chức",
                 style = MaterialTheme.typography.bodySmall,
@@ -141,7 +286,6 @@ fun CreateMeetingScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
 
-            // Input Fields Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -151,7 +295,6 @@ fun CreateMeetingScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Meeting Title
                     OutlinedTextField(
                         value = meetingTitle,
                         onValueChange = { meetingTitle = it },
@@ -163,13 +306,13 @@ fun CreateMeetingScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Organizer Dropdown
                     ExposedDropdownMenuBox(
                         expanded = organizerExpanded,
                         onExpandedChange = { organizerExpanded = it }
                     ) {
+                        val selectedMember = members.find { it.userId == organizerId }
                         OutlinedTextField(
-                            value = organizer,
+                            value = selectedMember?.fullName ?: "",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Người phụ trách") },
@@ -183,11 +326,11 @@ fun CreateMeetingScreen(
                             expanded = organizerExpanded,
                             onDismissRequest = { organizerExpanded = false }
                         ) {
-                            organizers.forEach { name ->
+                            members.forEach { member ->
                                 DropdownMenuItem(
-                                    text = { Text(name) },
+                                    text = { Text(member.fullName) },
                                     onClick = {
-                                        organizer = name
+                                        organizerId = member.userId
                                         organizerExpanded = false
                                     }
                                 )
@@ -196,7 +339,6 @@ fun CreateMeetingScreen(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Meeting Format Dropdown
                     ExposedDropdownMenuBox(
                         expanded = formatExpanded,
                         onExpandedChange = { formatExpanded = it }
@@ -216,7 +358,7 @@ fun CreateMeetingScreen(
                             expanded = formatExpanded,
                             onDismissRequest = { formatExpanded = false }
                         ) {
-                            formats.forEach { format ->
+                            listOf("Online", "Offline").forEach { format ->
                                 DropdownMenuItem(
                                     text = { Text(format) },
                                     onClick = {
@@ -229,27 +371,34 @@ fun CreateMeetingScreen(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // DateTime Picker
                     OutlinedTextField(
-                        value = dateTime,
-                        onValueChange = { dateTime = it },
+                        value = dateTimeText,
+                        onValueChange = {},
                         label = { Text("Thời gian họp") },
                         placeholder = { Text("Chọn ngày và giờ") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDatePicker = true },
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
+                        enabled = false,
                         trailingIcon = {
-                            IconButton(onClick = { /* Open datetime picker */ }) {
+                            IconButton(onClick = { showDatePicker = true }) {
                                 Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.Gray)
                             }
-                        }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Detailed Info Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -266,7 +415,6 @@ fun CreateMeetingScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Content
                     OutlinedTextField(
                         value = content,
                         onValueChange = { content = it },
@@ -279,7 +427,6 @@ fun CreateMeetingScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Notes
                     OutlinedTextField(
                         value = notes,
                         onValueChange = { notes = it },
@@ -295,7 +442,70 @@ fun CreateMeetingScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Attachments Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Người tham gia",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = participantExpanded,
+                        onExpandedChange = { participantExpanded = it }
+                    ) {
+                        val selectedNames = members.filter { it.userId in selectedParticipantIds }.map { it.fullName }
+                        OutlinedTextField(
+                            value = if (selectedNames.isEmpty()) "Chọn người tham gia" else selectedNames.joinToString(", "),
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = participantExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = participantExpanded,
+                            onDismissRequest = { participantExpanded = false }
+                        ) {
+                            members.forEach { member ->
+                                val isSelected = member.userId in selectedParticipantIds
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(
+                                                checked = isSelected,
+                                                onCheckedChange = null
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(member.fullName)
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedParticipantIds = if (isSelected) {
+                                            selectedParticipantIds - member.userId
+                                        } else {
+                                            selectedParticipantIds + member.userId
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -315,35 +525,33 @@ fun CreateMeetingScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Dashed border upload area
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp)
+                            .height(100.dp)
                             .border(
                                 width = 1.dp,
                                 color = Color.LightGray,
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .clickable { /* Open file picker */ },
+                            .clickable { filePickerLauncher.launch("*/*") },
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                Icons.Default.Description,
+                                Icons.Default.Add,
                                 contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(40.dp)
+                                tint = Blue500,
+                                modifier = Modifier.size(32.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tải tài liệu đính kèm",
+                                text = "Thêm tài liệu",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Blue500
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX (tối đa 20MB)",
                                 style = MaterialTheme.typography.bodySmall,
@@ -351,90 +559,105 @@ fun CreateMeetingScreen(
                             )
                         }
                     }
+
+                    if (selectedFiles.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        selectedFiles.forEachIndexed { index, uri ->
+                            val fileName = uri.lastPathSegment ?: "File ${index + 1}"
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Description,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = fileName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                IconButton(
+                                    onClick = { selectedFiles = selectedFiles.filterIndexed { i, _ -> i != index } },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Xóa",
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Create Meeting Screen")
-@Composable
-fun CreateMeetingScreenPreview() {
-    MaterialTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        dateTime = millis
+                        dateTimeText = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))
+                    }
+                    showDatePicker = false
+                    showTimePicker = true
+                }) {
+                    Text("Tiếp theo")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Hủy")
+                }
+            }
         ) {
-            // Top App Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Tạo cuộc họp",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                // Input Fields Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
-                            value = "Họp kick-off dự án",
-                            onValueChange = {},
-                            label = { Text("Tiêu đề cuộc họp") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = "Phạm Thị Phương Thanh",
-                            onValueChange = {},
-                            label = { Text("Người phụ trách") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Detailed Info Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Thông tin chi tiết", fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = "Thảo luận kế hoạch triển khai",
-                            onValueChange = {},
-                            label = { Text("Nội dung họp") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                    }
-                }
-            }
+            DatePicker(state = datePickerState)
         }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState()
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    dateTime?.let { dateMillis ->
+                        val calendar = Calendar.getInstance().apply {
+                            timeInMillis = dateMillis
+                            set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                            set(Calendar.MINUTE, timePickerState.minute)
+                        }
+                        dateTime = calendar.timeInMillis
+                        dateTimeText = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(calendar.timeInMillis))
+                    }
+                    showTimePicker = false
+                }) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Hủy")
+                }
+            },
+            title = { Text("Chọn giờ") },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
     }
 }

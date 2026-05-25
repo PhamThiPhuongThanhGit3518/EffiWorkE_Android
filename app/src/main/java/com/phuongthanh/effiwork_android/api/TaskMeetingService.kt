@@ -5,6 +5,7 @@ import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
@@ -131,7 +132,7 @@ interface MeetingService {
     @GET("v1/projects/{projectId}/meetings")
     suspend fun getMeetings(
         @Path("projectId") projectId: String,
-        @Query("format") format: String? = null
+        @Query("type") type: String? = null
     ): ApiResponse<List<MeetingResponse>>
 
     @POST("v1/projects/{projectId}/meetings")
@@ -139,4 +140,30 @@ interface MeetingService {
         @Path("projectId") projectId: String,
         @Body request: CreateMeetingRequest
     ): ApiResponse<MeetingResponse>
+
+    @GET("v1/projects/{projectId}/meetings/{meetingId}")
+    suspend fun getMeetingDetail(
+        @Path("projectId") projectId: String,
+        @Path("meetingId") meetingId: String
+    ): ApiResponse<MeetingResponse>
+
+    @PATCH("v1/projects/{projectId}/meetings/{meetingId}")
+    suspend fun updateMeeting(
+        @Path("projectId") projectId: String,
+        @Path("meetingId") meetingId: String,
+        @Body request: UpdateMeetingRequest
+    ): ApiResponse<MeetingResponse>
+
+    @DELETE("v1/projects/{projectId}/meetings/{meetingId}")
+    suspend fun deleteMeeting(
+        @Path("projectId") projectId: String,
+        @Path("meetingId") meetingId: String
+    ): ApiResponse<Unit>
+
+    @POST("v1/projects/{projectId}/meetings/{meetingId}/attachments")
+    suspend fun attachMeetingDocument(
+        @Path("projectId") projectId: String,
+        @Path("meetingId") meetingId: String,
+        @Body request: Map<String, String>
+    ): ApiResponse<Unit>
 }

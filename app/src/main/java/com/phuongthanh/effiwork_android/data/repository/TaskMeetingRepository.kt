@@ -6,9 +6,11 @@ import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
+import com.phuongthanh.effiwork_android.data.model.response.DocumentResponse
 
 interface TaskRepository {
     suspend fun getTasks(projectId: String, sectionId: String? = null, status: String? = null, assigneeId: String? = null, parentTaskId: String? = null): ApiResult<List<TaskResponse>>
@@ -34,4 +36,12 @@ interface TaskRepository {
 interface MeetingRepository {
     suspend fun getMeetings(projectId: String, format: String? = null): ApiResult<List<MeetingResponse>>
     suspend fun createMeeting(projectId: String, request: CreateMeetingRequest): ApiResult<MeetingResponse>
+    suspend fun getMeetingDetail(projectId: String, meetingId: String): ApiResult<MeetingResponse>
+    suspend fun updateMeeting(projectId: String, meetingId: String, request: UpdateMeetingRequest): ApiResult<MeetingResponse>
+    suspend fun deleteMeeting(projectId: String, meetingId: String): ApiResult<Unit>
+    suspend fun attachMeetingDocument(projectId: String, meetingId: String, documentId: String): ApiResult<Unit>
+}
+
+interface DocumentRepository {
+    suspend fun uploadDocument(projectId: String, fileName: String, fileBytes: ByteArray): ApiResult<DocumentResponse>
 }

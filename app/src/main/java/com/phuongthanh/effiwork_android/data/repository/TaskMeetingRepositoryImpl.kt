@@ -2,13 +2,18 @@ package com.phuongthanh.effiwork_android.data.repository
 
 import android.util.Log
 import com.phuongthanh.effiwork_android.api.ApiResult
+import com.phuongthanh.effiwork_android.api.DocumentService
 import com.phuongthanh.effiwork_android.api.MeetingService
 import com.phuongthanh.effiwork_android.api.TaskService
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionRequest
+import com.phuongthanh.effiwork_android.data.model.request.UpdateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
@@ -366,7 +371,68 @@ class MeetingRepositoryImpl @Inject constructor(
     override suspend fun getMeetings(projectId: String, format: String?): ApiResult<List<MeetingResponse>> {
         return withContext(Dispatchers.IO) {
             try {
+                android.util.Log.d("MeetingDebug", "MeetingRepository.getMeetings: projectId=$projectId, format=$format")
                 val response = meetingService.getMeetings(projectId, format)
+                android.util.Log.d("MeetingDebug", "MeetingRepository.getMeetings response: success=${response.success}, data=${response.data?.size} items")
+                if (response.success && response.data != null) {
+                    ApiResult.Success(response.data)
+                } else {
+                    android.util.Log.e("MeetingDebug", "MeetingRepository.getMeetings FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MeetingDebug", "MeetingRepository.getMeetings EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun createMeeting(projectId: String, request: CreateMeetingRequest): ApiResult<MeetingResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d("MeetingDebug", "MeetingRepository.createMeeting: projectId=$projectId")
+                android.util.Log.d("MeetingDebug", "  request - title=${request.title}, type=${request.type}, meetingTime=${request.meetingTime}, hostUserId=${request.hostUserId}")
+                android.util.Log.d("MeetingDebug", "  request - content=${request.content}, note=${request.note}, participantIds=${request.participantIds}, attachmentDocumentIds=${request.attachmentDocumentIds}")
+                val response = meetingService.createMeeting(projectId, request)
+                android.util.Log.d("MeetingDebug", "MeetingRepository.createMeeting response: success=${response.success}, message=${response.message}")
+                if (response.success && response.data != null) {
+                    android.util.Log.d("MeetingDebug", "MeetingRepository.createMeeting SUCCESS: id=${response.data.id}")
+                    ApiResult.Success(response.data)
+                } else {
+                    android.util.Log.e("MeetingDebug", "MeetingRepository.createMeeting FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MeetingDebug", "MeetingRepository.createMeeting EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun getMeetingDetail(projectId: String, meetingId: String): ApiResult<MeetingResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d("MeetingDebug", "MeetingRepository.getMeetingDetail: projectId=$projectId, meetingId=$meetingId")
+                val response = meetingService.getMeetingDetail(projectId, meetingId)
+                android.util.Log.d("MeetingDebug", "MeetingRepository.getMeetingDetail response: success=${response.success}, message=${response.message}")
+                if (response.success && response.data != null) {
+                    android.util.Log.d("MeetingDebug", "MeetingRepository.getMeetingDetail SUCCESS: ${response.data}")
+                    ApiResult.Success(response.data)
+                } else {
+                    android.util.Log.e("MeetingDebug", "MeetingRepository.getMeetingDetail FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MeetingDebug", "MeetingRepository.getMeetingDetail EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun updateMeeting(projectId: String, meetingId: String, request: UpdateMeetingRequest): ApiResult<MeetingResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = meetingService.updateMeeting(projectId, meetingId, request)
                 if (response.success && response.data != null) {
                     ApiResult.Success(response.data)
                 } else {
@@ -378,16 +444,61 @@ class MeetingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createMeeting(projectId: String, request: CreateMeetingRequest): ApiResult<MeetingResponse> {
+    override suspend fun deleteMeeting(projectId: String, meetingId: String): ApiResult<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = meetingService.createMeeting(projectId, request)
-                if (response.success && response.data != null) {
-                    ApiResult.Success(response.data)
+                android.util.Log.d("MeetingDebug", "MeetingRepository.deleteMeeting: projectId=$projectId, meetingId=$meetingId")
+                val response = meetingService.deleteMeeting(projectId, meetingId)
+                android.util.Log.d("MeetingDebug", "MeetingRepository.deleteMeeting response: success=${response.success}, message=${response.message}")
+                if (response.success) {
+                    android.util.Log.d("MeetingDebug", "MeetingRepository.deleteMeeting SUCCESS")
+                    ApiResult.Success(Unit)
+                } else {
+                    android.util.Log.e("MeetingDebug", "MeetingRepository.deleteMeeting FAILED: ${response.message}")
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MeetingDebug", "MeetingRepository.deleteMeeting EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun attachMeetingDocument(projectId: String, meetingId: String, documentId: String): ApiResult<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = meetingService.attachMeetingDocument(projectId, meetingId, mapOf("documentId" to documentId))
+                if (response.success) {
+                    ApiResult.Success(Unit)
                 } else {
                     ApiResult.Error(response.message)
                 }
             } catch (e: Exception) {
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
+@Singleton
+class DocumentRepositoryImpl @Inject constructor(
+    private val documentService: DocumentService
+) : DocumentRepository {
+
+    override suspend fun uploadDocument(projectId: String, fileName: String, fileBytes: ByteArray): ApiResult<DocumentResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val requestBody = fileBytes.toRequestBody("application/octet-stream".toMediaTypeOrNull())
+                val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
+
+                val response = documentService.uploadDocument(projectId, part)
+                if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                    ApiResult.Success(response.body()!!.data!!)
+                } else {
+                    ApiResult.Error(response.message() ?: "Upload failed")
+                }
+            } catch (e: Exception) {
+                Log.e("DocumentRepository", "uploadDocument EXCEPTION: ${e.message}", e)
                 ApiResult.Error(e.message ?: "Unknown error")
             }
         }

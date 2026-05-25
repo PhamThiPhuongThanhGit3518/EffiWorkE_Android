@@ -48,22 +48,41 @@ data class UpdateTaskRequest(
 )
 
 data class CreateMeetingRequest(
-    @SerializedName("projectId")
-    val projectId: String,
     @SerializedName("title")
     val title: String,
+    @SerializedName("type")
+    val type: String,
+    @SerializedName("meetingTime")
+    val meetingTime: String,
+    @SerializedName("hostUserId")
+    val hostUserId: String,
     @SerializedName("content")
-    val content: String,
-    @SerializedName("organizerId")
-    val organizerId: String,
-    @SerializedName("format")
-    val format: String,
-    @SerializedName("scheduledTime")
-    val scheduledTime: String,
-    @SerializedName("notes")
-    val notes: String?,
+    val content: String?,
+    @SerializedName("note")
+    val note: String?,
     @SerializedName("participantIds")
-    val participantIds: List<String>
+    val participantIds: List<String>,
+    @SerializedName("attachmentDocumentIds")
+    val attachmentDocumentIds: List<String>?
+)
+
+data class UpdateMeetingRequest(
+    @SerializedName("title")
+    val title: String?,
+    @SerializedName("type")
+    val type: String?,
+    @SerializedName("meetingTime")
+    val meetingTime: String?,
+    @SerializedName("hostUserId")
+    val hostUserId: String?,
+    @SerializedName("content")
+    val content: String?,
+    @SerializedName("note")
+    val note: String?,
+    @SerializedName("participantIds")
+    val participantIds: List<String>?,
+    @SerializedName("attachmentDocumentIds")
+    val attachmentDocumentIds: List<String>?
 )
 
 data class CreateExtensionRequest(

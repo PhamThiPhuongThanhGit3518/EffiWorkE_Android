@@ -49,28 +49,57 @@ data class MeetingResponse(
     val projectId: String,
     val title: String?,
     val content: String?,
-    val organizerId: String?,
-    val organizerName: String?,
-    val format: String?,
-    val scheduledTime: String?,
+    // Server field: hostUserId - Android uses organizerId
+    @SerializedName("hostUserId") val organizerId: String?,
+    // Server field: hostUser.fullName - Android uses organizerName
+    @SerializedName("hostUser") val hostUser: HostUserInfo?,
+    // Server field: type - Android uses format
+    val type: String?,
+    // Server field: meetingTime - Android uses scheduledTime
+    @SerializedName("meetingTime") val scheduledTime: String?,
     val status: String?,
-    val notes: String?,
+    // Server field: note - Android uses notes
+    @SerializedName("note") val notes: String?,
     val participants: List<MeetingParticipant>?,
     val attachments: List<Attachment>?,
     val createdAt: String?,
     val updatedAt: String?
 )
 
+data class HostUserInfo(
+    val id: String,
+    val fullName: String?,
+    val email: String?,
+    val avatarUrl: String?
+)
+
 data class MeetingParticipant(
     val userId: String,
-    val userName: String?
+    // Server field: user.fullName - Android uses userName
+    val user: MeetingParticipantUserInfo?
+)
+
+data class MeetingParticipantUserInfo(
+    val id: String,
+    val fullName: String?,
+    val email: String?,
+    val avatarUrl: String?
 )
 
 data class Attachment(
     val id: String,
     val fileName: String,
-    val fileUrl: String,
+    @SerializedName("filePath") val fileUrl: String?,
     val fileSize: Long
+)
+
+data class DocumentResponse(
+    val id: String,
+    val fileName: String,
+    val filePath: String?,
+    val mimeType: String?,
+    val fileSize: Long,
+    val createdAt: String?
 )
 
 data class SectionInfo(
