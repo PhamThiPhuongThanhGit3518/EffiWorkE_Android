@@ -360,23 +360,29 @@ class MeetingViewModel @Inject constructor(
 
     fun deleteMeeting(projectId: String, meetingId: String) {
         viewModelScope.launch {
-            _uiState.value = MeetingUiState.Loading
+            // Optimistic update - xóa ngay trên UI
+            val currentState = _uiState.value
+            if (currentState is MeetingUiState.Success) {
+                val updatedList = currentState.meetings.filter { it.id != meetingId }
+                _uiState.value = MeetingUiState.Success(updatedList)
+            }
+
             android.util.Log.d("MeetingDebug", "deleteMeeting: projectId=$projectId, meetingId=$meetingId")
 
             when (val result = meetingRepository.deleteMeeting(projectId, meetingId)) {
                 is ApiResult.Success -> {
                     android.util.Log.d("MeetingDebug", "deleteMeeting SUCCESS")
                     _effect.emit(MeetingEffect.ShowToast("Xóa cuộc họp thành công"))
+                    // Reload để đồng bộ với server (phòng trường hợp có thay đổi khác)
                     loadMeetings()
                 }
                 is ApiResult.Error -> {
                     android.util.Log.e("MeetingDebug", "deleteMeeting ERROR: ${result.message}")
-                    _uiState.value = MeetingUiState.Error(result.message)
-                    _effect.emit(MeetingEffect.ShowToast(result.message))
+                    _effect.emit(MeetingEffect.ShowToast("Xóa thất bại: ${result.message}"))
+                    // Rollback: reload lại nếu lỗi
+                    loadMeetings()
                 }
-                is ApiResult.Loading -> {
-                    _uiState.value = MeetingUiState.Loading
-                }
+                is ApiResult.Loading -> {}
             }
         }
     }

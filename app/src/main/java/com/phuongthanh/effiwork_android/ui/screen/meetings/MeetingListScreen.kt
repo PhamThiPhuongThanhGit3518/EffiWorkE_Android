@@ -43,13 +43,24 @@ fun MeetingListScreen(
     onEditClick: (Meeting) -> Unit = {},
     onDeleteClick: (Meeting) -> Unit = {},
     onCardClick: (Meeting) -> Unit = {},
-    viewModel: MeetingViewModel = hiltViewModel()
+    viewModel: MeetingViewModel
 ) {
     var screenState by remember { mutableStateOf(MeetingListScreenState(projectId = projectId)) }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val selectedFormat by viewModel.selectedFormat.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+
+    // Đồng bộ tất cả state từ ViewModel vào screenState
+    LaunchedEffect(uiState, selectedTab, selectedFormat, searchQuery) {
+        screenState = screenState.copy(
+            uiState = uiState,
+            selectedTab = selectedTab,
+            selectedFormat = selectedFormat,
+            searchQuery = searchQuery
+        )
+    }
 
     LaunchedEffect(projectId) {
         viewModel.setProjectId(projectId)
@@ -57,15 +68,13 @@ fun MeetingListScreen(
         viewModel.loadMeetings()
     }
 
-    LaunchedEffect(uiState) {
-        screenState = screenState.copy(uiState = uiState)
-    }
-
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is MeetingEffect.ShowToast -> {}
-                is MeetingEffect.NavigateBack -> {}
+                is MeetingEffect.ShowToast -> {
+                    // TODO: Hiển thị Toast nếu cần
+                }
+                is MeetingEffect.NavigateBack -> onBackClick()
                 is MeetingEffect.MeetingCreated -> {}
             }
         }

@@ -340,7 +340,8 @@ fun MainScreen(
                     },
                     onCardClick = { meeting ->
                         navController.navigate(NavRoutes.meetingDetail(projectId, meeting.id))
-                    }
+                    },
+                    viewModel = meetingViewModel
                 )
             }
             composable(
