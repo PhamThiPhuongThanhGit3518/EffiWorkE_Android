@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.phuongthanh.effiwork_android.BuildConfig
 import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
+import com.phuongthanh.effiwork_android.api.DocumentService
 import com.phuongthanh.effiwork_android.api.MeetingService
 import com.phuongthanh.effiwork_android.api.ProjectService
 import com.phuongthanh.effiwork_android.api.TaskService
@@ -99,5 +100,11 @@ object NetworkModule {
     @Singleton
     fun provideMeetingService(retrofit: Retrofit): MeetingService {
         return retrofit.create(MeetingService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDocumentService(retrofit: Retrofit): DocumentService {
+        return retrofit.create(DocumentService::class.java)
     }
 }

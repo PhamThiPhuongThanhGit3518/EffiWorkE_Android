@@ -6,6 +6,8 @@ import com.phuongthanh.effiwork_android.data.local.AppPreferences
 import com.phuongthanh.effiwork_android.data.local.TokenManager
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.AuthRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.DocumentRepository
+import com.phuongthanh.effiwork_android.data.repository.DocumentRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.MeetingRepository
 import com.phuongthanh.effiwork_android.data.repository.MeetingRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
@@ -71,5 +73,13 @@ object AppModule {
         meetingRepositoryImpl: MeetingRepositoryImpl
     ): MeetingRepository {
         return meetingRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideDocumentRepository(
+        documentRepositoryImpl: DocumentRepositoryImpl
+    ): DocumentRepository {
+        return documentRepositoryImpl
     }
 }
