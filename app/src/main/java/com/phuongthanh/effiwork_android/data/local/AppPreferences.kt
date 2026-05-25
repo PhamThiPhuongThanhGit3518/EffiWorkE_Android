@@ -8,9 +8,9 @@ import javax.inject.Singleton
 
 @Singleton
 class AppPreferences @Inject constructor(
-    @ApplicationContext context: Context
+    private val sharedPreferences: SharedPreferences
 ) {
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = sharedPreferences
 
     fun saveSelectedProjectId(projectId: String) {
         prefs.edit().putString(KEY_SELECTED_PROJECT_ID, projectId).apply()

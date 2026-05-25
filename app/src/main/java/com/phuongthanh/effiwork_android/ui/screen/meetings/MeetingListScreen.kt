@@ -400,6 +400,7 @@ private fun MeetingCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                android.util.Log.d("MeetingCardDebug", "Meeting: ${meeting.title}, organizerId: ${meeting.organizerId}, isHost: $isHost")
                 if (isHost) {
                     var showMenu by remember { mutableStateOf(false) }
                     Box {

@@ -39,8 +39,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAppPreferences(@ApplicationContext context: Context): AppPreferences {
-        return AppPreferences(context)
+    fun provideAppPreferences(sharedPreferences: SharedPreferences): AppPreferences {
+        return AppPreferences(sharedPreferences)
     }
 
     @Provides

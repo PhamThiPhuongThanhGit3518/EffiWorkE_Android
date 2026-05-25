@@ -23,6 +23,31 @@ class AuthViewModel @Inject constructor(
     private val _isLoggedIn = MutableStateFlow(authRepository.isLoggedIn())
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
+    private val _currentUserId = MutableStateFlow("")
+    val currentUserId: StateFlow<String> = _currentUserId.asStateFlow()
+
+    fun syncCurrentUserId() {
+        android.util.Log.d("AuthViewModelDebug", "syncCurrentUserId called, isLoggedIn=${authRepository.isLoggedIn()}")
+        if (authRepository.isLoggedIn()) {
+            val savedUserId = authRepository.getCurrentUserId()
+            android.util.Log.d("AuthViewModelDebug", "syncCurrentUserId: savedUserId=$savedUserId")
+            if (!savedUserId.isNullOrEmpty()) {
+                _currentUserId.value = savedUserId
+            }
+        }
+    }
+
+    init {
+        android.util.Log.d("AuthViewModelDebug", "init: isLoggedIn=${authRepository.isLoggedIn()}, savedUserId=${authRepository.getCurrentUserId()}")
+        if (authRepository.isLoggedIn()) {
+            val savedUserId = authRepository.getCurrentUserId()
+            if (!savedUserId.isNullOrEmpty()) {
+                _currentUserId.value = savedUserId
+                android.util.Log.d("AuthViewModelDebug", "Restored currentUserId: ${savedUserId}")
+            }
+        }
+    }
+
     fun login(identifier: String, password: String) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
@@ -30,6 +55,7 @@ class AuthViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     _uiState.value = AuthUiState.Success(result.data.user)
                     _isLoggedIn.value = true
+                    _currentUserId.value = result.data.user.id
                 }
                 is ApiResult.Error -> {
                     _uiState.value = AuthUiState.Error(result.message)

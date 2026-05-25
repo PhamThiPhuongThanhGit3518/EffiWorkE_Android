@@ -358,13 +358,12 @@ class MeetingViewModel @Inject constructor(
         }
     }
 
-    fun deleteMeeting(meetingId: String) {
+    fun deleteMeeting(projectId: String, meetingId: String) {
         viewModelScope.launch {
             _uiState.value = MeetingUiState.Loading
-            val projectIdValue = _projectId.value
-            android.util.Log.d("MeetingDebug", "deleteMeeting: projectId=$projectIdValue, meetingId=$meetingId")
+            android.util.Log.d("MeetingDebug", "deleteMeeting: projectId=$projectId, meetingId=$meetingId")
 
-            when (val result = meetingRepository.deleteMeeting(projectIdValue, meetingId)) {
+            when (val result = meetingRepository.deleteMeeting(projectId, meetingId)) {
                 is ApiResult.Success -> {
                     android.util.Log.d("MeetingDebug", "deleteMeeting SUCCESS")
                     _effect.emit(MeetingEffect.ShowToast("Xóa cuộc họp thành công"))
@@ -393,7 +392,9 @@ class MeetingViewModel @Inject constructor(
     }
 
     fun isHost(meeting: Meeting): Boolean {
-        return meeting.organizerId == _currentUserId.value
+        val result = meeting.organizerId == _currentUserId.value
+        android.util.Log.d("MeetingDebug", "isHost check: meeting.organizerId=${meeting.organizerId}, _currentUserId=${_currentUserId.value}, result=$result")
+        return result
     }
 
     fun loadMeetingForEdit(projectId: String, meetingId: String) {

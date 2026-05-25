@@ -80,7 +80,8 @@ fun MainScreen(
     meetingViewModel: MeetingViewModel = hiltViewModel()
 ) {
     val authRepository = rememberAuthRepository()
-    val currentUserId = authRepository.getCurrentUserId() ?: ""
+    val currentUserId by authViewModel.currentUserId.collectAsStateWithLifecycle()
+    android.util.Log.d("MainScreenDebug", "currentUserId from authViewModel: $currentUserId")
     val navController = rememberNavController()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val navItems = listOf(
@@ -101,6 +102,8 @@ fun MainScreen(
                     inclusive = true
                 }
             }
+        } else {
+            authViewModel.syncCurrentUserId()
         }
     }
 
@@ -333,8 +336,7 @@ fun MainScreen(
                         navController.navigate(NavRoutes.editMeeting(projectId, meeting.id))
                     },
                     onDeleteClick = { meeting ->
-                        meetingViewModel.deleteMeeting(meeting.id)
-                        meetingViewModel.loadMeetings()
+                        meetingViewModel.deleteMeeting(projectId, meeting.id)
                     },
                     onCardClick = { meeting ->
                         navController.navigate(NavRoutes.meetingDetail(projectId, meeting.id))
@@ -372,7 +374,7 @@ fun MainScreen(
                         navController.navigate(NavRoutes.editMeeting(projectId, meetingId))
                     },
                     onDeleteClick = {
-                        meetingViewModel.deleteMeeting(meetingId)
+                        meetingViewModel.deleteMeeting(projectId, meetingId)
                         navController.popBackStack()
                     }
                 )
