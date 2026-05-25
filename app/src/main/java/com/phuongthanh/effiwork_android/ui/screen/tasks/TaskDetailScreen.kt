@@ -87,10 +87,17 @@ fun TaskDetailScreen(
         ParentTaskInfo(detail.id, detail.title, detail.groupId)
     } ?: ParentTaskInfo("", "", "")
 
+    val taskDetailData = (uiState as? TaskDetailUiState.Success)?.taskDetail
+    val isOwner = taskDetailData?.assigneeId == currentUserId
+    val isParticipant = taskDetailData?.participantIds?.contains(currentUserId) ?: false
+    val isInvolved = isOwner || isParticipant
+
     val extensionRequests = when (val state = extensionRequestsState) {
         is ExtensionRequestUiState.Success -> state.requests
         else -> emptyList()
     }
+
+    android.util.Log.d("TaskDetailDebug", "currentUserId: $currentUserId, assigneeId: ${taskDetailData?.assigneeId}, isOwner: $isOwner, isInvolved: $isInvolved")
 
     TaskDetailScreenContent(
         state = screenState,
@@ -105,6 +112,8 @@ fun TaskDetailScreen(
         onSubtaskStatusChange = { subtaskId, newStatus -> viewModel.updateSubtaskStatus(subtaskId, newStatus) },
         onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) },
         currentUserId = currentUserId,
+        isOwner = isOwner,
+        isParticipant = isParticipant,
         extensionRequests = extensionRequests,
         onCreateExtensionRequest = { newDueDate, reason -> viewModel.createExtensionRequest(newDueDate, reason) },
         onApproveExtension = { requestId -> viewModel.approveExtensionRequest(requestId) },
@@ -129,6 +138,8 @@ fun TaskDetailScreenContent(
     onSubtaskEdit: (String) -> Unit = {},
     onSubtaskDelete: (String) -> Unit = {},
     currentUserId: String = "",
+    isOwner: Boolean = false,
+    isParticipant: Boolean = false,
     extensionRequests: List<ExtensionRequestItem> = emptyList(),
     onCreateExtensionRequest: (String, String) -> Unit = { _, _ -> },
     onApproveExtension: (String) -> Unit = {},
@@ -177,47 +188,51 @@ fun TaskDetailScreenContent(
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Thêm tùy chọn",
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Thêm công việc con") },
-                                onClick = {
-                                    showMenu = false
-                                    onAddSubtask()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Add, contentDescription = null)
+                    if (isOwner || isParticipant) {
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Thêm tùy chọn",
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Thêm công việc con") },
+                                    onClick = {
+                                        showMenu = false
+                                        onAddSubtask()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Add, contentDescription = null)
+                                    }
+                                )
+                                if (isOwner) {
+                                    DropdownMenuItem(
+                                        text = { Text("Chỉnh sửa") },
+                                        onClick = {
+                                            showMenu = false
+                                            onEditTask()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Edit, contentDescription = null)
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Xóa") },
+                                        onClick = {
+                                            showMenu = false
+                                            showDeleteDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                                        }
+                                    )
                                 }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Chỉnh sửa") },
-                                onClick = {
-                                    showMenu = false
-                                    onEditTask()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Edit, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Xóa") },
-                                onClick = {
-                                    showMenu = false
-                                    showDeleteDialog = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                                }
-                            )
+                            }
                         }
                     }
                 }

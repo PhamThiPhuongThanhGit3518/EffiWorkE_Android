@@ -30,6 +30,7 @@ import com.phuongthanh.effiwork_android.ui.screen.tasks.CreateTaskListScreen
 import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingListScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.CreateMeetingScreen
+import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingDetailScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
@@ -56,6 +57,8 @@ object NavRoutes {
     const val EDIT_TASK = "edit_task/{projectId}/{taskId}"
     const val MEETING_LIST = "meeting_list/{projectId}"
     const val CREATE_MEETING = "create_meeting/{projectId}"
+    const val MEETING_DETAIL = "meeting_detail/{projectId}/{meetingId}"
+    const val EDIT_MEETING = "edit_meeting/{projectId}/{meetingId}"
 
     fun projectSetting(projectId: String) = "project_setting/$projectId"
     fun taskGroupList(projectId: String, projectName: String) = "task_group_list/$projectId/$projectName"
@@ -66,14 +69,18 @@ object NavRoutes {
     fun editTask(projectId: String, taskId: String) = "edit_task/$projectId/$taskId"
     fun meetingList(projectId: String) = "meeting_list/$projectId"
     fun createMeeting(projectId: String) = "create_meeting/$projectId"
+    fun meetingDetail(projectId: String, meetingId: String) = "meeting_detail/$projectId/$meetingId"
+    fun editMeeting(projectId: String, meetingId: String) = "edit_meeting/$projectId/$meetingId"
 }
 
 @Composable
 fun MainScreen(
     projectsViewModel: ProjectsViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    meetingViewModel: MeetingViewModel = hiltViewModel()
 ) {
     val authRepository = rememberAuthRepository()
+    val currentUserId = authRepository.getCurrentUserId() ?: ""
     val navController = rememberNavController()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val navItems = listOf(
@@ -319,8 +326,19 @@ fun MainScreen(
                 val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
                 MeetingListScreen(
                     projectId = projectId,
+                    currentUserId = currentUserId,
                     onBackClick = { navController.popBackStack() },
-                    onCreateClick = { navController.navigate(NavRoutes.createMeeting(projectId)) }
+                    onCreateClick = { navController.navigate(NavRoutes.createMeeting(projectId)) },
+                    onEditClick = { meeting ->
+                        navController.navigate(NavRoutes.editMeeting(projectId, meeting.id))
+                    },
+                    onDeleteClick = { meeting ->
+                        meetingViewModel.deleteMeeting(meeting.id)
+                        meetingViewModel.loadMeetings()
+                    },
+                    onCardClick = { meeting ->
+                        navController.navigate(NavRoutes.meetingDetail(projectId, meeting.id))
+                    }
                 )
             }
             composable(
@@ -331,7 +349,49 @@ fun MainScreen(
                 CreateMeetingScreen(
                     projectId = projectId,
                     onBackClick = { navController.popBackStack() },
-                    onCreateClick = {
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.MEETING_DETAIL,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("meetingId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val meetingId = backStackEntry.arguments?.getString("meetingId") ?: return@composable
+                MeetingDetailScreen(
+                    projectId = projectId,
+                    meetingId = meetingId,
+                    currentUserId = currentUserId,
+                    onBackClick = { navController.popBackStack() },
+                    onEditClick = {
+                        navController.navigate(NavRoutes.editMeeting(projectId, meetingId))
+                    },
+                    onDeleteClick = {
+                        meetingViewModel.deleteMeeting(meetingId)
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.EDIT_MEETING,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("meetingId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val meetingId = backStackEntry.arguments?.getString("meetingId") ?: return@composable
+                CreateMeetingScreen(
+                    projectId = projectId,
+                    meetingId = meetingId,
+                    isEdit = true,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateBack = {
                         navController.popBackStack()
                     }
                 )

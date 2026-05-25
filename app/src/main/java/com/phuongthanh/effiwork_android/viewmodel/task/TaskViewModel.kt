@@ -210,7 +210,7 @@ class TaskViewModel @Inject constructor(
             val result = if (tab == TaskTab.ASSIGNED_TO_ME) {
                 taskRepository.getAssignedTasks(projectIdValue, effectiveSectionId, "null")
             } else {
-                taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, null)
+                taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, "null")
             }
 
             when (result) {
@@ -633,7 +633,12 @@ class TaskViewModel @Inject constructor(
             startDate = startDate?.take(10) ?: "",
             endDate = endDate?.take(10) ?: "",
             category = groupId ?: "",
-            subtasks = subtasks?.map { Subtask(it.id, it.name, it.isCompleted, it.dueDate) } ?: emptyList()
+            subtasks = subtasks?.map { Subtask(it.id, it.name, it.isCompleted, it.dueDate) } ?: emptyList(),
+            pendingExtensionRequestId = null,
+            pendingExtensionRequestStatus = null,
+            pendingExtensionRequestNewDueDate = null,
+            pendingExtensionRequestReason = null,
+            pendingExtensionRequestByName = null
         )
         Log.d(TAG, "toTask mapped: id=$id, name=$name, assignee=${task.assignee}, assigneeId=${task.assigneeId}, creatorId=${task.creatorId}, participants=${task.participants}, startDate=${startDate}, endDate=${endDate}")
         return task

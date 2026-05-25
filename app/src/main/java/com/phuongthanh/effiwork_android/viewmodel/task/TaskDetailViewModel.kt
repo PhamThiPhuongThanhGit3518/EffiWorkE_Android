@@ -48,6 +48,7 @@ data class TaskDetail(
     val endDate: String,
     val createdAt: String,
     val participantNames: List<String>,
+    val participantIds: List<String> = emptyList(), // Thêm để check quyền
     val commentCount: Int,
     val attachmentCount: Int,
     val subtaskCount: Int,
@@ -168,6 +169,7 @@ class TaskDetailViewModel @Inject constructor(
                         endDate = data.endDate?.take(10) ?: "",
                         createdAt = data.createdAt?.take(10) ?: "",
                         participantNames = data.participants?.mapNotNull { it.user?.fullName } ?: emptyList(),
+                        participantIds = data.participants?.mapNotNull { it.user?.id } ?: emptyList(),
                         commentCount = data.count?.comments ?: 0,
                         attachmentCount = data.count?.attachments ?: 0,
                         subtaskCount = subtasks.size,
