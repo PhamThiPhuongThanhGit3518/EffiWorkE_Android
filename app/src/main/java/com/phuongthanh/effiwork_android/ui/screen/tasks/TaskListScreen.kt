@@ -79,6 +79,7 @@ fun TaskListScreen(
     val currentProjectName by viewModel.projectName.collectAsStateWithLifecycle()
     val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val tasksByTab by viewModel.tasksByTab.collectAsStateWithLifecycle()
 
     val onDeleteTask: (String) -> Unit = { taskId -> viewModel.deleteTask(taskId) }
 
@@ -99,8 +100,12 @@ fun TaskListScreen(
     }
 
     LaunchedEffect(selectedTab, uiState) {
-        screenState = screenState.copy(uiState = uiState)
+        screenState = screenState.copy(uiState = uiState, selectedTab = selectedTab)
         android.util.Log.d("TaskListDebug", "selectedTab: $selectedTab, uiState: $uiState")
+    }
+
+    LaunchedEffect(selectedTab) {
+        viewModel.selectTab(selectedTab)
     }
 
     LaunchedEffect(currentUserId) {
@@ -145,7 +150,8 @@ fun TaskListScreen(
         onRequestExtension = { taskId, newDueDate, reason -> viewModel.createExtensionRequest(taskId, newDueDate, reason) },
         onApproveExtension = { taskId, requestId -> viewModel.approveExtensionRequest(taskId, requestId) },
         onRejectExtension = { taskId, requestId -> viewModel.rejectExtensionRequest(taskId, requestId) },
-        currentUserId = currentUserId
+        currentUserId = currentUserId,
+        tasksByTab = tasksByTab
     )
 }
 
@@ -166,7 +172,8 @@ fun TaskListScreenContent(
     onRequestExtension: (String, String, String) -> Unit = { _, _, _ -> },
     onApproveExtension: (String, String) -> Unit = { _, _ -> },
     onRejectExtension: (String, String) -> Unit = { _, _ -> },
-    currentUserId: String = ""
+    currentUserId: String = "",
+    tasksByTab: Map<TaskTab, List<Task>> = emptyMap()
 ) {
     Scaffold(
         topBar = {
@@ -273,7 +280,8 @@ fun TaskListScreenContent(
                     }
                 }
                 is TaskUiState.Success -> {
-                    val filteredTasks = uiState.tasks.filter { task ->
+                    val currentTasks: List<Task> = tasksByTab[state.selectedTab] ?: emptyList()
+                    val filteredTasks = currentTasks.filter { task ->
                         val matchesSearch = state.searchQuery.isEmpty() ||
                             task.name.contains(state.searchQuery, ignoreCase = true) ||
                             task.description.contains(state.searchQuery, ignoreCase = true)
@@ -294,7 +302,7 @@ fun TaskListScreenContent(
                         onRejectExtension = onRejectExtension,
                         currentUserId = currentUserId
                     )
-                    android.util.Log.d("TaskListDebug", "filteredTasks count: ${filteredTasks.size}, currentUserId: $currentUserId")
+                    android.util.Log.d("TaskListDebug", "filteredTasks count: ${filteredTasks.size}, currentUserId: $currentUserId, tab: ${state.selectedTab}")
                 }
                 is TaskUiState.Error -> {
                     Box(

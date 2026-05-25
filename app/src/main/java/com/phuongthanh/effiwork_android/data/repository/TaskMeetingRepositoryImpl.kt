@@ -50,6 +50,24 @@ class TaskRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getAssignedTasks(projectId: String, sectionId: String?, parentTaskId: String?): ApiResult<List<TaskResponse>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "getAssignedTasks called: projectId=$projectId, sectionId=$sectionId, parentTaskId=$parentTaskId")
+                val response = taskService.getAssignedTasks(projectId, sectionId, null, null, parentTaskId)
+                Log.d(TAG, "getAssignedTasks response: success=${response.success}, data=${response.data?.size} items")
+                if (response.success && response.data != null) {
+                    ApiResult.Success(response.data)
+                } else {
+                    ApiResult.Error(response.message)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "getAssignedTasks EXCEPTION: ${e.message}", e)
+                ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
     override suspend fun createTask(projectId: String, request: CreateTaskRequest): ApiResult<TaskResponse> {
         return withContext(Dispatchers.IO) {
             try {

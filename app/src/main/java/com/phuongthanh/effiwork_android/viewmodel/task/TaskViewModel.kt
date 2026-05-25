@@ -125,6 +125,14 @@ class TaskViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<TaskUiState>(TaskUiState.Idle)
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
 
+    private val _tasksByTab = MutableStateFlow(
+        mapOf(
+            TaskTab.COMMON_TASKS to emptyList<Task>(),
+            TaskTab.ASSIGNED_TO_ME to emptyList<Task>()
+        )
+    )
+    val tasksByTab: StateFlow<Map<TaskTab, List<Task>>> = _tasksByTab.asStateFlow()
+
     private val _selectedTab = MutableStateFlow(TaskTab.COMMON_TASKS)
     val selectedTab: StateFlow<TaskTab> = _selectedTab.asStateFlow()
 
@@ -162,38 +170,59 @@ class TaskViewModel @Inject constructor(
     }
 
     fun selectTab(tab: TaskTab) {
-        _selectedTab.value = tab
+        if (_selectedTab.value != tab) {
+            _selectedTab.value = tab
+            val cachedTasks = _tasksByTab.value[tab]
+            if (cachedTasks.isNullOrEmpty()) {
+                loadTasksForTab(tab)
+            } else {
+                // Use cached data for this tab
+                _uiState.value = TaskUiState.Success(cachedTasks)
+            }
+        }
     }
 
-    fun selectCategory(category: TaskCategory) {
-        _selectedCategory.value = category
+    fun refreshCurrentTab() {
+        loadTasksForTab(_selectedTab.value)
     }
 
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
+    fun invalidateAndReloadAllTabs() {
+        // Clear cache for both tabs and reload current tab
+        _tasksByTab.value = mapOf(
+            TaskTab.COMMON_TASKS to emptyList(),
+            TaskTab.ASSIGNED_TO_ME to emptyList()
+        )
+        loadTasksForTab(_selectedTab.value)
     }
 
-    fun loadTasks(sectionId: String? = null, parentTaskId: String? = null) {
+    fun loadTasksForTab(tab: TaskTab, sectionId: String? = null) {
         viewModelScope.launch {
             val effectiveSectionId = sectionId ?: _groupId.value.ifBlank { null }
-            Log.d(TAG, "loadTasks called with sectionId=$effectiveSectionId, parentTaskId=$parentTaskId")
+            Log.d(TAG, "loadTasksForTab called: tab=$tab, sectionId=$effectiveSectionId")
             _uiState.value = TaskUiState.Loading
             val projectIdValue = _projectId.value
-            Log.d(TAG, "loadTasks projectId=$projectIdValue")
+            Log.d(TAG, "loadTasksForTab projectId=$projectIdValue")
             if (projectIdValue.isBlank()) {
                 _uiState.value = TaskUiState.Error("Project ID is required")
                 return@launch
             }
 
-            when (val result = taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, parentTaskId ?: "null")) {
+            val result = if (tab == TaskTab.ASSIGNED_TO_ME) {
+                taskRepository.getAssignedTasks(projectIdValue, effectiveSectionId, "null")
+            } else {
+                taskRepository.getTasks(projectIdValue, effectiveSectionId, null, null, null)
+            }
+
+            when (result) {
                 is ApiResult.Success -> {
-                    Log.d(TAG, "Tasks loaded: ${result.data.size}")
+                    Log.d(TAG, "Tasks loaded for tab $tab: ${result.data.size}")
                     result.data.forEach { task ->
                         Log.d(TAG, "  Task: id=${task.id}, name=${task.name}, status=${task.status}")
                         Log.d(TAG, "    assigneeName=${task.assigneeName}, owner.fullName=${task.owner?.fullName}")
                         Log.d(TAG, "    participants=${task.participants?.map { it.user?.fullName }}, description=${task.description?.take(50)}")
                     }
                     val tasks = result.data.map { it.toTask() }
+                    _tasksByTab.value = _tasksByTab.value + (tab to tasks)
                     _uiState.value = TaskUiState.Success(tasks)
                     Log.d(TAG, "uiState set to Success with ${tasks.size} tasks")
                 }
@@ -205,6 +234,18 @@ class TaskViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun selectCategory(category: TaskCategory) {
+        _selectedCategory.value = category
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun loadTasks(sectionId: String? = null, parentTaskId: String? = null) {
+        loadTasksForTab(TaskTab.COMMON_TASKS, sectionId)
     }
 
     fun loadTaskDetailForEdit(taskId: String) {
@@ -310,8 +351,8 @@ class TaskViewModel @Inject constructor(
                     Log.d(TAG, "Create task success: ${result.data.id}, title: ${result.data.name}")
                     _effect.emit(TaskEffect.ShowToast("Tạo công việc thành công"))
                     _effect.emit(TaskEffect.TaskCreated(name))
-                    Log.d(TAG, "Calling loadTasks() to refresh list...")
-                    loadTasks()
+                    Log.d(TAG, "Calling refreshCurrentTab() to refresh list...")
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = TaskUiState.Error(result.message)
@@ -358,7 +399,7 @@ class TaskViewModel @Inject constructor(
                     Log.d(TAG, "Create subtask success: ${result.data.id}, title: ${result.data.name}")
                     _effect.emit(TaskEffect.ShowToast("Tạo công việc con thành công"))
                     _effect.emit(TaskEffect.TaskCreated(name))
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = TaskUiState.Error(result.message)
@@ -406,7 +447,7 @@ class TaskViewModel @Inject constructor(
                     Log.d(TAG, "Update task success: ${result.data.id}")
                     _effect.emit(TaskEffect.ShowToast("Cập nhật công việc thành công"))
                     _effect.emit(TaskEffect.TaskUpdated(name))
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = TaskUiState.Error(result.message)
@@ -429,7 +470,7 @@ class TaskViewModel @Inject constructor(
                     Log.d(TAG, "Delete task success")
                     _effect.emit(TaskEffect.ShowToast("Xóa công việc thành công"))
                     _effect.emit(TaskEffect.TaskDeleted)
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = TaskUiState.Error(result.message)
@@ -475,7 +516,7 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     Log.d(TAG, "updateTaskStatus SUCCESS: taskId=$taskId, newStatus=$statusValue")
                     _effect.emit(TaskEffect.ShowToast("Cập nhật trạng thái thành công"))
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "updateTaskStatus ERROR: ${result.message}")
@@ -499,7 +540,7 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     Log.d(TAG, "createExtensionRequest SUCCESS")
                     _effect.emit(TaskEffect.ShowToast("Đã gửi yêu cầu gia hạn"))
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "createExtensionRequest ERROR: ${result.message}")
@@ -522,7 +563,7 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     Log.d(TAG, "approveExtensionRequest SUCCESS")
                     _effect.emit(TaskEffect.ShowToast("Đã duyệt yêu cầu gia hạn"))
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "approveExtensionRequest ERROR: ${result.message}")
@@ -545,7 +586,7 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     Log.d(TAG, "rejectExtensionRequest SUCCESS")
                     _effect.emit(TaskEffect.ShowToast("Đã từ chối yêu cầu gia hạn"))
-                    loadTasks()
+                    invalidateAndReloadAllTabs()
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "rejectExtensionRequest ERROR: ${result.message}")

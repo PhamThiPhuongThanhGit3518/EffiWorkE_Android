@@ -12,6 +12,7 @@ import com.phuongthanh.effiwork_android.data.model.response.*
 
 interface TaskRepository {
     suspend fun getTasks(projectId: String, sectionId: String? = null, status: String? = null, assigneeId: String? = null, parentTaskId: String? = null): ApiResult<List<TaskResponse>>
+    suspend fun getAssignedTasks(projectId: String, sectionId: String? = null, parentTaskId: String? = null): ApiResult<List<TaskResponse>>
     suspend fun getTaskDetail(projectId: String, taskId: String): ApiResult<TaskDetailResponse>
     suspend fun getSubtasks(projectId: String, taskId: String): ApiResult<List<TaskResponse>>
     suspend fun getTaskComments(projectId: String, taskId: String): ApiResult<List<CommentResponse>>

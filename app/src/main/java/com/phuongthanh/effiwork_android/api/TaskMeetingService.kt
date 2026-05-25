@@ -20,6 +20,15 @@ interface TaskService {
         @Query("parentTaskId") parentTaskId: String? = null
     ): ApiResponse<List<TaskResponse>>
 
+    @GET("v1/projects/{projectId}/tasks/assigned-to-me")
+    suspend fun getAssignedTasks(
+        @Path("projectId") projectId: String,
+        @Query("sectionId") sectionId: String? = null,
+        @Query("status") status: String? = null,
+        @Query("assigneeId") assigneeId: String? = null,
+        @Query("parentTaskId") parentTaskId: String? = null
+    ): ApiResponse<List<TaskResponse>>
+
     @GET("v1/projects/{projectId}/tasks/{taskId}")
     suspend fun getTaskDetail(
         @Path("projectId") projectId: String,
