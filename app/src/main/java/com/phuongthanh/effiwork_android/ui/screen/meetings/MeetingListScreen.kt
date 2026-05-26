@@ -164,42 +164,42 @@ fun MeetingListScreenContent(
                     onClick = { onTabSelect(MeetingFilterTab.JOINED) },
                     text = {
                         Text(
-                            "Đã tham gia",
+                            "Tham gia",
                             color = if (state.selectedTab == MeetingFilterTab.JOINED) Blue500 else Color.Gray
                         )
                     }
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text("Tìm theo tên hoặc nội dung cuộc họp")
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = Blue500
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                FormatFilterDropdown(
-                    selectedFormat = state.selectedFormat,
-                    onFormatSelect = onFormatSelect
-                )
-            }
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 16.dp),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                OutlinedTextField(
+//                    value = state.searchQuery,
+//                    onValueChange = onSearchQueryChange,
+//                    modifier = Modifier.weight(1f),
+//                    placeholder = {
+//                        Text("Tìm theo tên hoặc nội dung cuộc họp")
+//                    },
+//                    leadingIcon = {
+//                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+//                    },
+//                    singleLine = true,
+//                    shape = RoundedCornerShape(8.dp),
+//                    colors = OutlinedTextFieldDefaults.colors(
+//                        unfocusedBorderColor = Color.LightGray,
+//                        focusedBorderColor = Blue500
+//                    )
+//                )
+//                Spacer(modifier = Modifier.width(8.dp))
+//                FormatFilterDropdown(
+//                    selectedFormat = state.selectedFormat,
+//                    onFormatSelect = onFormatSelect
+//                )
+//            }
 
             when (val uiState = state.uiState) {
                 is MeetingUiState.Loading -> {
@@ -470,39 +470,36 @@ private fun MeetingCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = meeting.organizer,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = meeting.organizer,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${meeting.time} ${meeting.date}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${meeting.time} ${meeting.date}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
             }
 
             if (meeting.participants.isNotEmpty()) {
