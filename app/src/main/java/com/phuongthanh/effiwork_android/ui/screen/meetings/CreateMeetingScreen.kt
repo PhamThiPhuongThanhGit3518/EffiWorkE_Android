@@ -208,7 +208,7 @@ fun CreateMeetingScreen(
                                     }
                                     isUploading = false
                                     uploadProgress = ""
-                                    onNavigateBack()
+                                    // onNavigateBack() được gọi qua MeetingEffect.NavigateBack từ ViewModel
                                 } else {
                                     val allParticipantIds = selectedParticipantIds.toMutableList()
                                     if (!allParticipantIds.contains(organizerId)) {
@@ -231,7 +231,7 @@ fun CreateMeetingScreen(
                                             }
                                             isUploading = false
                                             uploadProgress = ""
-                                            onNavigateBack()
+                                            // onNavigateBack() được gọi qua MeetingEffect.NavigateBack từ ViewModel
                                         }
                                     }
                                 }
