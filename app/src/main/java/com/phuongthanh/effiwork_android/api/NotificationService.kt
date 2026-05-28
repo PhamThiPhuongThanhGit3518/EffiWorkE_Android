@@ -2,7 +2,7 @@ package com.phuongthanh.effiwork_android.api
 
 import com.phuongthanh.effiwork_android.data.model.request.SaveFcmTokenRequest
 import com.phuongthanh.effiwork_android.data.model.response.ApiResponse
-import com.phuongthanh.effiwork_android.data.model.response.ListNotificationsResponse
+import com.phuongthanh.effiwork_android.data.model.response.NotificationListResponse
 import com.phuongthanh.effiwork_android.data.model.response.NotificationResponse
 import retrofit2.http.*
 
@@ -12,7 +12,7 @@ interface NotificationService {
         @Query("page") page: Int? = 1,
         @Query("limit") limit: Int? = 20,
         @Query("unreadOnly") unreadOnly: Boolean? = null
-    ): ApiResponse<ListNotificationsResponse>
+    ): NotificationListResponse
 
     @PATCH("v1/notifications/{notificationId}/read")
     suspend fun markAsRead(

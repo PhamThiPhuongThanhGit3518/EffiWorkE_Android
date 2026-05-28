@@ -30,5 +30,30 @@ data class ListNotificationsResponse(
     val limit: Int?,
     val total: Int?,
     val totalPages: Int?,
+    val unreadCount: Int?,
     val items: List<NotificationResponse>?
 )
+
+data class NotificationListData(
+    val items: List<NotificationResponse>,
+    val meta: PaginationMeta
+)
+
+data class PaginationMeta(
+    val page: Int?,
+    val limit: Int?,
+    val total: Int?,
+    val totalPages: Int?,
+    val unreadCount: Int?
+)
+
+data class NotificationListResponse(
+    val data: List<NotificationResponse>,
+    val meta: PaginationMeta?
+) {
+    val page: Int get() = meta?.page ?: 1
+    val limit: Int get() = meta?.limit ?: 20
+    val total: Int get() = meta?.total ?: 0
+    val totalPages: Int get() = meta?.totalPages ?: 1
+    val unreadCount: Int get() = meta?.unreadCount ?: 0
+}

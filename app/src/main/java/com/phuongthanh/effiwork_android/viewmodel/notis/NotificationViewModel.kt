@@ -1,5 +1,6 @@
 package com.phuongthanh.effiwork_android.viewmodel.notis
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "NotificationViewModel"
 
 sealed class NotificationUiState {
     object Idle : NotificationUiState()
@@ -56,18 +59,21 @@ class NotificationViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = NotificationUiState.Loading
+            Log.d(TAG, "loadNotifications: page=$currentPage, unreadOnly=${_unreadOnly.value}")
             when (val result = notificationRepository.getNotifications(currentPage, pageSize, _unreadOnly.value)) {
                 is ApiResult.Success -> {
                     val data = result.data
-                    currentPage = data.page ?: 1
-                    totalPages = data.totalPages ?: 1
+                    currentPage = data.page
+                    totalPages = data.totalPages
+                    Log.d(TAG, "loadNotifications SUCCESS: notifications count=${data.data.size}, page=$currentPage, totalPages=$totalPages")
                     _uiState.value = NotificationUiState.Success(
-                        notifications = data.items ?: emptyList(),
+                        notifications = data.data,
                         page = currentPage,
                         totalPages = totalPages
                     )
                 }
                 is ApiResult.Error -> {
+                    Log.e(TAG, "loadNotifications ERROR: ${result.message}")
                     _uiState.value = NotificationUiState.Error(result.message)
                 }
                 is ApiResult.Loading -> {

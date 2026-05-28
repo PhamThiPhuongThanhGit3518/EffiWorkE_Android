@@ -10,6 +10,8 @@ import com.phuongthanh.effiwork_android.data.repository.DocumentRepository
 import com.phuongthanh.effiwork_android.data.repository.DocumentRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.MeetingRepository
 import com.phuongthanh.effiwork_android.data.repository.MeetingRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.NotificationRepository
+import com.phuongthanh.effiwork_android.data.repository.NotificationRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
@@ -81,5 +83,13 @@ object AppModule {
         documentRepositoryImpl: DocumentRepositoryImpl
     ): DocumentRepository {
         return documentRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(
+        notificationRepositoryImpl: NotificationRepositoryImpl
+    ): NotificationRepository {
+        return notificationRepositoryImpl
     }
 }

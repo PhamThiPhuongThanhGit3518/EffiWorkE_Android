@@ -7,6 +7,7 @@ import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
 import com.phuongthanh.effiwork_android.api.DocumentService
 import com.phuongthanh.effiwork_android.api.MeetingService
+import com.phuongthanh.effiwork_android.api.NotificationService
 import com.phuongthanh.effiwork_android.api.ProjectService
 import com.phuongthanh.effiwork_android.api.TaskService
 import com.phuongthanh.effiwork_android.api.TokenAuthenticator
@@ -106,5 +107,11 @@ object NetworkModule {
     @Singleton
     fun provideDocumentService(retrofit: Retrofit): DocumentService {
         return retrofit.create(DocumentService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationService(retrofit: Retrofit): NotificationService {
+        return retrofit.create(NotificationService::class.java)
     }
 }
