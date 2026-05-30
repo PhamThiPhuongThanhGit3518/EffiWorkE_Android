@@ -69,7 +69,16 @@ class ChatRepositoryImpl @Inject constructor(
         type: String?
     ): ApiResult<ListConversationsResponse> = withContext(Dispatchers.IO) {
         try {
-            ApiResult.Success(chatService.listConversations(projectId, page, limit, keyword, type))
+            val response = chatService.listConversations(projectId, page, limit, keyword, type)
+            Log.d(TAG, "📥 listConversations response: success=${response.success}, data=${response.data?.size} items")
+            if (response.success && response.data != null) {
+                ApiResult.Success(ListConversationsResponse(
+                    items = response.data,
+                    meta = PaginationMeta(page = page, limit = limit, total = response.data.size, totalPages = 1)
+                ))
+            } else {
+                ApiResult.Error(response.message)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "getConversations error", e)
             ApiResult.Error(e.message ?: "Failed to get conversations")

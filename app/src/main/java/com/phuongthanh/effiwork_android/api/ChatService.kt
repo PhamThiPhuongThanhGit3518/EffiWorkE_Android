@@ -32,7 +32,7 @@ interface ChatService {
         @Query("limit") limit: Int = 20,
         @Query("keyword") keyword: String? = null,
         @Query("type") type: String? = null
-    ): ListConversationsResponse
+    ): ApiResponse<List<ChatConversationResponse>>
 
     @POST("v1/projects/{projectId}/chat/conversations/private")
     suspend fun createPrivateConversation(
