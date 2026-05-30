@@ -23,7 +23,8 @@ sealed class NewMessageUiState {
     data class Success(
         val conversations: List<ChatConversationResponse> = emptyList(),
         val groups: List<ProjectGroup> = emptyList(),
-        val members: List<ProjectMember> = emptyList()
+        val members: List<ProjectMember> = emptyList(),  // kept for CreateGroupChatScreen
+        val privateChats: List<PrivateChatItem> = emptyList()  // for Cá nhân tab
     ) : NewMessageUiState()
     data class Error(val message: String) : NewMessageUiState()
 }
