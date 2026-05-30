@@ -31,10 +31,14 @@ import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingListScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.CreateMeetingScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingDetailScreen
+import com.phuongthanh.effiwork_android.ui.screen.chat.MessageListScreen
+import com.phuongthanh.effiwork_android.ui.screen.chat.ChatScreen
+import com.phuongthanh.effiwork_android.ui.screen.chat.CreateGroupChatScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskViewModel
+import com.phuongthanh.effiwork_android.data.local.TokenManager
 
 sealed class BottomNavItem(
     val route: String,
@@ -59,6 +63,9 @@ object NavRoutes {
     const val CREATE_MEETING = "create_meeting/{projectId}"
     const val MEETING_DETAIL = "meeting_detail/{projectId}/{meetingId}"
     const val EDIT_MEETING = "edit_meeting/{projectId}/{meetingId}"
+    const val NEW_MESSAGE = "new_message/{projectId}"
+    const val CHAT = "chat/{projectId}/{conversationId}/{conversationName}/{currentUserId}"
+    const val CREATE_GROUP_CHAT = "create_group_chat/{projectId}"
 
     fun projectSetting(projectId: String) = "project_setting/$projectId"
     fun taskGroupList(projectId: String, projectName: String) = "task_group_list/$projectId/$projectName"
@@ -71,6 +78,9 @@ object NavRoutes {
     fun createMeeting(projectId: String) = "create_meeting/$projectId"
     fun meetingDetail(projectId: String, meetingId: String) = "meeting_detail/$projectId/$meetingId"
     fun editMeeting(projectId: String, meetingId: String) = "edit_meeting/$projectId/$meetingId"
+    fun newMessage(projectId: String) = "new_message/$projectId"
+    fun chat(projectId: String, conversationId: String, conversationName: String, currentUserId: String) = "chat/$projectId/$conversationId/$conversationName/$currentUserId"
+    fun createGroupChat(projectId: String) = "create_group_chat/$projectId"
 }
 
 @Composable
@@ -148,6 +158,9 @@ fun MainScreen(
                     },
                     onNavigateToMeeting = { projectId ->
                         navController.navigate(NavRoutes.meetingList(projectId))
+                    },
+                    onNavigateToMessage = { projectId ->
+                        navController.navigate(NavRoutes.newMessage(projectId))
                     }
                 )
             }
@@ -397,6 +410,53 @@ fun MainScreen(
                     onNavigateBack = {
                         navController.popBackStack()
                     }
+                )
+            }
+            composable(
+                route = NavRoutes.NEW_MESSAGE,
+                arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val currentUserId = authViewModel.currentUserId.value ?: ""
+                MessageListScreen(
+                    projectId = projectId,
+                    onBackClick = { navController.popBackStack() },
+                    onCreateGroupClick = { navController.navigate(NavRoutes.createGroupChat(projectId)) },
+                    onNavigateToChat = { pid, cid, cname ->
+                        navController.navigate(NavRoutes.chat(pid, cid, cname, currentUserId))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.CHAT,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("conversationId") { type = NavType.StringType },
+                    navArgument("conversationName") { type = NavType.StringType },
+                    navArgument("currentUserId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val conversationId = backStackEntry.arguments?.getString("conversationId") ?: return@composable
+                val conversationName = backStackEntry.arguments?.getString("conversationName") ?: return@composable
+                val currentUserId = backStackEntry.arguments?.getString("currentUserId") ?: return@composable
+                ChatScreen(
+                    projectId = projectId,
+                    conversationId = conversationId,
+                    conversationName = conversationName,
+                    currentUserId = currentUserId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.CREATE_GROUP_CHAT,
+                arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                CreateGroupChatScreen(
+                    projectId = projectId,
+                    onBackClick = { navController.popBackStack() },
+                    onGroupCreated = { navController.popBackStack() }
                 )
             }
         }
