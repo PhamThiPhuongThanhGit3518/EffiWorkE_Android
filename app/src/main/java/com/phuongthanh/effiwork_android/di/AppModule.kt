@@ -16,6 +16,9 @@ import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import com.phuongthanh.effiwork_android.data.repository.TaskRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
+import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepositoryImpl
+import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -91,5 +94,21 @@ object AppModule {
         notificationRepositoryImpl: NotificationRepositoryImpl
     ): NotificationRepository {
         return notificationRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        chatRepositoryImpl: ChatRepositoryImpl
+    ): ChatRepository {
+        return chatRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatSocketManager(
+        tokenManager: TokenManager
+    ): ChatSocketManager {
+        return ChatSocketManager(tokenManager)
     }
 }

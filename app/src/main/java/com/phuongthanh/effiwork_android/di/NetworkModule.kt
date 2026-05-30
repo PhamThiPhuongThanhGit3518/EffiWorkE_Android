@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.phuongthanh.effiwork_android.BuildConfig
 import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
+import com.phuongthanh.effiwork_android.api.ChatService
 import com.phuongthanh.effiwork_android.api.DocumentService
 import com.phuongthanh.effiwork_android.api.MeetingService
 import com.phuongthanh.effiwork_android.api.NotificationService
@@ -113,5 +114,11 @@ object NetworkModule {
     @Singleton
     fun provideNotificationService(retrofit: Retrofit): NotificationService {
         return retrofit.create(NotificationService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatService(retrofit: Retrofit): ChatService {
+        return retrofit.create(ChatService::class.java)
     }
 }
