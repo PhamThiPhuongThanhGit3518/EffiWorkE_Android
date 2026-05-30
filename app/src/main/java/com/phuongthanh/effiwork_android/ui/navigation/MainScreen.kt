@@ -424,7 +424,8 @@ fun MainScreen(
                     onCreateGroupClick = { navController.navigate(NavRoutes.createGroupChat(projectId)) },
                     onNavigateToChat = { pid, cid, cname ->
                         navController.navigate(NavRoutes.chat(pid, cid, cname, currentUserId))
-                    }
+                    },
+                    authRepository = rememberAuthRepository()
                 )
             }
             composable(

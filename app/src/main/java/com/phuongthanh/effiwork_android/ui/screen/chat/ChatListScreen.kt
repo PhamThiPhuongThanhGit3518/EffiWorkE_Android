@@ -30,8 +30,8 @@ import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.chat.NewMessageEffect
 import com.phuongthanh.effiwork_android.viewmodel.chat.NewMessageUiState
 import com.phuongthanh.effiwork_android.viewmodel.chat.NewMessageViewModel
+import com.phuongthanh.effiwork_android.viewmodel.chat.PrivateChatItem
 import com.phuongthanh.effiwork_android.viewmodel.chat.ProjectGroup
-import com.phuongthanh.effiwork_android.viewmodel.chat.ProjectMember
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,13 +41,16 @@ fun ChatListScreen(
     onBackClick: () -> Unit,
     onNavigateToChat: (projectId: String, conversationId: String, conversationName: String) -> Unit,
     onCreateGroupClick: () -> Unit,
-    viewModel: NewMessageViewModel = hiltViewModel()
+    viewModel: NewMessageViewModel = hiltViewModel(),
+    authRepository: com.phuongthanh.effiwork_android.data.repository.AuthRepository
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     var isRefreshing by remember { mutableStateOf(false) }
+
+    val currentUserId = authRepository.getCurrentUserId() ?: ""
 
     LaunchedEffect(projectId) {
         viewModel.loadProjectData(projectId)
@@ -77,6 +80,7 @@ fun ChatListScreen(
         selectedTab = selectedTab,
         searchQuery = searchQuery,
         isRefreshing = isRefreshing,
+        currentUserId = currentUserId,
         onSelectedTabChange = { selectedTab = it },
         onSearchQueryChange = { searchQuery = it },
         onRefresh = {
@@ -85,7 +89,7 @@ fun ChatListScreen(
         },
         onConversationClick = { viewModel.openConversation(it) },
         onGroupClick = { viewModel.openGroupConversation(it) },
-        onMemberClick = { viewModel.openPrivateConversation(it) },
+        onPrivateChatClick = { viewModel.openPrivateConversation(it) },
         onBackClick = onBackClick,
         onCreateGroupClick = onCreateGroupClick
     )
@@ -98,12 +102,13 @@ fun ChatListScreenContent(
     selectedTab: Int,
     searchQuery: String,
     isRefreshing: Boolean,
+    currentUserId: String,
     onSelectedTabChange: (Int) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onRefresh: () -> Unit,
     onConversationClick: (ChatConversationResponse) -> Unit,
     onGroupClick: (ProjectGroup) -> Unit,
-    onMemberClick: (ProjectMember) -> Unit,
+    onPrivateChatClick: (PrivateChatItem) -> Unit,
     onBackClick: () -> Unit,
     onCreateGroupClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -214,6 +219,7 @@ fun ChatListScreenContent(
                         when (selectedTab) {
                             0 -> ConversationList(
                                 conversations = filterConversations(uiState.conversations, searchQuery),
+                                currentUserId = currentUserId,
                                 onConversationClick = onConversationClick
                             )
                             1 -> GroupList(
@@ -222,11 +228,11 @@ fun ChatListScreenContent(
                                 },
                                 onGroupClick = onGroupClick
                             )
-                            2 -> MemberList(
-                                members = uiState.members.filter {
-                                    searchQuery.isBlank() || it.fullName.contains(searchQuery, ignoreCase = true)
+                            2 -> PrivateChatList(
+                                privateChats = uiState.privateChats.filter {
+                                    searchQuery.isBlank() || it.displayName.contains(searchQuery, ignoreCase = true)
                                 },
-                                onMemberClick = onMemberClick
+                                onPrivateChatClick = onPrivateChatClick
                             )
                         }
                     }
@@ -278,6 +284,7 @@ private fun TabItem(text: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun ConversationList(
     conversations: List<ChatConversationResponse>,
+    currentUserId: String,
     onConversationClick: (ChatConversationResponse) -> Unit
 ) {
     if (conversations.isEmpty()) {
@@ -305,6 +312,7 @@ private fun ConversationList(
             items(conversations, key = { it.id }) { conversation ->
                 ConversationItem(
                     conversation = conversation,
+                    currentUserId = currentUserId,
                     onClick = { onConversationClick(conversation) }
                 )
             }
@@ -315,11 +323,17 @@ private fun ConversationList(
 @Composable
 private fun ConversationItem(
     conversation: ChatConversationResponse,
+    currentUserId: String,
     onClick: () -> Unit
 ) {
-    val displayName = conversation.name
-        ?: conversation.members?.firstOrNull()?.user?.fullName
-        ?: "Unknown"
+    val displayName = when {
+        conversation.name != null -> conversation.name
+        conversation.type == ChatConversationType.PRIVATE -> {
+            // For PRIVATE, get the other member (not current user)
+            conversation.members?.find { it.userId != currentUserId }?.user?.fullName
+        }
+        else -> conversation.members?.firstOrNull()?.user?.fullName
+    } ?: "Unknown"
     val lastMessage = conversation.messages?.firstOrNull()
     val unreadCount = conversation.unreadCount
 
@@ -454,54 +468,77 @@ private fun GroupList(
 }
 
 @Composable
-private fun MemberList(
-    members: List<ProjectMember>,
-    onMemberClick: (ProjectMember) -> Unit
+private fun PrivateChatList(
+    privateChats: List<PrivateChatItem>,
+    onPrivateChatClick: (PrivateChatItem) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(members) { member ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onMemberClick(member) },
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
-            ) {
-                Row(
+    if (privateChats.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Chưa có cuộc trò chuyện cá nhân", color = Color.Gray)
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(privateChats) { privateChat ->
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .clickable { onPrivateChatClick(privateChat) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(member.avatarColor),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = member.fullName.take(2).uppercase(),
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(privateChat.avatarColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = privateChat.displayName.take(2).uppercase(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(privateChat.displayName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            privateChat.email?.let { email ->
+                                Text(email, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                            }
+                            privateChat.lastMessage?.let { lastMessage ->
+                                Text(lastMessage, color = Color.Gray, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (privateChat.unreadCount > 0) {
+                            Badge(containerColor = Blue500) {
+                                Text(if (privateChat.unreadCount > 99) "99+" else privateChat.unreadCount.toString())
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(member.fullName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        Text("${member.role} · ${member.email}", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
-                    }
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = Color.Gray
-                    )
                 }
             }
         }
@@ -516,20 +553,21 @@ private fun ChatListScreenPreview() {
             uiState = NewMessageUiState.Success(
                 conversations = emptyList(),
                 groups = emptyList(),
-                members = listOf(
-                    ProjectMember("1", "Nguyễn Văn A", "a@example.com", "Developer", Color.Blue),
-                    ProjectMember("2", "Trần Thị B", "b@example.com", "Designer", Color.Green)
+                privateChats = listOf(
+                    PrivateChatItem("1", "Nguyễn Văn A", Color.Blue, 1, "Hello", null, "a@example.com"),
+                    PrivateChatItem("2", "Trần Thị B", Color.Green, 0, null, null, "b@example.com")
                 )
             ),
             selectedTab = 0,
             searchQuery = "",
             isRefreshing = false,
+            currentUserId = "",
             onSelectedTabChange = {},
             onSearchQueryChange = {},
             onRefresh = {},
             onConversationClick = {},
             onGroupClick = {},
-            onMemberClick = {},
+            onPrivateChatClick = {},
             onBackClick = {},
             onCreateGroupClick = {}
         )
