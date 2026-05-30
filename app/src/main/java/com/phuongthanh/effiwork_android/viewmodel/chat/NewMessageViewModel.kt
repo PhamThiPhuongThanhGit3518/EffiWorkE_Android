@@ -1,6 +1,7 @@
 package com.phuongthanh.effiwork_android.viewmodel.chat
 
 import androidx.compose.ui.graphics.Color
+import com.phuongthanh.effiwork_android.data.model.chat.ChatConversationType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
@@ -146,6 +147,39 @@ class NewMessageViewModel @Inject constructor(
         }
     }
 
+    fun createPrivateConversationAndNavigate(
+        projectId: String,
+        targetUserId: String,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.value = NewMessageUiState.Loading  // IMPROVEMENT #3
+
+            when (val result = chatRepository.createPrivateConversation(projectId, targetUserId)) {
+                is ApiResult.Success -> {
+                    val newConv = result.data
+                    val currentUserId = authRepository.getCurrentUserId() ?: ""
+                    val otherMember = newConv.members?.find { it.userId != currentUserId }
+                    val conversationName = otherMember?.user?.fullName ?: "Chat"
+
+                    _effect.emit(NewMessageEffect.NavigateToChat(
+                        projectId = projectId,
+                        conversationId = newConv.id,
+                        conversationName = conversationName
+                    ))
+                    loadProjectData(projectId)
+                    // IMPROVEMENT #5: onComplete không cần gọi ở đây - LaunchedEffect sẽ xử lý
+                }
+                is ApiResult.Error -> {
+                    _uiState.value = NewMessageUiState.Error(result.message)
+                    _effect.emit(NewMessageEffect.ShowToast(result.message))
+                    onComplete()  // IMPROVEMENT #2: Gọi onError để reset isCreating
+                }
+                is ApiResult.Loading -> { }
+            }
+        }
+    }
+
     fun openGroupConversation(group: ProjectGroup) {
         val projectId = currentProjectId ?: return
 
@@ -154,6 +188,18 @@ class NewMessageViewModel @Inject constructor(
                 projectId = projectId,
                 conversationId = group.id,
                 conversationName = group.name
+            ))
+        }
+    }
+
+    fun openExistingConversation(conversationId: String, conversationName: String) {
+        val projectId = currentProjectId ?: return
+
+        viewModelScope.launch {
+            _effect.emit(NewMessageEffect.NavigateToChat(
+                projectId = projectId,
+                conversationId = conversationId,
+                conversationName = conversationName
             ))
         }
     }
@@ -179,7 +225,12 @@ class NewMessageViewModel @Inject constructor(
         }
     }
 
-    fun createGroupConversation(projectId: String, name: String?, memberIds: List<String>) {
+    fun createGroupConversation(
+        projectId: String,
+        name: String?,
+        memberIds: List<String>,
+        onComplete: () -> Unit = {}
+    ) {
         viewModelScope.launch {
             _uiState.value = NewMessageUiState.Loading
 
@@ -191,10 +242,12 @@ class NewMessageViewModel @Inject constructor(
                         conversationName = result.data.name ?: "Group"
                     ))
                     loadProjectData(projectId)
+                    // IMPROVEMENT #5: onComplete không cần gọi ở đây - LaunchedEffect sẽ xử lý
                 }
                 is ApiResult.Error -> {
                     _uiState.value = NewMessageUiState.Error(result.message)
                     _effect.emit(NewMessageEffect.ShowToast(result.message))
+                    onComplete()  // IMPROVEMENT #2: Error vẫn cần reset
                 }
                 is ApiResult.Loading -> { }
             }

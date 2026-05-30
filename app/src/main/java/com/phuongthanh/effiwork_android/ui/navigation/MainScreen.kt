@@ -457,7 +457,8 @@ fun MainScreen(
                 CreateGroupChatScreen(
                     projectId = projectId,
                     onBackClick = { navController.popBackStack() },
-                    onGroupCreated = { navController.popBackStack() }
+                    onGroupCreated = { navController.popBackStack() },
+                    authRepository = rememberAuthRepository()
                 )
             }
         }
