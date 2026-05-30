@@ -57,7 +57,8 @@ fun ProjectsScreen(
     onNavigateToCreateProject: () -> Unit = {},
     onNavigateToSettings: (String) -> Unit = {},
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
-    onNavigateToMeeting: (String) -> Unit = {}
+    onNavigateToMeeting: (String) -> Unit = {},
+    onNavigateToMessage: (String) -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -145,7 +146,8 @@ fun ProjectsScreen(
                                 ),
                                 onSettingsClick = { onNavigateToSettings(state.project.id) },
                                 onNavigateToTask = onNavigateToTask,
-                                onNavigateToMeeting = onNavigateToMeeting
+                                onNavigateToMeeting = onNavigateToMeeting,
+                                onNavigateToMessage = onNavigateToMessage
                             )
                         }
                         is ProjectDetailUiState.NoProject -> {
@@ -171,7 +173,8 @@ fun ProjectDashboardContent(
     state: ProjectDashboardState,
     onSettingsClick: () -> Unit = {},
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
-    onNavigateToMeeting: (String) -> Unit = {}
+    onNavigateToMeeting: (String) -> Unit = {},
+    onNavigateToMessage: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -193,6 +196,7 @@ fun ProjectDashboardContent(
             onSettingsClick = onSettingsClick,
             onNavigateToTask = onNavigateToTask,
             onNavigateToMeeting = onNavigateToMeeting,
+            onNavigateToMessage = onNavigateToMessage,
             projectId = state.projectId,
             projectName = state.projectName
         )
@@ -270,6 +274,7 @@ private fun FeaturesGrid(
     onSettingsClick: () -> Unit = {},
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeeting: (String) -> Unit = {},
+    onNavigateToMessage: (String) -> Unit = {},
     projectId: String = "",
     projectName: String = ""
 ) {
@@ -277,7 +282,7 @@ private fun FeaturesGrid(
         val features = listOf(
             Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
             Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
-//            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
+            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
             Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
         )
 
@@ -289,6 +294,7 @@ private fun FeaturesGrid(
                             "Cài đặt" -> onSettingsClick
                             "Công việc" -> { { onNavigateToTask(projectId, projectName) } }
                             "Cuộc họp" -> { { onNavigateToMeeting(projectId) } }
+                            "Tin nhắn" -> { { onNavigateToMessage(projectId) } }
                             else -> { {} }
                         }
                     FeatureCard(icon, label, color, Modifier.weight(1f), onClick = onClick)
@@ -336,7 +342,8 @@ fun ProjectsScreenPreview() {
             ),
             onSettingsClick = {},
             onNavigateToTask = { _, _ -> },
-            onNavigateToMeeting = {}
+            onNavigateToMeeting = {},
+            onNavigateToMessage = {}
         )
     }
 }
