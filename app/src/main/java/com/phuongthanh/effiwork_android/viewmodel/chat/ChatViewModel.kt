@@ -73,7 +73,7 @@ class ChatViewModel @Inject constructor(
                     val data = result.data
                     currentPage = data.meta.page
                     totalPages = data.meta.totalPages
-                    val messages = data.items.reversed()
+                    val messages = data.items
 
                     _uiState.value = ChatUiState.Success(
                         messages = messages,

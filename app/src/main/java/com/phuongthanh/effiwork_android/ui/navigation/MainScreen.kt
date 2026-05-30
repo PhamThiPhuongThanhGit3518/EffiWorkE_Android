@@ -31,7 +31,7 @@ import com.phuongthanh.effiwork_android.ui.screen.tasks.TaskDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingListScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.CreateMeetingScreen
 import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingDetailScreen
-import com.phuongthanh.effiwork_android.ui.screen.chat.MessageListScreen
+import com.phuongthanh.effiwork_android.ui.screen.chat.ChatListScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.CreateGroupChatScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
@@ -418,7 +418,7 @@ fun MainScreen(
             ) { backStackEntry ->
                 val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
                 val currentUserId = authViewModel.currentUserId.value ?: ""
-                MessageListScreen(
+                ChatListScreen(
                     projectId = projectId,
                     onBackClick = { navController.popBackStack() },
                     onCreateGroupClick = { navController.navigate(NavRoutes.createGroupChat(projectId)) },

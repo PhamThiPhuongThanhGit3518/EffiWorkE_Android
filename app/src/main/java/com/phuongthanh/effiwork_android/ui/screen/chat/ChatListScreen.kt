@@ -36,7 +36,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessageListScreen(
+fun ChatListScreen(
     projectId: String,
     onBackClick: () -> Unit,
     onNavigateToChat: (projectId: String, conversationId: String, conversationName: String) -> Unit,
@@ -72,7 +72,7 @@ fun MessageListScreen(
         }
     }
 
-    MessageListScreenContent(
+    ChatListScreenContent(
         uiState = uiState,
         selectedTab = selectedTab,
         searchQuery = searchQuery,
@@ -93,7 +93,7 @@ fun MessageListScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessageListScreenContent(
+fun ChatListScreenContent(
     uiState: NewMessageUiState,
     selectedTab: Int,
     searchQuery: String,
@@ -510,9 +510,9 @@ private fun MemberList(
 
 @Preview
 @Composable
-private fun MessageListScreenPreview() {
+private fun ChatListScreenPreview() {
     MaterialTheme {
-        MessageListScreenContent(
+        ChatListScreenContent(
             uiState = NewMessageUiState.Success(
                 conversations = emptyList(),
                 groups = emptyList(),
