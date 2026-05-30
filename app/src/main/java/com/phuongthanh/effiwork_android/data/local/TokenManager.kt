@@ -11,7 +11,16 @@ class TokenManager @Inject constructor(
     companion object {
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_USER_ID = "user_id"
     }
+
+    fun saveUserId(userId: String) {
+        sharedPreferences.edit()
+            .putString(KEY_USER_ID, userId)
+            .apply()
+    }
+
+    fun getUserId(): String? = sharedPreferences.getString(KEY_USER_ID, null)
 
     fun saveTokens(accessToken: String, refreshToken: String) {
         sharedPreferences.edit()

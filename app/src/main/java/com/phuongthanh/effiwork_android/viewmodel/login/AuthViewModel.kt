@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
+import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
 import com.phuongthanh.effiwork_android.ui.screen.login.AuthUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val chatSocketManager: ChatSocketManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
@@ -56,6 +58,8 @@ class AuthViewModel @Inject constructor(
                     _uiState.value = AuthUiState.Success(result.data.user)
                     _isLoggedIn.value = true
                     _currentUserId.value = result.data.user.id
+                    // Connect socket after successful login
+                    chatSocketManager.connect()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = AuthUiState.Error(result.message)
@@ -92,6 +96,9 @@ class AuthViewModel @Inject constructor(
             android.util.Log.d("LogoutDebug", "after authRepository.logout(), isLoggedIn = ${authRepository.isLoggedIn()}")
             _uiState.value = AuthUiState.Idle
             _isLoggedIn.value = false
+            _currentUserId.value = ""
+            // Disconnect socket after logout
+            chatSocketManager.disconnect()
             android.util.Log.d("LogoutDebug", "_isLoggedIn set to false")
         }
     }
