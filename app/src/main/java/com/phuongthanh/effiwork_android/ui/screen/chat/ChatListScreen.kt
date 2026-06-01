@@ -44,6 +44,7 @@ fun ChatListScreen(
     viewModel: NewMessageViewModel = hiltViewModel(),
     authRepository: com.phuongthanh.effiwork_android.data.repository.AuthRepository
 ) {
+    android.util.Log.d("ChatListScreenDebug", ">>> ChatListScreen composed, projectId=$projectId")
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
@@ -53,7 +54,8 @@ fun ChatListScreen(
     val currentUserId = authRepository.getCurrentUserId() ?: ""
 
     LaunchedEffect(projectId) {
-        viewModel.loadProjectData(projectId)
+        android.util.Log.d("ChatListScreenDebug", ">>> LaunchedEffect triggered for projectId=$projectId")
+        viewModel.onScreenVisible(projectId)
     }
 
     LaunchedEffect(Unit) {

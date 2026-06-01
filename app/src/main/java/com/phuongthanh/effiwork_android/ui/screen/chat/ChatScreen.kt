@@ -48,8 +48,12 @@ fun ChatScreen(
     var isRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(projectId, conversationId) {
+        android.util.Log.d("ScreenDebug", ">>> ChatScreen LaunchedEffect triggered: projectId=$projectId, conversationId=$conversationId")
+        android.util.Log.d("ScreenDebug", "  calling loadMessages")
         viewModel.loadMessages(projectId, conversationId, refresh = true)
+        android.util.Log.d("ScreenDebug", "  calling joinConversation")
         viewModel.joinConversation(projectId, conversationId)
+        android.util.Log.d("ScreenDebug", "  LaunchedEffect completed")
     }
 
     LaunchedEffect(Unit) {

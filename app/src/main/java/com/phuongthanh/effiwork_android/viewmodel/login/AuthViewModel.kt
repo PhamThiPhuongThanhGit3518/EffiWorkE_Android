@@ -47,6 +47,9 @@ class AuthViewModel @Inject constructor(
                 _currentUserId.value = savedUserId
                 android.util.Log.d("AuthViewModelDebug", "Restored currentUserId: ${savedUserId}")
             }
+            if (!chatSocketManager.isConnected()) {
+                chatSocketManager.connect()
+            }
         }
     }
 

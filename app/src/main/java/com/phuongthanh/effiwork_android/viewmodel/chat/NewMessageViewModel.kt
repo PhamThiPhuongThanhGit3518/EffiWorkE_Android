@@ -8,6 +8,8 @@ import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
+import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
+import com.phuongthanh.effiwork_android.data.model.response.chat.ChatMessageResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +24,13 @@ import javax.inject.Inject
 class NewMessageViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val projectRepository: ProjectRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val socketManager: ChatSocketManager
 ) : ViewModel() {
+
+    init {
+        observeSocketEvents()
+    }
 
     private val _uiState = MutableStateFlow<NewMessageUiState>(NewMessageUiState.Loading)
     val uiState: StateFlow<NewMessageUiState> = _uiState.asStateFlow()
@@ -43,6 +50,105 @@ class NewMessageViewModel @Inject constructor(
         Color(0xFFFF5722),
         Color(0xFF607D8B)
     )
+
+    private fun observeSocketEvents() {
+        android.util.Log.d("NewMessageVM", ">>> observeSocketEvents started, currentProjectId=$currentProjectId")
+        android.util.Log.d("NewMessageVM", "  conversationUpdatedFlow hash: ${System.identityHashCode(socketManager.conversationUpdatedFlow)}")
+
+        viewModelScope.launch {
+            android.util.Log.d("NewMessageVM", "observeSocketEvents: STARTED collecting conversationUpdatedFlow")
+            socketManager.conversationUpdatedFlow.collect { event ->
+                android.util.Log.d("NewMessageVM", "📡 Conversation updated event received: ${event.conversation.id}")
+                android.util.Log.d("NewMessageVM", "  currentProjectId = $currentProjectId")
+                val projId = currentProjectId
+                if (projId != null) {
+                    android.util.Log.d("NewMessageVM", "  reloading project data for $projId")
+                    loadProjectData(projId)
+                } else {
+                    android.util.Log.w("NewMessageVM", "  currentProjectId is null, cannot reload")
+                }
+            }
+            android.util.Log.d("NewMessageVM", "observeSocketEvents: conversationUpdatedFlow collector COMPLETED!")
+        }
+
+        viewModelScope.launch {
+            android.util.Log.d("NewMessageVM", "observeSocketEvents: STARTED collecting newMessageFlow")
+            socketManager.newMessageFlow.collect { event ->
+                android.util.Log.d("NewMessageVM", "📡 New message in: ${event.message.conversationId}")
+                val currentState = _uiState.value
+                android.util.Log.d("NewMessageVM", "  currentState type = ${currentState::class.simpleName}")
+                if (currentState is NewMessageUiState.Success) {
+                    android.util.Log.d("NewMessageVM", "  conversations count = ${currentState.conversations.size}")
+                    android.util.Log.d("NewMessageVM", "  privateChats count = ${currentState.privateChats.size}")
+                    val updatedConversations = updateConversationWithMessage(
+                        currentState.conversations,
+                        event.message
+                    )
+                    val updatedPrivateChats = updatePrivateChatWithMessage(
+                        currentState.privateChats,
+                        event.message
+                    )
+                    android.util.Log.d("NewMessageVM", "  updated conversations count = ${updatedConversations.size}")
+                    android.util.Log.d("NewMessageVM", "  updated privateChats count = ${updatedPrivateChats.size}")
+                    _uiState.value = currentState.copy(
+                        conversations = updatedConversations,
+                        privateChats = updatedPrivateChats
+                    )
+                    android.util.Log.d("NewMessageVM", "  UI state updated")
+                } else {
+                    android.util.Log.w("NewMessageVM", "  currentState is not Success, cannot update")
+                }
+            }
+            android.util.Log.d("NewMessageVM", "observeSocketEvents: newMessageFlow collector COMPLETED!")
+        }
+    }
+
+    private fun updateConversationWithMessage(
+        conversations: List<com.phuongthanh.effiwork_android.data.model.response.chat.ChatConversationResponse>,
+        message: ChatMessageResponse
+    ): List<com.phuongthanh.effiwork_android.data.model.response.chat.ChatConversationResponse> {
+        val currentUserId = authRepository.getCurrentUserId() ?: ""
+
+        return conversations.map { conv ->
+            if (conv.id == message.conversationId) {
+                conv.copy(
+                    lastMessageId = message.id,
+                    lastMessageAt = message.createdAt,
+                    unreadCount = if (message.senderId != currentUserId) (conv.unreadCount ?: 0) + 1 else conv.unreadCount
+                )
+            } else {
+                conv
+            }
+        }.sortedByDescending { it.lastMessageAt ?: it.updatedAt }
+    }
+
+    private fun updatePrivateChatWithMessage(
+        privateChats: List<PrivateChatItem>,
+        message: ChatMessageResponse
+    ): List<PrivateChatItem> {
+        val currentUserId = authRepository.getCurrentUserId() ?: ""
+
+        return privateChats.map { chat ->
+            if (chat.id == message.conversationId) {
+                chat.copy(
+                    lastMessage = message.content,
+                    lastMessageAt = message.createdAt,
+                    unreadCount = if (message.senderId != currentUserId) chat.unreadCount + 1 else chat.unreadCount
+                )
+            } else {
+                chat
+            }
+        }.sortedByDescending { it.lastMessageAt }
+    }
+
+    fun onScreenVisible(projectId: String) {
+        android.util.Log.d("NewMessageVM", ">>> onScreenVisible($projectId)")
+        android.util.Log.d("NewMessageVM", "  socket connected = ${socketManager.isConnected()}")
+        if (!socketManager.isConnected()) {
+            socketManager.connect()
+        }
+        loadProjectData(projectId)
+    }
 
     fun loadProjectData(projectId: String) {
         currentProjectId = projectId
