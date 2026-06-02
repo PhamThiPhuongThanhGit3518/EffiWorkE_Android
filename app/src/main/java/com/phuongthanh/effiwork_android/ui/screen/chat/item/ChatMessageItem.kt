@@ -1,4 +1,4 @@
-package com.phuongthanh.effiwork_android.ui.screen.chat
+package com.phuongthanh.effiwork_android.ui.screen.chat.item
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape

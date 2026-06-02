@@ -7,6 +7,8 @@ import com.phuongthanh.effiwork_android.data.model.chat.ChatMessageType
 import com.phuongthanh.effiwork_android.data.model.request.chat.CreateChatMessageRequest
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
 import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatEffect
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,23 +44,15 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun observeSocketEvents() {
-        android.util.Log.d("ViewModelDebug", ">>> observeSocketEvents started, currentConversationId=$currentConversationId")
         viewModelScope.launch {
-            android.util.Log.d("ViewModelDebug", "observeSocketEvents: STARTED collecting newMessageFlow")
             socketManager.newMessageFlow.collect { event ->
-                android.util.Log.d("ViewModelDebug", ">>> newMessageFlow received: messageId=${event.message.id}, convId=${event.message.conversationId}")
-                android.util.Log.d("ViewModelDebug", "  currentConversationId = $currentConversationId")
                 val currentConvId = currentConversationId
-                android.util.Log.d("ViewModelDebug", "  match = ${event.message.conversationId == currentConvId}")
                 if (event.message.conversationId == currentConvId) {
                     val currentState = _uiState.value
-                    android.util.Log.d("ViewModelDebug", "  currentState type = ${currentState::class.simpleName}")
                     if (currentState is ChatUiState.Success) {
-                        android.util.Log.d("ViewModelDebug", "  messages count before = ${currentState.messages.size}")
                         if (currentState.messages.none { it.id == event.message.id }) {
                             val updatedMessages = currentState.messages + event.message
                             _uiState.value = currentState.copy(messages = updatedMessages)
-                            android.util.Log.d("ViewModelDebug", "  messages count after = ${updatedMessages.size}, UI state updated")
                             viewModelScope.launch {
                                 _effect.emit(ChatEffect.NewMessageReceived(event.message))
                                 _effect.emit(ChatEffect.ScrollToBottom)
@@ -73,7 +67,6 @@ class ChatViewModel @Inject constructor(
                     android.util.Log.d("ViewModelDebug", "  conversationId mismatch, ignoring")
                 }
             }
-            android.util.Log.d("ViewModelDebug", "observeSocketEvents: COLLECTOR COMPLETED (should not happen)")
         }
     }
 
@@ -170,12 +163,10 @@ class ChatViewModel @Inject constructor(
 
             when (val result = chatRepository.sendMessage(projectId, conversationId, request)) {
                 is ApiResult.Success -> {
-                    // Add sent message to the list immediately
                     val currentState = _uiState.value as? ChatUiState.Success
                     if (currentState != null && currentState.messages.none { it.id == result.data.id }) {
                         val updatedMessages = currentState.messages + result.data
                         _uiState.value = currentState.copy(messages = updatedMessages)
-                        android.util.Log.d("ViewModelDebug", "sendMessage: added to list, total=${updatedMessages.size}")
                     }
                     _effect.emit(ChatEffect.MessageSent(result.data))
                     _effect.emit(ChatEffect.ScrollToBottom)

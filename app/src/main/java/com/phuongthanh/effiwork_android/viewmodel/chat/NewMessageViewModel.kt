@@ -1,7 +1,6 @@
 package com.phuongthanh.effiwork_android.viewmodel.chat
 
 import androidx.compose.ui.graphics.Color
-import com.phuongthanh.effiwork_android.data.model.chat.ChatConversationType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
@@ -10,6 +9,11 @@ import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
 import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
 import com.phuongthanh.effiwork_android.data.model.response.chat.ChatMessageResponse
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageEffect
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageUiState
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.PrivateChatItem
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ProjectGroup
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ProjectMember
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,34 +56,21 @@ class NewMessageViewModel @Inject constructor(
     )
 
     private fun observeSocketEvents() {
-        android.util.Log.d("NewMessageVM", ">>> observeSocketEvents started, currentProjectId=$currentProjectId")
-        android.util.Log.d("NewMessageVM", "  conversationUpdatedFlow hash: ${System.identityHashCode(socketManager.conversationUpdatedFlow)}")
-
         viewModelScope.launch {
-            android.util.Log.d("NewMessageVM", "observeSocketEvents: STARTED collecting conversationUpdatedFlow")
             socketManager.conversationUpdatedFlow.collect { event ->
-                android.util.Log.d("NewMessageVM", "📡 Conversation updated event received: ${event.conversation.id}")
-                android.util.Log.d("NewMessageVM", "  currentProjectId = $currentProjectId")
                 val projId = currentProjectId
                 if (projId != null) {
-                    android.util.Log.d("NewMessageVM", "  reloading project data for $projId")
                     loadProjectData(projId)
                 } else {
                     android.util.Log.w("NewMessageVM", "  currentProjectId is null, cannot reload")
                 }
             }
-            android.util.Log.d("NewMessageVM", "observeSocketEvents: conversationUpdatedFlow collector COMPLETED!")
         }
 
         viewModelScope.launch {
-            android.util.Log.d("NewMessageVM", "observeSocketEvents: STARTED collecting newMessageFlow")
             socketManager.newMessageFlow.collect { event ->
-                android.util.Log.d("NewMessageVM", "📡 New message in: ${event.message.conversationId}")
                 val currentState = _uiState.value
-                android.util.Log.d("NewMessageVM", "  currentState type = ${currentState::class.simpleName}")
                 if (currentState is NewMessageUiState.Success) {
-                    android.util.Log.d("NewMessageVM", "  conversations count = ${currentState.conversations.size}")
-                    android.util.Log.d("NewMessageVM", "  privateChats count = ${currentState.privateChats.size}")
                     val updatedConversations = updateConversationWithMessage(
                         currentState.conversations,
                         event.message
@@ -88,13 +79,10 @@ class NewMessageViewModel @Inject constructor(
                         currentState.privateChats,
                         event.message
                     )
-                    android.util.Log.d("NewMessageVM", "  updated conversations count = ${updatedConversations.size}")
-                    android.util.Log.d("NewMessageVM", "  updated privateChats count = ${updatedPrivateChats.size}")
                     _uiState.value = currentState.copy(
                         conversations = updatedConversations,
                         privateChats = updatedPrivateChats
                     )
-                    android.util.Log.d("NewMessageVM", "  UI state updated")
                 } else {
                     android.util.Log.w("NewMessageVM", "  currentState is not Success, cannot update")
                 }
@@ -245,7 +233,8 @@ class NewMessageViewModel @Inject constructor(
         val projectId = currentProjectId ?: return
 
         viewModelScope.launch {
-            _effect.emit(NewMessageEffect.NavigateToChat(
+            _effect.emit(
+                NewMessageEffect.NavigateToChat(
                 projectId = projectId,
                 conversationId = privateChat.id,
                 conversationName = privateChat.displayName
@@ -268,7 +257,8 @@ class NewMessageViewModel @Inject constructor(
                     val otherMember = newConv.members?.find { it.userId != currentUserId }
                     val conversationName = otherMember?.user?.fullName ?: "Chat"
 
-                    _effect.emit(NewMessageEffect.NavigateToChat(
+                    _effect.emit(
+                        NewMessageEffect.NavigateToChat(
                         projectId = projectId,
                         conversationId = newConv.id,
                         conversationName = conversationName
@@ -290,7 +280,8 @@ class NewMessageViewModel @Inject constructor(
         val projectId = currentProjectId ?: return
 
         viewModelScope.launch {
-            _effect.emit(NewMessageEffect.NavigateToChat(
+            _effect.emit(
+                NewMessageEffect.NavigateToChat(
                 projectId = projectId,
                 conversationId = group.id,
                 conversationName = group.name
@@ -302,7 +293,8 @@ class NewMessageViewModel @Inject constructor(
         val projectId = currentProjectId ?: return
 
         viewModelScope.launch {
-            _effect.emit(NewMessageEffect.NavigateToChat(
+            _effect.emit(
+                NewMessageEffect.NavigateToChat(
                 projectId = projectId,
                 conversationId = conversationId,
                 conversationName = conversationName
@@ -323,7 +315,8 @@ class NewMessageViewModel @Inject constructor(
         } ?: "Chat"
 
         viewModelScope.launch {
-            _effect.emit(NewMessageEffect.NavigateToChat(
+            _effect.emit(
+                NewMessageEffect.NavigateToChat(
                 projectId = projectId,
                 conversationId = conversation.id,
                 conversationName = name
@@ -342,7 +335,8 @@ class NewMessageViewModel @Inject constructor(
 
             when (val result = chatRepository.createGroupConversation(projectId, name, memberIds)) {
                 is ApiResult.Success -> {
-                    _effect.emit(NewMessageEffect.NavigateToChat(
+                    _effect.emit(
+                        NewMessageEffect.NavigateToChat(
                         projectId = projectId,
                         conversationId = result.data.id,
                         conversationName = result.data.name ?: "Group"

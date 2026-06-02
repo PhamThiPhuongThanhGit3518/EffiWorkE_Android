@@ -1,4 +1,4 @@
-package com.phuongthanh.effiwork_android.ui.screen.chat
+package com.phuongthanh.effiwork_android.ui.screen.chat.item
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,17 +31,43 @@ fun ChatInputBar(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            TextField(
-                value = messageText,
-                onValueChange = onMessageChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Nhập nội dung tin nhắn...") },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = false,
-                maxLines = 4
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextField(
+                    value = messageText,
+                    onValueChange = onMessageChange,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Nhập nội dung tin nhắn...") },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = false,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF0F0F0),
+                        unfocusedContainerColor = Color(0xFFF0F0F0),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    maxLines = 4
+                )
+                Button(
+                    onClick = onSendClick,
+                    enabled = messageText.isNotBlank(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Black,
+                        disabledContainerColor = Color.Gray
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Send,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
 
             Row(
                 modifier = Modifier
@@ -51,7 +77,7 @@ fun ChatInputBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     OutlinedButton(
                         onClick = onProjectFileClick,
@@ -59,7 +85,8 @@ fun ChatInputBar(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.Black
-                        )
+                        ),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
                             Icons.Default.Folder,
@@ -76,7 +103,8 @@ fun ChatInputBar(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.Black
-                        )
+                        ),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
                             Icons.Default.AttachFile,
@@ -86,25 +114,6 @@ fun ChatInputBar(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("File thiết bị", style = MaterialTheme.typography.labelSmall)
                     }
-                }
-
-                Button(
-                    onClick = onSendClick,
-                    enabled = messageText.isNotBlank(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        disabledContainerColor = Color.Gray
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Send,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Gửi tin nhắn", color = Color.White)
                 }
             }
         }

@@ -1,4 +1,4 @@
-package com.phuongthanh.effiwork_android.ui.screen.chat
+package com.phuongthanh.effiwork_android.ui.screen.chat.item
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

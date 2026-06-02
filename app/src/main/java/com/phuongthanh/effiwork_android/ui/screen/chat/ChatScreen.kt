@@ -25,9 +25,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.data.model.chat.ChatMessageType
 import com.phuongthanh.effiwork_android.data.model.response.chat.ChatMessageResponse
 import com.phuongthanh.effiwork_android.data.model.response.chat.ChatUserResponse
+import com.phuongthanh.effiwork_android.ui.screen.chat.item.ChatInputBar
+import com.phuongthanh.effiwork_android.ui.screen.chat.item.ChatMessageItem
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
-import com.phuongthanh.effiwork_android.viewmodel.chat.ChatEffect
-import com.phuongthanh.effiwork_android.viewmodel.chat.ChatUiState
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatEffect
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatUiState
 import com.phuongthanh.effiwork_android.viewmodel.chat.ChatViewModel
 import kotlinx.coroutines.flow.collectLatest
 
@@ -139,11 +141,11 @@ fun ChatScreenContent(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.DoneAll, contentDescription = "Mark as read")
-                    }
-                },
+//                actions = {
+//                    IconButton(onClick = { }) {
+//                        Icon(Icons.Default.DoneAll, contentDescription = "Mark as read")
+//                    }
+//                },
                 windowInsets = WindowInsets(0, 0, 0, 0)
             )
         },

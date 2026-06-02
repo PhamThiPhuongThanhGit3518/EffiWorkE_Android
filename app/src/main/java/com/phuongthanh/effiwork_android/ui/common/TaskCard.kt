@@ -145,10 +145,7 @@ fun TaskCard(
                 )
             }
 
-            // === HIỂN THỊ EXTENSION REQUEST PENDING ===
-            android.util.Log.d("TaskCardDebug", "Checking extension request: status=${task.pendingExtensionRequestStatus}")
             if (task.pendingExtensionRequestStatus == "PENDING") {
-                android.util.Log.d("TaskCardDebug", "Rendering extension request row for: ${task.name}")
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier

@@ -27,11 +27,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.data.model.chat.ChatConversationType
 import com.phuongthanh.effiwork_android.data.model.response.chat.ChatConversationResponse
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
-import com.phuongthanh.effiwork_android.viewmodel.chat.NewMessageEffect
-import com.phuongthanh.effiwork_android.viewmodel.chat.NewMessageUiState
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageEffect
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageUiState
 import com.phuongthanh.effiwork_android.viewmodel.chat.NewMessageViewModel
-import com.phuongthanh.effiwork_android.viewmodel.chat.PrivateChatItem
-import com.phuongthanh.effiwork_android.viewmodel.chat.ProjectGroup
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.PrivateChatItem
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.ProjectGroup
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)

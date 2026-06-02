@@ -1,4 +1,4 @@
-package com.phuongthanh.effiwork_android.viewmodel.chat
+package com.phuongthanh.effiwork_android.viewmodel.chat.state
 
 import androidx.compose.ui.graphics.Color
 

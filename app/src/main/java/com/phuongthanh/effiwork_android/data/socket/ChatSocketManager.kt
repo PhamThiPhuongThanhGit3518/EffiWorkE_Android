@@ -42,17 +42,13 @@ class ChatSocketManager @Inject constructor(
     enum class ConnectionState { CONNECTING, CONNECTED, DISCONNECTED, ERROR }
 
     fun connect() {
-        android.util.Log.d("SocketDebug", ">>> connect() called, socket=${socket?.connected()}")
         if (socket != null && socket!!.connected()) {
-            android.util.Log.d("SocketDebug", "connect() - socket already connected, skipping")
             return
         }
 
         val token = tokenManager.getAccessToken() ?: run {
-            android.util.Log.e("SocketDebug", "connect() - NO ACCESS TOKEN")
             return
         }
-        android.util.Log.d("SocketDebug", "connect() - token available, creating socket")
 
         val options = IO.Options().apply {
             transports = arrayOf(WebSocket.NAME)
@@ -63,33 +59,24 @@ class ChatSocketManager @Inject constructor(
         }
 
         socket = IO.socket(SOCKET_URL, options).apply {
-            android.util.Log.d("SocketDebug", "Socket object created, registering event handlers...")
             on(Socket.EVENT_CONNECT) {
-                android.util.Log.d("SocketDebug", "=== SOCKET EVENT: CONNECT ===")
                 _connectionStateFlow.tryEmit(ConnectionState.CONNECTED)
             }
 
             on(Socket.EVENT_DISCONNECT) {
-                android.util.Log.d("SocketDebug", "=== SOCKET EVENT: DISCONNECT ===")
                 _connectionStateFlow.tryEmit(ConnectionState.DISCONNECTED)
             }
 
             on(Socket.EVENT_CONNECT_ERROR) { args ->
-                android.util.Log.e("SocketDebug", "=== SOCKET EVENT: CONNECT_ERROR - ${args.joinToString()} ===")
                 _connectionStateFlow.tryEmit(ConnectionState.ERROR)
             }
 
             on("chat:message:new") { args ->
-                android.util.Log.d("SocketDebug", "=== SOCKET EVENT: chat:message:new, args count=${args.size} ===")
                 if (args.isNotEmpty()) {
                     try {
                         val data = args[0] as JSONObject
-                        android.util.Log.d("SocketDebug", "chat:message:new data: $data")
                         val message = parseMessage(data)
-                        android.util.Log.d("SocketDebug", "Parsed message: id=${message.id}, convId=${message.conversationId}, senderId=${message.senderId}")
-                        android.util.Log.d("SocketDebug", "Emitting NewMessageEvent to flow")
                         _newMessageFlow.tryEmit(NewMessageEvent(message))
-                        android.util.Log.d("SocketDebug", "Emitted NewMessageEvent to flow")
                     } catch (e: Exception) {
                         android.util.Log.e("SocketDebug", "Error parsing new message event", e)
                     }
@@ -99,16 +86,11 @@ class ChatSocketManager @Inject constructor(
             }
 
             on("chat:conversation:updated") { args ->
-                android.util.Log.d("SocketDebug", "=== SOCKET EVENT: chat:conversation:updated ===")
                 if (args.isNotEmpty()) {
                     try {
                         val data = args[0] as JSONObject
-                        android.util.Log.d("SocketDebug", "conversation:updated data: $data")
                         val conversation = parseConversation(data)
-                        android.util.Log.d("SocketDebug", "Parsed conversation: id=${conversation.id}, lastMessageId=${conversation.lastMessageId}")
-                        android.util.Log.d("SocketDebug", "Emitting ConversationUpdatedEvent to flow")
                         _conversationUpdatedFlow.tryEmit(ConversationUpdatedEvent(conversation))
-                        android.util.Log.d("SocketDebug", "Emitted ConversationUpdatedEvent to flow")
                     } catch (e: Exception) {
                         android.util.Log.e("SocketDebug", "Error parsing conversation updated event", e)
                     }
@@ -123,23 +105,17 @@ class ChatSocketManager @Inject constructor(
     }
 
     fun joinConversation(projectId: String, conversationId: String) {
-        android.util.Log.d("SocketDebug", ">>> joinConversation($projectId, $conversationId)")
-        android.util.Log.d("SocketDebug", "  socket?.connected() = ${socket?.connected()}")
         val payload = JSONObject().apply {
             put("projectId", projectId)
             put("conversationId", conversationId)
         }
-        android.util.Log.d("SocketDebug", "  Emitting chat:join-conversation: $payload")
         socket?.emit("chat:join-conversation", payload)
-        android.util.Log.d("SocketDebug", "  emit completed")
     }
 
     fun leaveConversation(conversationId: String) {
-        android.util.Log.d("SocketDebug", ">>> leaveConversation($conversationId)")
         val payload = JSONObject().apply {
             put("conversationId", conversationId)
         }
-        android.util.Log.d("SocketDebug", "  Emitting chat:leave-conversation: $payload")
         socket?.emit("chat:leave-conversation", payload)
     }
 
