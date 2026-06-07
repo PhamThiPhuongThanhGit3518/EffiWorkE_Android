@@ -41,7 +41,7 @@ fun NotificationScreen(
     modifier: Modifier = Modifier,
     onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeetingDetail: (String, String) -> Unit = { _, _ -> },
-    onNavigateToProject: (String, String) -> Unit = { _, _ -> },
+    onNavigateToProject: (String) -> Unit = {},
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,7 +81,6 @@ fun NotificationScreen(
             }
             handleNotificationClick(
                 notification = notification,
-                projectNameMap = projectNameMap,
                 onNavigateToTaskDetail = onNavigateToTaskDetail,
                 onNavigateToMeetingDetail = onNavigateToMeetingDetail,
                 onNavigateToProject = onNavigateToProject
@@ -475,10 +474,9 @@ private fun formatTimestamp(timestamp: String?): String {
 
 private fun handleNotificationClick(
     notification: NotificationResponse,
-    projectNameMap: Map<String, String>,
     onNavigateToTaskDetail: (String, String) -> Unit,
     onNavigateToMeetingDetail: (String, String) -> Unit,
-    onNavigateToProject: (String, String) -> Unit
+    onNavigateToProject: (String) -> Unit
 ) {
     val projectId = notification.projectId ?: notification.data?.projectId
     val relatedType = notification.relatedType
@@ -503,8 +501,7 @@ private fun handleNotificationClick(
             return
         }
         projectId != null -> {
-            val projectName = projectNameMap[projectId] ?: "Dự án"
-            onNavigateToProject(projectId, projectName)
+            onNavigateToProject(projectId)
         }
     }
 }

@@ -35,6 +35,13 @@ class ProjectsViewModel @Inject constructor(
         appPreferences.saveSelectedProjectId(projectId)
     }
 
+    private val _focusProjectRequest = MutableSharedFlow<String>(replay = 1)
+    val focusProjectRequest: SharedFlow<String> = _focusProjectRequest.asSharedFlow()
+
+    fun requestFocusProject(projectId: String) {
+        viewModelScope.launch { _focusProjectRequest.emit(projectId) }
+    }
+
     private val _uiState = MutableStateFlow<ProjectsUiState>(ProjectsUiState.Idle)
     val uiState: StateFlow<ProjectsUiState> = _uiState.asStateFlow()
 

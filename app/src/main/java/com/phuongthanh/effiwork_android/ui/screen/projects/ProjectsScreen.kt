@@ -70,6 +70,13 @@ fun ProjectsScreen(
         projectsViewModel.handleIntent(ProjectsIntent.LoadProjects)
     }
 
+    LaunchedEffect(Unit) {
+        projectsViewModel.focusProjectRequest.collect { projectId ->
+            projectsViewModel.selectProject(projectId)
+            detailViewModel.loadProject(projectId)
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {

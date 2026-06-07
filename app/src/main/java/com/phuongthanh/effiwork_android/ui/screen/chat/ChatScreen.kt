@@ -48,6 +48,7 @@ fun ChatScreen(
     conversationName: String,
     currentUserId: String,
     onBackClick: () -> Unit,
+    onDocumentPreviewClick: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -134,6 +135,7 @@ fun ChatScreen(
         uiState = uiState,
         conversationName = conversationName,
         currentUserId = currentUserId,
+        projectId = projectId,
         messageText = messageText,
         isRefreshing = isRefreshing,
         isUploadingFile = attachmentState.isUploading,
@@ -160,6 +162,9 @@ fun ChatScreen(
         onProjectFileClick = { showProjectPicker = true },
         onDeviceFileClick = { pickDeviceFileLauncher.launch(arrayOf("*/*")) },
         onClearFile = { selectedFile = null },
+        onDocumentClick = { documentId ->
+            onDocumentPreviewClick(documentId)
+        },
         onRefresh = {
             isRefreshing = true
             viewModel.refresh()
@@ -185,6 +190,7 @@ fun ChatScreenContent(
     uiState: ChatUiState,
     conversationName: String,
     currentUserId: String,
+    projectId: String,
     messageText: String,
     isRefreshing: Boolean,
     isUploadingFile: Boolean,
@@ -195,6 +201,7 @@ fun ChatScreenContent(
     onProjectFileClick: () -> Unit,
     onDeviceFileClick: () -> Unit,
     onClearFile: () -> Unit,
+    onDocumentClick: (String) -> Unit,
     onRefresh: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -300,7 +307,9 @@ fun ChatScreenContent(
                                 ) { message ->
                                     ChatMessageItem(
                                         message = message,
-                                        isOwnMessage = message.senderId == currentUserId
+                                        isOwnMessage = message.senderId == currentUserId,
+                                        projectId = projectId,
+                                        onDocumentClick = onDocumentClick
                                     )
                                 }
                             }
@@ -431,6 +440,7 @@ private fun ChatScreenPreview() {
             ),
             conversationName = "Nhóm A",
             currentUserId = "1",
+            projectId = "p1",
             messageText = "",
             isRefreshing = false,
             isUploadingFile = false,
@@ -441,6 +451,7 @@ private fun ChatScreenPreview() {
             onProjectFileClick = {},
             onDeviceFileClick = {},
             onClearFile = {},
+            onDocumentClick = {},
             onRefresh = {},
             onBackClick = {}
         )

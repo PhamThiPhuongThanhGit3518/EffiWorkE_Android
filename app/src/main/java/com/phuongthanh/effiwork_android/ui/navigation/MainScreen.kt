@@ -181,8 +181,15 @@ fun MainScreen(
                     onNavigateToMeetingDetail = { projectId, meetingId ->
                         navController.navigate(NavRoutes.meetingDetail(projectId, meetingId))
                     },
-                    onNavigateToProject = { projectId, projectName ->
-                        navController.navigate(NavRoutes.taskGroupList(projectId, projectName))
+                    onNavigateToProject = { projectId ->
+                        projectsViewModel.requestFocusProject(projectId)
+                        navController.navigate(BottomNavItem.Projects.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
@@ -468,7 +475,10 @@ fun MainScreen(
                     conversationId = conversationId,
                     conversationName = conversationName,
                     currentUserId = currentUserId,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onDocumentPreviewClick = { documentId ->
+                        navController.navigate(NavRoutes.documentPreview(projectId, documentId))
+                    }
                 )
             }
             composable(
