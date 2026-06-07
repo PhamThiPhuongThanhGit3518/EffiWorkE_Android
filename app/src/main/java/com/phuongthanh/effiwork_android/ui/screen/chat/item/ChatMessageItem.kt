@@ -97,7 +97,7 @@ fun ChatMessageItem(
                     when (message.type) {
                         ChatMessageType.TEXT, ChatMessageType.SYSTEM -> {
                             Text(
-                                text = message.content ?: "",
+                                text = message.content?.normalizeMessage() ?: "",
                                 color = textColor,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -118,10 +118,11 @@ fun ChatMessageItem(
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
-                            if (!message.content.isNullOrBlank()) {
+                            val caption = message.content?.normalizeMessage()
+                            if (!caption.isNullOrEmpty()) {
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    text = message.content,
+                                    text = caption,
                                     color = textColor,
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -135,10 +136,11 @@ fun ChatMessageItem(
                                 isOwnMessage = isOwnMessage,
                                 textColor = textColor
                             )
-                            if (!message.content.isNullOrBlank()) {
+                            val caption = message.content?.normalizeMessage()
+                            if (!caption.isNullOrEmpty()) {
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    text = message.content,
+                                    text = caption,
                                     color = textColor,
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -294,6 +296,13 @@ private fun formatMessageTime(timestamp: String?): String {
     } catch (e: Exception) {
         timestamp
     }
+}
+
+private fun String.normalizeMessage(): String? {
+    val trimmed = trim()
+    if (trimmed.isEmpty()) return null
+    if (trimmed.equals("null", ignoreCase = true)) return null
+    return trimmed
 }
 
 private fun formatFileSize(bytes: Long): String {

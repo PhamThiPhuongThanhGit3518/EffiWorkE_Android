@@ -142,9 +142,9 @@ class ChatViewModel @Inject constructor(
         val projectId = currentProjectId ?: return
         val conversationId = currentConversationId ?: return
 
-        if (content.isBlank() && type == ChatMessageType.TEXT) {
+        if (content.isBlank() && documentId == null) {
             viewModelScope.launch {
-                _effect.emit(ChatEffect.ShowToast("Message cannot be empty"))
+                _effect.emit(ChatEffect.ShowToast("Tin nhắn không được trống"))
             }
             return
         }
@@ -157,7 +157,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val request = CreateChatMessageRequest(
                 type = type,
-                content = content.takeIf { type == ChatMessageType.TEXT || type == ChatMessageType.SYSTEM },
+                content = content.ifBlank { null },
                 documentId = documentId
             )
 
