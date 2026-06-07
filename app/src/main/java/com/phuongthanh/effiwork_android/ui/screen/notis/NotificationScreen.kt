@@ -119,91 +119,91 @@ fun NotificationScreen(
                 .padding(innerPadding)
                 .background(Color(0xFFF5F5F5))
         ) {
-//            when (val state = uiState) {
-//                is NotificationUiState.Idle, is NotificationUiState.Loading -> {
-//                    Box(
-//                        modifier = Modifier.fillMaxSize(),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        CircularProgressIndicator(color = Blue500)
-//                    }
-//                }
-//                is NotificationUiState.Success -> {
-//                    if (state.notifications.isEmpty()) {
-//                        Box(
-//                            modifier = Modifier.fillMaxSize(),
-//                            contentAlignment = Alignment.Center
-//                        ) {
-//                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                                Icon(
-//                                    Icons.Default.Notifications,
-//                                    contentDescription = null,
-//                                    tint = Color.Gray,
-//                                    modifier = Modifier.size(64.dp)
-//                                )
-//                                Spacer(modifier = Modifier.height(16.dp))
-//                                Text(
-//                                    text = "Không có thông báo",
-//                                    style = MaterialTheme.typography.bodyLarge,
-//                                    color = Color.Gray
-//                                )
-//                            }
-//                        }
-//                    } else {
-//                        LazyColumn(
-//                            state = listState,
-//                            modifier = Modifier.fillMaxSize(),
-//                            contentPadding = PaddingValues(16.dp),
-//                            verticalArrangement = Arrangement.spacedBy(8.dp)
-//                        ) {
-//                            items(
-//                                items = state.notifications,
-//                                key = { it.id }
-//                            ) { notification ->
-//                                NotificationItem(
-//                                    notification = notification,
-//                                    onMarkAsRead = { viewModel.markAsRead(notification.id) },
-//                                    onMarkAsUnread = { viewModel.markAsUnread(notification.id) },
-//                                    onClick = {
-//                                        if (notification.isRead != true) {
-//                                            viewModel.markAsRead(notification.id)
-//                                        }
-//                                        handleNotificationClick(
-//                                            notification = notification,
-//                                            onNavigateToTaskDetail = onNavigateToTaskDetail,
-//                                            onNavigateToMeetingDetail = onNavigateToMeetingDetail
-//                                        )
-//                                    }
-//                                )
-//                            }
-//                        }
-//                    }
-//                }
-//                is NotificationUiState.Error -> {
-//                    Box(
-//                        modifier = Modifier.fillMaxSize(),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                            Icon(
-//                                Icons.Default.Error,
-//                                contentDescription = null,
-//                                tint = Color.Red,
-//                                modifier = Modifier.size(48.dp)
-//                            )
-//                            Spacer(modifier = Modifier.height(16.dp))
-//                            Text(state.message, color = Color.Red)
-//                            Spacer(modifier = Modifier.height(16.dp))
-//                            Button(
-//                                onClick = { viewModel.refresh() },
-//                                colors = ButtonDefaults.buttonColors(containerColor = Blue500)
-//                            ) {
-//                                Text("Thử lại")
-//                            }
-//                        }
-//                    }
-//                }
-//            }
+            when (val state = uiState) {
+                is NotificationUiState.Idle, is NotificationUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Blue500)
+                    }
+                }
+                is NotificationUiState.Success -> {
+                    if (state.notifications.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(64.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Không có thông báo",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = state.notifications,
+                                key = { it.id }
+                            ) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onMarkAsRead = { viewModel.markAsRead(notification.id) },
+                                    onMarkAsUnread = { viewModel.markAsUnread(notification.id) },
+                                    onClick = {
+                                        if (notification.isRead != true) {
+                                            viewModel.markAsRead(notification.id)
+                                        }
+                                        handleNotificationClick(
+                                            notification = notification,
+                                            onNavigateToTaskDetail = onNavigateToTaskDetail,
+                                            onNavigateToMeetingDetail = onNavigateToMeetingDetail
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                is NotificationUiState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = Color.Red,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(state.message, color = Color.Red)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.refresh() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Blue500)
+                            ) {
+                                Text("Thử lại")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
