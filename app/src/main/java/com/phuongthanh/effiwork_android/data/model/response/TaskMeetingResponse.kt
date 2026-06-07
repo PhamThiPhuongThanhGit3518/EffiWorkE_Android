@@ -99,7 +99,26 @@ data class DocumentResponse(
     val filePath: String?,
     val mimeType: String?,
     val fileSize: Long,
-    val createdAt: String?
+    val createdAt: String?,
+    val projectId: String? = null,
+    val folderId: String? = null,
+    val visibilityType: String? = null,
+    val updatedAt: String? = null,
+    val uploadedBy: UploadedByInfo? = null,
+    val owner: UploadedByInfo? = null,
+    @SerializedName("_count") val count: DocumentCount? = null
+)
+
+data class UploadedByInfo(
+    val id: String,
+    val fullName: String? = null,
+    val email: String? = null,
+    val avatarUrl: String? = null
+)
+
+data class DocumentCount(
+    val taskAttachments: Int = 0,
+    val meetingAttachments: Int = 0
 )
 
 data class SectionInfo(
