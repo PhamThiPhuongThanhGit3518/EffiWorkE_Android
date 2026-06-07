@@ -9,8 +9,11 @@ import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionReques
 import com.phuongthanh.effiwork_android.data.model.request.UpdateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
+import com.phuongthanh.effiwork_android.data.model.request.document.AttachTaskDocumentRequest
+import com.phuongthanh.effiwork_android.data.model.request.document.UpdateDocumentRequest
 import com.phuongthanh.effiwork_android.data.model.response.*
 import com.phuongthanh.effiwork_android.data.model.response.DocumentResponse
+import com.phuongthanh.effiwork_android.data.model.response.document.TaskAttachmentResponse
 
 interface TaskRepository {
     suspend fun getTasks(projectId: String, sectionId: String? = null, status: String? = null, assigneeId: String? = null, parentTaskId: String? = null): ApiResult<List<TaskResponse>>
@@ -43,5 +46,73 @@ interface MeetingRepository {
 }
 
 interface DocumentRepository {
-    suspend fun uploadDocument(projectId: String, fileName: String, fileBytes: ByteArray): ApiResult<DocumentResponse>
+    suspend fun uploadDocument(
+        projectId: String,
+        fileName: String,
+        fileBytes: ByteArray
+    ): ApiResult<DocumentResponse>
+
+    suspend fun uploadDocument(
+        projectId: String,
+        fileName: String,
+        fileBytes: ByteArray,
+        mimeType: String?,
+        folderId: String?,
+        visibilityType: String?,
+        customFileName: String?
+    ): ApiResult<DocumentResponse>
+
+    suspend fun listDocuments(
+        projectId: String,
+        keyword: String? = null,
+        folderId: String? = null,
+        visibilityType: String? = null,
+        mineOnly: Boolean? = null,
+        page: Int = 1,
+        limit: Int = 20
+    ): ApiResult<List<DocumentResponse>>
+
+    suspend fun getDocumentDetail(
+        projectId: String,
+        documentId: String
+    ): ApiResult<DocumentResponse>
+
+    suspend fun updateDocument(
+        projectId: String,
+        documentId: String,
+        request: UpdateDocumentRequest
+    ): ApiResult<DocumentResponse>
+
+    suspend fun deleteDocument(
+        projectId: String,
+        documentId: String
+    ): ApiResult<Unit>
+
+    suspend fun downloadDocument(
+        projectId: String,
+        documentId: String
+    ): ApiResult<ByteArray>
+
+    suspend fun downloadDocumentToFile(
+        projectId: String,
+        documentId: String,
+        dest: java.io.File
+    ): ApiResult<java.io.File>
+
+    suspend fun previewDocument(
+        projectId: String,
+        documentId: String
+    ): ApiResult<ByteArray>
+
+    suspend fun attachToTask(
+        projectId: String,
+        taskId: String,
+        documentId: String
+    ): ApiResult<TaskAttachmentResponse>
+
+    suspend fun detachFromTask(
+        projectId: String,
+        taskId: String,
+        attachmentId: String
+    ): ApiResult<Unit>
 }

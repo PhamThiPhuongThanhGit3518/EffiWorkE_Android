@@ -2,12 +2,8 @@ package com.phuongthanh.effiwork_android.data.repository
 
 import android.util.Log
 import com.phuongthanh.effiwork_android.api.ApiResult
-import com.phuongthanh.effiwork_android.api.DocumentService
 import com.phuongthanh.effiwork_android.api.MeetingService
 import com.phuongthanh.effiwork_android.api.TaskService
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import com.phuongthanh.effiwork_android.data.model.request.CreateMeetingRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateSectionRequest
 import com.phuongthanh.effiwork_android.data.model.request.CreateTaskRequest
@@ -474,31 +470,6 @@ class MeetingRepositoryImpl @Inject constructor(
                     ApiResult.Error(response.message)
                 }
             } catch (e: Exception) {
-                ApiResult.Error(e.message ?: "Unknown error")
-            }
-        }
-    }
-}
-
-@Singleton
-class DocumentRepositoryImpl @Inject constructor(
-    private val documentService: DocumentService
-) : DocumentRepository {
-
-    override suspend fun uploadDocument(projectId: String, fileName: String, fileBytes: ByteArray): ApiResult<DocumentResponse> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val requestBody = fileBytes.toRequestBody("application/octet-stream".toMediaTypeOrNull())
-                val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
-
-                val response = documentService.uploadDocument(projectId, part)
-                if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
-                    ApiResult.Success(response.body()!!.data!!)
-                } else {
-                    ApiResult.Error(response.message() ?: "Upload failed")
-                }
-            } catch (e: Exception) {
-                Log.e("DocumentRepository", "uploadDocument EXCEPTION: ${e.message}", e)
                 ApiResult.Error(e.message ?: "Unknown error")
             }
         }
