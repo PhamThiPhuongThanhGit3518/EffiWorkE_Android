@@ -298,13 +298,6 @@ private fun formatMessageTime(timestamp: String?): String {
     }
 }
 
-private fun String.normalizeMessage(): String? {
-    val trimmed = trim()
-    if (trimmed.isEmpty()) return null
-    if (trimmed.equals("null", ignoreCase = true)) return null
-    return trimmed
-}
-
 private fun formatFileSize(bytes: Long): String {
     return when {
         bytes < 1024 -> "$bytes B"

@@ -82,6 +82,8 @@ fun ChatScreen(
         viewModel.loadMessages(projectId, conversationId, refresh = true)
         android.util.Log.d("ScreenDebug", "  calling joinConversation")
         viewModel.joinConversation(projectId, conversationId)
+        android.util.Log.d("ScreenDebug", "  calling markAsRead")
+        viewModel.markAsRead()
         android.util.Log.d("ScreenDebug", "  LaunchedEffect completed")
     }
 

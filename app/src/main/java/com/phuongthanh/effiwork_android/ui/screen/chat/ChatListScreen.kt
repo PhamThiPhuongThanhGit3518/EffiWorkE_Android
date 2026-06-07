@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.data.model.chat.ChatConversationType
 import com.phuongthanh.effiwork_android.data.model.response.chat.ChatConversationResponse
+import com.phuongthanh.effiwork_android.ui.screen.chat.item.previewText
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageEffect
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageUiState
@@ -394,7 +395,7 @@ private fun ConversationItem(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = lastMessage?.content ?: "No messages yet",
+                    text = lastMessage?.previewText()?.takeIf { it.isNotEmpty() } ?: "No messages yet",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     maxLines = 1,
