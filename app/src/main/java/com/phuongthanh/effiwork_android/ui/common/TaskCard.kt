@@ -45,7 +45,8 @@ fun TaskCard(
     onClick: () -> Unit,
     onMoreClick: (() -> Unit)? = null,
     onStatusChange: (TaskStatus) -> Unit,
-    canChangeStatus: Boolean = false
+    canChangeStatus: Boolean = false,
+    dropdownMenuContent: (@Composable () -> Unit)? = null
 ) {
     android.util.Log.d("TaskCardDebug", "TaskCard: ${task.name}, pendingExtensionRequestStatus: ${task.pendingExtensionRequestStatus}, pendingExtensionRequestNewDueDate: ${task.pendingExtensionRequestNewDueDate}")
     Card(
@@ -74,13 +75,16 @@ fun TaskCard(
                 )
                 StatusBadge(task.status, onStatusChange, canChangeStatus)
                 if (onMoreClick != null) {
-                    IconButton(onClick = onMoreClick) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Box {
+                        IconButton(onClick = onMoreClick) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        dropdownMenuContent?.invoke()
                     }
                 }
             }

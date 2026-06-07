@@ -1,6 +1,10 @@
 package com.phuongthanh.effiwork_android.ui.screen.tasks
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,12 +19,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
+import com.phuongthanh.effiwork_android.viewmodel.task.TaskAttachmentItem
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskEffect
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskGroup
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskMember
@@ -47,8 +53,14 @@ data class CreateTaskFormState(
     val levelExpanded: Boolean = false,
     val participantSearchQuery: String = "",
     val showStartDatePicker: Boolean = false,
-    val showEndDatePicker: Boolean = false
-)
+    val showEndDatePicker: Boolean = false,
+    val selectedFileUris: List<Uri> = emptyList(),
+    val initialAttachments: List<TaskAttachmentItem> = emptyList(),
+    val removedAttachmentIds: Set<String> = emptySet()
+) {
+    val keptAttachments: List<TaskAttachmentItem>
+        get() = initialAttachments.filterNot { removedAttachmentIds.contains(it.id) }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +79,7 @@ fun CreateTaskListScreen(
     val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
     val taskMembers by viewModel.taskMembers.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val editingAttachments by viewModel.editingAttachments.collectAsStateWithLifecycle()
 
     val isEditMode = taskId != null
     val isSubtaskMode = parentTaskId.isNotBlank()
@@ -105,6 +118,16 @@ fun CreateTaskListScreen(
         }
     }
 
+    // Populate existing attachments when edit data arrives
+    LaunchedEffect(editingAttachments, taskId) {
+        if (taskId != null && formState.initialAttachments.isEmpty() && editingAttachments.isNotEmpty()) {
+            formState = formState.copy(
+                initialAttachments = editingAttachments,
+                removedAttachmentIds = emptySet()
+            )
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -137,7 +160,8 @@ fun CreateTaskListScreen(
                     startDate = formState.startDate,
                     endDate = formState.endDate,
                     reminderTime = formState.reminder.ifBlank { null },
-                    participantIds = formState.participantIds
+                    participantIds = formState.participantIds,
+                    attachmentUris = formState.selectedFileUris
                 )
             } else {
                 viewModel.createTask(
@@ -148,7 +172,8 @@ fun CreateTaskListScreen(
                     startDate = formState.startDate,
                     endDate = formState.endDate,
                     reminderTime = formState.reminder.ifBlank { null },
-                    participantIds = formState.participantIds
+                    participantIds = formState.participantIds,
+                    attachmentUris = formState.selectedFileUris
                 )
             }
         },
@@ -163,7 +188,9 @@ fun CreateTaskListScreen(
                     startDate = formState.startDate,
                     endDate = formState.endDate,
                     reminderTime = formState.reminder.ifBlank { null },
-                    participantIds = formState.participantIds
+                    participantIds = formState.participantIds,
+                    removedAttachmentIds = formState.removedAttachmentIds.toList(),
+                    newAttachmentUris = formState.selectedFileUris
                 )
             }
         },
@@ -189,6 +216,16 @@ fun CreateTaskListScreenContent(
 ) {
     val statuses = listOf("Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng")
     val taskLevels = listOf("Công việc lớn của dự án", "Công việc nhỏ")
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onFormStateChange(
+                formState.copy(selectedFileUris = formState.selectedFileUris + uris)
+            )
+        }
+    }
 
     val screenTitle = when {
         isEditMode -> "Chỉnh sửa công việc"
@@ -285,6 +322,14 @@ fun CreateTaskListScreenContent(
                 formState = formState,
                 onFormStateChange = onFormStateChange,
                 taskMembers = taskMembers
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            AttachmentsCard(
+                formState = formState,
+                onFormStateChange = onFormStateChange,
+                onPickFiles = { filePickerLauncher.launch("*/*") }
             )
         }
     }
@@ -726,6 +771,197 @@ private fun CollaboratorsCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentsCard(
+    formState: CreateTaskFormState,
+    onFormStateChange: (CreateTaskFormState) -> Unit,
+    onPickFiles: () -> Unit
+) {
+    val keptAttachments = formState.keptAttachments
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Tài liệu đính kèm",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Tài liệu sẽ được tải lên dự án và gắn vào công việc sau khi lưu.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (keptAttachments.isNotEmpty()) {
+                Text(
+                    text = "Tài liệu đang gắn",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                keptAttachments.forEach { attachment ->
+                    ExistingAttachmentRow(
+                        attachment = attachment,
+                        onRemove = {
+                            onFormStateChange(
+                                formState.copy(
+                                    removedAttachmentIds = formState.removedAttachmentIds + attachment.id
+                                )
+                            )
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .border(
+                        width = 1.dp,
+                        color = Color.LightGray,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onPickFiles() },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Blue500,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Tải tài liệu lên",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Blue500
+                    )
+                    Text(
+                        text = "PDF, DOC, XLS, PPT, hình ảnh...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            if (formState.selectedFileUris.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Tài liệu mới sẽ tải lên",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                formState.selectedFileUris.forEachIndexed { index, uri ->
+                    val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "File ${index + 1}"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Description,
+                            contentDescription = null,
+                            tint = Blue500,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = fileName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.DarkGray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = {
+                                onFormStateChange(
+                                    formState.copy(
+                                        selectedFileUris = formState.selectedFileUris.filterIndexed { i, _ -> i != index }
+                                    )
+                                )
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Xóa",
+                                tint = Color.Red,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExistingAttachmentRow(
+    attachment: TaskAttachmentItem,
+    onRemove: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Description,
+            contentDescription = null,
+            tint = Blue500,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = attachment.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "Sẽ bị gỡ khi lưu",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Red
+            )
+        }
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Gỡ khỏi công việc",
+                tint = Color.Red,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

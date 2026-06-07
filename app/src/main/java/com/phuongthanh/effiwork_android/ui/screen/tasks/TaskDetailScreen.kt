@@ -1,5 +1,6 @@
 package com.phuongthanh.effiwork_android.ui.screen.tasks
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,10 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
@@ -28,6 +32,7 @@ import com.phuongthanh.effiwork_android.ui.common.TaskCard
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.task.*
 import kotlinx.coroutines.flow.collectLatest
+import java.io.File
 
 data class TaskDetailScreenState(
     val projectId: String = "",
@@ -69,20 +74,6 @@ fun TaskDetailScreen(
         screenState = screenState.copy(uiState = uiState)
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.effect.collectLatest { effect ->
-            when (effect) {
-                is TaskDetailEffect.CommentPosted -> {
-                    screenState = screenState.copy(commentText = "")
-                }
-                is TaskDetailEffect.ShowToast -> {}
-                is TaskDetailEffect.TaskDeleted -> {
-                    onBackClick()
-                }
-            }
-        }
-    }
-
     val parentTaskInfo = (uiState as? TaskDetailUiState.Success)?.taskDetail?.let { detail ->
         ParentTaskInfo(detail.id, detail.title, detail.groupId)
     } ?: ParentTaskInfo("", "", "")
@@ -95,6 +86,35 @@ fun TaskDetailScreen(
     val extensionRequests = when (val state = extensionRequestsState) {
         is ExtensionRequestUiState.Success -> state.requests
         else -> emptyList()
+    }
+
+    val context = LocalContext.current
+    val onDownloadAttachment: (String, String) -> Unit = { documentId, fileName ->
+        viewModel.downloadAttachment(documentId, fileName)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.effect.collectLatest { effect ->
+            when (effect) {
+                is TaskDetailEffect.CommentPosted -> {
+                    screenState = screenState.copy(commentText = "")
+                }
+                is TaskDetailEffect.ShowToast -> {}
+                is TaskDetailEffect.TaskDeleted -> {
+                    onBackClick()
+                }
+                is TaskDetailEffect.AttachmentDownloaded -> {
+                    openDownloadedFile(context, effect.file)
+                }
+                is TaskDetailEffect.AttachmentDownloadError -> {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Tải xuống lỗi: ${effect.message}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
 
     android.util.Log.d("TaskDetailDebug", "currentUserId: $currentUserId, assigneeId: ${taskDetailData?.assigneeId}, isOwner: $isOwner, isInvolved: $isInvolved")
@@ -111,6 +131,7 @@ fun TaskDetailScreen(
         onDeleteTask = { viewModel.deleteTask() },
         onSubtaskStatusChange = { subtaskId, newStatus -> viewModel.updateSubtaskStatus(subtaskId, newStatus) },
         onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) },
+        onDownloadAttachment = onDownloadAttachment,
         currentUserId = currentUserId,
         isOwner = isOwner,
         isParticipant = isParticipant,
@@ -137,6 +158,7 @@ fun TaskDetailScreenContent(
     onSubtaskClick: (String) -> Unit = {},
     onSubtaskEdit: (String) -> Unit = {},
     onSubtaskDelete: (String) -> Unit = {},
+    onDownloadAttachment: (String, String) -> Unit = { _, _ -> },
     currentUserId: String = "",
     isOwner: Boolean = false,
     isParticipant: Boolean = false,
@@ -173,6 +195,7 @@ fun TaskDetailScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -237,19 +260,95 @@ fun TaskDetailScreenContent(
                     }
                 }
             )
-        },
-        bottomBar = {
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFFF5F5F5))
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = Color.White,
+                    contentColor = Blue500
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { onTabSelected(index) },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedTabIndex == index) Blue500 else Color.Gray
+                                )
+                            }
+                        )
+                    }
+                }
+
+                when (val uiState = state.uiState) {
+                    is TaskDetailUiState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Blue500)
+                        }
+                    }
+                    is TaskDetailUiState.Success -> {
+                        when (selectedTabIndex) {
+                            0 -> TaskInfoTabContent(
+                                task = uiState.taskDetail,
+                                onDownloadAttachment = onDownloadAttachment
+                            )
+                            1 -> TaskCommentsTabContent(uiState.taskDetail.comments)
+                            2 -> TaskSubtasksTabContent(
+                                subtasks = uiState.taskDetail.subtasks,
+                                onAddSubtask = onAddSubtask,
+                                onSubtaskStatusChange = onSubtaskStatusChange,
+                                onSubtaskClick = onSubtaskClick,
+                                onSubtaskEdit = onSubtaskClick,
+                                onSubtaskDelete = onSubtaskDelete,
+                                currentUserId = currentUserId
+                            )
+                            3 -> TaskExtensionTabContent(
+                                requests = extensionRequests,
+                                isOwner = uiState.taskDetail.assigneeId == currentUserId,
+                                onCreate = onCreateExtensionRequest,
+                                onApprove = onApproveExtension,
+                                onReject = onRejectExtension
+                            )
+                        }
+                    }
+                    is TaskDetailUiState.Error -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(uiState.message, color = Color.Red)
+                        }
+                    }
+                    else -> {}
+                }
+            }
+
             if (selectedTabIndex == 1) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .imePadding()
+                        .navigationBarsPadding(),
                     shadowElevation = 8.dp,
                     color = Color.White
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .navigationBarsPadding(),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
@@ -278,80 +377,14 @@ fun TaskDetailScreenContent(
                 }
             }
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color(0xFFF5F5F5))
-        ) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = Color.White,
-                contentColor = Blue500
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { onTabSelected(index) },
-                        text = {
-                            Text(
-                                text = title,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTabIndex == index) Blue500 else Color.Gray
-                            )
-                        }
-                    )
-                }
-            }
-
-            when (val uiState = state.uiState) {
-                is TaskDetailUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Blue500)
-                    }
-                }
-                is TaskDetailUiState.Success -> {
-                    when (selectedTabIndex) {
-                        0 -> TaskInfoTabContent(uiState.taskDetail)
-                        1 -> TaskCommentsTabContent(uiState.taskDetail.comments)
-                        2 -> TaskSubtasksTabContent(
-                            subtasks = uiState.taskDetail.subtasks,
-                            onAddSubtask = onAddSubtask,
-                            onSubtaskStatusChange = onSubtaskStatusChange,
-                            onSubtaskClick = onSubtaskClick,
-                            onSubtaskEdit = onSubtaskClick,
-                            onSubtaskDelete = onSubtaskDelete,
-                            currentUserId = currentUserId
-                        )
-                        3 -> TaskExtensionTabContent(
-                            requests = extensionRequests,
-                            isOwner = uiState.taskDetail.assigneeId == currentUserId,
-                            onCreate = onCreateExtensionRequest,
-                            onApprove = onApproveExtension,
-                            onReject = onRejectExtension
-                        )
-                    }
-                }
-                is TaskDetailUiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(uiState.message, color = Color.Red)
-                    }
-                }
-                else -> {}
-            }
-        }
     }
 }
 
 @Composable
-private fun TaskInfoTabContent(task: TaskDetail) {
+private fun TaskInfoTabContent(
+    task: TaskDetail,
+    onDownloadAttachment: (String, String) -> Unit = { _, _ -> }
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp)
@@ -365,6 +398,159 @@ private fun TaskInfoTabContent(task: TaskDetail) {
         item {
             TaskInfoSection(task)
         }
+        item {
+            TaskAttachmentsSection(
+                attachments = task.attachments,
+                onDownloadAttachment = onDownloadAttachment
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskAttachmentsSection(
+    attachments: List<TaskAttachmentItem>,
+    onDownloadAttachment: (String, String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 12.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Description,
+                    contentDescription = null,
+                    tint = Blue500,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Tài liệu đính kèm",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(shape = CircleShape, color = Blue500) {
+                    Text(
+                        text = "${attachments.size}",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (attachments.isEmpty()) {
+                Text(
+                    text = "Chưa có tài liệu nào được gắn cho công việc này.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            } else {
+                attachments.forEach { attachment ->
+                    AttachmentRow(
+                        attachment = attachment,
+                        onDownload = { onDownloadAttachment(attachment.documentId, attachment.fileName) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentRow(
+    attachment: TaskAttachmentItem,
+    onDownload: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Blue500.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Description,
+                contentDescription = null,
+                tint = Blue500,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = attachment.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.DarkGray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = formatFileSize(attachment.fileSize),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+        IconButton(onClick = onDownload) {
+            Icon(
+                Icons.Default.Download,
+                contentDescription = "Tải xuống",
+                tint = Blue500
+            )
+        }
+    }
+}
+
+private fun formatFileSize(value: String?): String {
+    if (value.isNullOrBlank()) return "—"
+    val parsed = value.toLongOrNull() ?: return value
+    if (parsed <= 0) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB")
+    var size = parsed.toDouble()
+    var unitIndex = 0
+    while (size >= 1024 && unitIndex < units.size - 1) {
+        size /= 1024
+        unitIndex += 1
+    }
+    val rounded = if (size >= 10 || unitIndex == 0) size.toInt().toString() else "%.1f".format(size)
+    return "$rounded ${units[unitIndex]}"
+}
+
+private fun openDownloadedFile(context: android.content.Context, file: File) {
+    try {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "*/*")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Mở file"))
+    } catch (e: Exception) {
+        android.widget.Toast.makeText(
+            context,
+            "Đã lưu vào: ${file.absolutePath}",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 }
 
@@ -372,7 +558,7 @@ private fun TaskInfoTabContent(task: TaskDetail) {
 private fun TaskCommentsTabContent(comments: List<CommentItem>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp)
     ) {
         item {
             CommentsSection(comments)
@@ -475,56 +661,56 @@ private fun TaskSubtasksTabContent(
             val isOwner = subtask.assigneeId == currentUserId
             val isNotOwner = subtask.assigneeId != currentUserId
 
-            Box {
-                TaskCard(
-                    task = task,
-                    onMoreClick = {
-                        selectedSubtaskId = subtask.id
-                        showMenu = true
-                    },
-                    onClick = { onSubtaskClick(subtask.id) },
-                    onStatusChange = { newStatus -> onSubtaskStatusChange(subtask.id, newStatus) },
-                    canChangeStatus = isOwner
-                )
-                DropdownMenu(
-                    expanded = showMenu && selectedSubtaskId == subtask.id,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Thêm công việc con") },
-                        onClick = {
-                            showMenu = false
-                            onAddSubtask()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Chỉnh sửa") },
-                        onClick = {
-                            showMenu = false
-                            onSubtaskEdit(subtask.id)
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                        },
-                        enabled = isOwner
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Xóa") },
-                        onClick = {
-                            showMenu = false
-                            selectedSubtaskId = subtask.id
-                            showDeleteDialog = true
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                        },
-                        enabled = isOwner
-                    )
+            TaskCard(
+                task = task,
+                onMoreClick = {
+                    selectedSubtaskId = subtask.id
+                    showMenu = true
+                },
+                onClick = { onSubtaskClick(subtask.id) },
+                onStatusChange = { newStatus -> onSubtaskStatusChange(subtask.id, newStatus) },
+                canChangeStatus = isOwner,
+                dropdownMenuContent = {
+                    DropdownMenu(
+                        expanded = showMenu && selectedSubtaskId == subtask.id,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Thêm công việc con") },
+                            onClick = {
+                                showMenu = false
+                                onAddSubtask()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Chỉnh sửa") },
+                            onClick = {
+                                showMenu = false
+                                onSubtaskEdit(subtask.id)
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                            },
+                            enabled = isOwner
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Xóa") },
+                            onClick = {
+                                showMenu = false
+                                selectedSubtaskId = subtask.id
+                                showDeleteDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                            },
+                            enabled = isOwner
+                        )
+                    }
                 }
-            }
+            )
         }
     }
 }
@@ -1156,7 +1342,7 @@ private val sampleTaskDetail = TaskDetail(
 @Composable
 private fun TaskInfoTabPreview() {
     MaterialTheme {
-        TaskInfoTabContent(sampleTaskDetail)
+        TaskInfoTabContent(sampleTaskDetail, onDownloadAttachment = { _, _ -> })
     }
 }
 
