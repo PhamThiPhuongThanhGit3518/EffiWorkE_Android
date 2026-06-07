@@ -106,9 +106,9 @@ fun DocumentPreviewContent(
     val context = LocalContext.current
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text(doc?.fileName ?: "Tài liệu", maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

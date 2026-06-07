@@ -165,7 +165,8 @@ fun NotificationScreen(
                             ) { notification ->
                                 NotificationItem(
                                     notification = notification,
-                                    projectName = notification.data?.projectId?.let { projectNameMap[it] },
+                                    projectName = notification.projectId?.let { projectNameMap[it] }
+                                        ?: notification.data?.projectId?.let { projectNameMap[it] },
                                     onMarkAsRead = { viewModel.markAsRead(notification.id) },
                                     onMarkAsUnread = { viewModel.markAsUnread(notification.id) },
                                     onClick = {
@@ -295,10 +296,11 @@ private fun NotificationItem(
                             color = Color.Gray
                         )
                     }
-                    if (!notification.message.isNullOrBlank()) {
+                    val contentText = notification.content ?: notification.message
+                    if (!contentText.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = notification.message,
+                            text = contentText,
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.DarkGray,
                             maxLines = 3,
@@ -433,8 +435,20 @@ private fun handleNotificationClick(
     onNavigateToTaskDetail: (String, String) -> Unit,
     onNavigateToMeetingDetail: (String, String) -> Unit
 ) {
+    val projectId = notification.projectId ?: notification.data?.projectId
+    val relatedType = notification.relatedType
+    val relatedId = notification.relatedId
     val data = notification.data
+
     when {
+        projectId != null && relatedType.equals("TASK", ignoreCase = true) && !relatedId.isNullOrBlank() -> {
+            onNavigateToTaskDetail(projectId, relatedId)
+            return
+        }
+        projectId != null && relatedType.equals("MEETING", ignoreCase = true) && !relatedId.isNullOrBlank() -> {
+            onNavigateToMeetingDetail(projectId, relatedId)
+            return
+        }
         data?.taskId != null && data.projectId != null -> {
             onNavigateToTaskDetail(data.projectId, data.taskId)
         }

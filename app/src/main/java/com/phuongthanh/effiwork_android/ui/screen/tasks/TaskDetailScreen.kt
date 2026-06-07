@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -140,7 +139,8 @@ fun TaskDetailScreen(
         extensionRequests = extensionRequests,
         onCreateExtensionRequest = { newDueDate, reason -> viewModel.createExtensionRequest(newDueDate, reason) },
         onApproveExtension = { requestId -> viewModel.approveExtensionRequest(requestId) },
-        onRejectExtension = { requestId -> viewModel.rejectExtensionRequest(requestId) }
+        onRejectExtension = { requestId -> viewModel.rejectExtensionRequest(requestId) },
+        isJoin = isInvolved
     )
 }
 
@@ -168,11 +168,14 @@ fun TaskDetailScreenContent(
     extensionRequests: List<ExtensionRequestItem> = emptyList(),
     onCreateExtensionRequest: (String, String) -> Unit = { _, _ -> },
     onApproveExtension: (String) -> Unit = {},
-    onRejectExtension: (String) -> Unit = {}
+    onRejectExtension: (String) -> Unit = {},
+    isJoin: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val tabs = listOf("Thông tin", "Bình luận", "Công việc con", "Gia hạn")
+    val tabs = if(isJoin) listOf("Thông tin", "Bình luận", "Công việc con", "Gia hạn") else listOf("Thông tin", "Công việc con")
+
+    val selectedTab = tabs.getOrNull(selectedTabIndex)
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -265,7 +268,7 @@ fun TaskDetailScreenContent(
             )
         },
         bottomBar = {
-            if (selectedTabIndex == 1) {
+            if (selectedTab == "Bình luận") {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -342,15 +345,20 @@ fun TaskDetailScreenContent(
                         CircularProgressIndicator(color = Blue500)
                     }
                 }
+
                 is TaskDetailUiState.Success -> {
-                    when (selectedTabIndex) {
-                        0 -> TaskInfoTabContent(
+                    when (selectedTab) {
+                        "Thông tin" -> TaskInfoTabContent(
                             task = uiState.taskDetail,
                             onDownloadAttachment = onDownloadAttachment,
                             onAttachmentClick = onAttachmentClick
                         )
-                        1 -> TaskCommentsTabContent(uiState.taskDetail.comments)
-                        2 -> TaskSubtasksTabContent(
+
+                        "Bình luận" -> TaskCommentsTabContent(
+                            uiState.taskDetail.comments
+                        )
+
+                        "Công việc con" -> TaskSubtasksTabContent(
                             subtasks = uiState.taskDetail.subtasks,
                             onAddSubtask = onAddSubtask,
                             onSubtaskStatusChange = onSubtaskStatusChange,
@@ -359,7 +367,8 @@ fun TaskDetailScreenContent(
                             onSubtaskDelete = onSubtaskDelete,
                             currentUserId = currentUserId
                         )
-                        3 -> TaskExtensionTabContent(
+
+                        "Gia hạn" -> TaskExtensionTabContent(
                             requests = extensionRequests,
                             isOwner = uiState.taskDetail.assigneeId == currentUserId,
                             onCreate = onCreateExtensionRequest,

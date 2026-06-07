@@ -46,8 +46,8 @@ data class TaskDetail(
     val groupId: String,
     val groupName: String,
     val assigneeName: String,
-    val assigneeId: String = "", // ownerId - DÙNG ĐỂ KIỂM TRA QUYỀN
-    val creatorId: String = "", // creatorId - người tạo, KHÔNG có quyền đặc biệt
+    val assigneeId: String = "",
+    val creatorId: String = "",
     val creatorName: String,
     val startDate: String,
     val endDate: String,

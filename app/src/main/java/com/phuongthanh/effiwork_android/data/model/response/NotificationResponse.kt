@@ -7,12 +7,16 @@ data class NotificationResponse(
     val userId: String?,
     val title: String?,
     val message: String?,
+    @SerializedName("content") val content: String?,
     val type: String?,
     val isRead: Boolean?,
     @SerializedName("readAt") val readAt: String?,
     val data: NotificationData?,
     @SerializedName("createdAt") val createdAt: String?,
-    @SerializedName("updatedAt") val updatedAt: String?
+    @SerializedName("updatedAt") val updatedAt: String?,
+    @SerializedName("projectId") val projectId: String? = null,
+    @SerializedName("relatedType") val relatedType: String? = null,
+    @SerializedName("relatedId") val relatedId: String? = null
 )
 
 data class NotificationData(
