@@ -58,7 +58,8 @@ fun ProjectsScreen(
     onNavigateToSettings: (String) -> Unit = {},
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeeting: (String) -> Unit = {},
-    onNavigateToMessage: (String) -> Unit = {}
+    onNavigateToMessage: (String) -> Unit = {},
+    onNavigateToDocument: (String) -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -147,7 +148,8 @@ fun ProjectsScreen(
                                 onSettingsClick = { onNavigateToSettings(state.project.id) },
                                 onNavigateToTask = onNavigateToTask,
                                 onNavigateToMeeting = onNavigateToMeeting,
-                                onNavigateToMessage = onNavigateToMessage
+                                onNavigateToMessage = onNavigateToMessage,
+                                onNavigateToDocument = onNavigateToDocument
                             )
                         }
                         is ProjectDetailUiState.NoProject -> {
@@ -174,7 +176,8 @@ fun ProjectDashboardContent(
     onSettingsClick: () -> Unit = {},
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeeting: (String) -> Unit = {},
-    onNavigateToMessage: (String) -> Unit = {}
+    onNavigateToMessage: (String) -> Unit = {},
+    onNavigateToDocument: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -197,6 +200,7 @@ fun ProjectDashboardContent(
             onNavigateToTask = onNavigateToTask,
             onNavigateToMeeting = onNavigateToMeeting,
             onNavigateToMessage = onNavigateToMessage,
+            onNavigateToDocument = onNavigateToDocument,
             projectId = state.projectId,
             projectName = state.projectName
         )
@@ -275,6 +279,7 @@ private fun FeaturesGrid(
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeeting: (String) -> Unit = {},
     onNavigateToMessage: (String) -> Unit = {},
+    onNavigateToDocument: (String) -> Unit = {},
     projectId: String = "",
     projectName: String = ""
 ) {
@@ -283,7 +288,8 @@ private fun FeaturesGrid(
             Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
             Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
             Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
-            Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B))
+            Triple("Tài liệu", Icons.Default.FileCopy, Color(0xFF607D66)),
+            Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B)),
         )
 
         features.chunked(3).forEach { rowItems ->
@@ -295,6 +301,7 @@ private fun FeaturesGrid(
                             "Công việc" -> { { onNavigateToTask(projectId, projectName) } }
                             "Cuộc họp" -> { { onNavigateToMeeting(projectId) } }
                             "Tin nhắn" -> { { onNavigateToMessage(projectId) } }
+                            "Tài liệu" -> { { onNavigateToDocument(projectId) } }
                             else -> { {} }
                         }
                     FeatureCard(icon, label, color, Modifier.weight(1f), onClick = onClick)
@@ -343,7 +350,8 @@ fun ProjectsScreenPreview() {
             onSettingsClick = {},
             onNavigateToTask = { _, _ -> },
             onNavigateToMeeting = {},
-            onNavigateToMessage = {}
+            onNavigateToMessage = {},
+            onNavigateToDocument = {}
         )
     }
 }
