@@ -173,7 +173,7 @@ fun TaskDetailScreenContent(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val tabs = if(isJoin) listOf("Thông tin", "Bình luận", "Công việc con", "Gia hạn") else listOf("Thông tin", "Công việc con")
+    val tabs = if(isJoin) listOf("Thông tin", "Bình luận", "CV con", "Gia hạn") else listOf("Thông tin", "CV con")
 
     val selectedTab = tabs.getOrNull(selectedTabIndex)
 
@@ -358,7 +358,7 @@ fun TaskDetailScreenContent(
                             uiState.taskDetail.comments
                         )
 
-                        "Công việc con" -> TaskSubtasksTabContent(
+                        "CV con" -> TaskSubtasksTabContent(
                             subtasks = uiState.taskDetail.subtasks,
                             onAddSubtask = onAddSubtask,
                             onSubtaskStatusChange = onSubtaskStatusChange,
@@ -641,7 +641,7 @@ private fun TaskSubtasksTabContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Công việc con",
+                            text = "CV con",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )

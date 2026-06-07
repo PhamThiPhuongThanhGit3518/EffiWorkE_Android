@@ -25,7 +25,8 @@ sealed class NotificationUiState {
     data class Success(
         val notifications: List<NotificationResponse>,
         val page: Int,
-        val totalPages: Int
+        val totalPages: Int,
+        val isLoadingMore: Boolean = false
     ) : NotificationUiState()
     data class Error(val message: String) : NotificationUiState()
 }
@@ -107,9 +108,41 @@ class NotificationViewModel @Inject constructor(
     }
 
     fun loadMoreNotifications() {
-        if (currentPage >= totalPages) return
-        currentPage++
-        loadNotifications(refresh = false)
+        val currentState = _uiState.value
+        if (currentState !is NotificationUiState.Success) return
+        if (currentState.isLoadingMore) return
+        if (currentState.page >= currentState.totalPages) return
+
+        val nextPage = currentState.page + 1
+        _uiState.value = currentState.copy(isLoadingMore = true)
+
+        viewModelScope.launch {
+            when (val result = notificationRepository.getNotifications(nextPage, pageSize, _unreadOnly.value)) {
+                is ApiResult.Success -> {
+                    val data = result.data
+                    currentPage = data.page
+                    totalPages = data.totalPages
+                    val latest = _uiState.value
+                    if (latest is NotificationUiState.Success) {
+                        _uiState.value = latest.copy(
+                            notifications = latest.notifications + data.data,
+                            page = currentPage,
+                            totalPages = totalPages,
+                            isLoadingMore = false
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "loadMoreNotifications ERROR: ${result.message}")
+                    val latest = _uiState.value
+                    if (latest is NotificationUiState.Success) {
+                        _uiState.value = latest.copy(isLoadingMore = false)
+                    }
+                    _effect.emit(NotificationEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
     }
 
     fun toggleUnreadFilter() {

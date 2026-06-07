@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,11 +68,13 @@ fun NotificationScreen(
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastIndex ->
-                if (lastIndex != null && lastIndex >= 0) {
-                    val state = uiState
-                    if (state is NotificationUiState.Success && lastIndex >= state.notifications.size - 3) {
-                        viewModel.loadMoreNotifications()
-                    }
+                if (lastIndex == null || lastIndex < 0) return@collect
+                val state = uiState
+                if (state !is NotificationUiState.Success) return@collect
+                if (state.isLoadingMore) return@collect
+                if (state.page >= state.totalPages) return@collect
+                if (lastIndex >= state.notifications.size - 3) {
+                    viewModel.loadMoreNotifications()
                 }
             }
     }
@@ -180,6 +183,23 @@ fun NotificationScreen(
                                         )
                                     }
                                 )
+                            }
+
+                            if (state.isLoadingMore) {
+                                item(key = "loading_more_footer") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Blue500,
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -454,6 +474,148 @@ private fun handleNotificationClick(
         }
         data?.meetingId != null && data.projectId != null -> {
             onNavigateToMeetingDetail(data.projectId, data.meetingId)
+        }
+    }
+}
+
+private val sampleNotificationUnread = NotificationResponse(
+    id = "n1",
+    userId = "u1",
+    title = "Bạn được giao công việc mới",
+    message = null,
+    content = "Bạn vừa được giao công việc \"Thiết kế giao diện trang chủ\" trong dự án Website công ty. Vui lòng kiểm tra chi tiết và bắt đầu thực hiện trước ngày 15/06.",
+    type = "task",
+    isRead = false,
+    readAt = null,
+    data = NotificationData(
+        taskId = "task-1",
+        projectId = "proj-1",
+        meetingId = null,
+        commentId = null,
+        senderId = "u2",
+        senderName = "Nguyễn Văn Minh",
+        avatarUrl = null
+    ),
+    createdAt = "2026-06-07T14:30:00.000Z",
+    updatedAt = "2026-06-07T14:30:00.000Z",
+    projectId = "proj-1",
+    relatedType = "TASK",
+    relatedId = "task-1"
+)
+
+private val sampleNotificationRead = NotificationResponse(
+    id = "n2",
+    userId = "u1",
+    title = "Yêu cầu tham gia dự án đã được duyệt",
+    message = null,
+    content = "Chào bạn, yêu cầu tham gia dự án đã được phê duyệt.",
+    type = "project",
+    isRead = true,
+    readAt = "2026-06-07T15:00:00.000Z",
+    data = NotificationData(
+        taskId = null,
+        projectId = "proj-2",
+        meetingId = null,
+        commentId = null,
+        senderId = null,
+        senderName = null,
+        avatarUrl = null
+    ),
+    createdAt = "2026-06-06T09:15:00.000Z",
+    updatedAt = "2026-06-07T15:00:00.000Z",
+    projectId = "proj-2",
+    relatedType = null,
+    relatedId = null
+)
+
+private val sampleNotificationNoProject = NotificationResponse(
+    id = "n3",
+    userId = "u1",
+    title = "Hệ thống: Cập nhật bảo trì",
+    message = null,
+    content = "Hệ thống sẽ bảo trì từ 23:00 - 01:00 ngày mai. Vui lòng lưu công việc trước thời gian trên.",
+    type = "system",
+    isRead = false,
+    readAt = null,
+    data = null,
+    createdAt = "2026-06-07T10:00:00.000Z",
+    updatedAt = "2026-06-07T10:00:00.000Z",
+    projectId = null,
+    relatedType = null,
+    relatedId = null
+)
+
+@Preview(showBackground = true, name = "Notification Item - Unread (đầy đủ)")
+@Composable
+private fun NotificationItemUnreadPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(12.dp)) {
+            NotificationItem(
+                notification = sampleNotificationUnread,
+                projectName = "Website công ty",
+                onMarkAsRead = {},
+                onMarkAsUnread = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Notification Item - Read")
+@Composable
+private fun NotificationItemReadPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(12.dp)) {
+            NotificationItem(
+                notification = sampleNotificationRead,
+                projectName = "App Mobile EffiWork",
+                onMarkAsRead = {},
+                onMarkAsUnread = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Notification Item - Không có dự án")
+@Composable
+private fun NotificationItemNoProjectPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(12.dp)) {
+            NotificationItem(
+                notification = sampleNotificationNoProject,
+                projectName = null,
+                onMarkAsRead = {},
+                onMarkAsUnread = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Project Pill")
+@Composable
+private fun ProjectPillPreview() {
+    MaterialTheme {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ProjectPill("Website công ty")
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Read Status Pill")
+@Composable
+private fun ReadStatusPillPreview() {
+    MaterialTheme {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ReadStatusPill(isUnread = true)
+            ReadStatusPill(isUnread = false)
         }
     }
 }
