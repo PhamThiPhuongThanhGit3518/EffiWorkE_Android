@@ -2,16 +2,20 @@ package com.phuongthanh.effiwork_android.viewmodel.document
 
 import com.phuongthanh.effiwork_android.data.model.response.DocumentResponse
 import com.phuongthanh.effiwork_android.data.model.response.SectionResponse
-import com.phuongthanh.effiwork_android.data.model.response.SubtaskResponse
 import com.phuongthanh.effiwork_android.data.model.response.TaskResponse
 import com.phuongthanh.effiwork_android.data.model.response.document.FolderNode
 
 enum class DocumentTab { PROJECT, PERSONAL }
 enum class DocumentViewMode { LIST, GRID }
 
+sealed class DocumentGridItem {
+    data class SectionFolder(val section: SectionResponse) : DocumentGridItem()
+    data class TaskFolder(val task: TaskResponse) : DocumentGridItem()
+    data class File(val document: DocumentResponse) : DocumentGridItem()
+}
+
 data class DocumentBrowserUiState(
     val activeTab: DocumentTab = DocumentTab.PROJECT,
-    val viewMode: DocumentViewMode = DocumentViewMode.LIST,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -20,8 +24,8 @@ data class DocumentBrowserUiState(
     val sections: List<SectionResponse> = emptyList(),
     val allTasks: List<TaskResponse> = emptyList(),
     val selectedSectionId: String? = null,
-    val selectedTaskId: String? = null,
-    val expandedTaskIds: Set<String> = emptySet(),
+    val taskPath: List<TaskResponse> = emptyList(),
+    val subtasksByTaskId: Map<String, List<TaskResponse>> = emptyMap(),
     val taskAttachments: List<DocumentResponse> = emptyList(),
 
     val folderTree: List<FolderNode> = emptyList(),
@@ -29,12 +33,35 @@ data class DocumentBrowserUiState(
     val expandedFolderIds: Set<String> = emptySet(),
     val personalDocuments: List<DocumentResponse> = emptyList()
 ) {
+    val currentTask: TaskResponse?
+        get() = taskPath.lastOrNull()
+
+    val currentTaskChildren: List<TaskResponse>
+        get() = currentTask?.id?.let { subtasksByTaskId[it] } ?: emptyList()
+
+    val currentProjectItems: List<DocumentGridItem>
+        get() {
+            val items = mutableListOf<DocumentGridItem>()
+            val task = currentTask
+            if (task != null) {
+                currentTaskChildren.forEach { items += DocumentGridItem.TaskFolder(it) }
+                items += taskAttachments.map { DocumentGridItem.File(it) }
+            } else if (selectedSectionId != null) {
+                allTasks
+                    .filter { it.groupId == selectedSectionId && it.parentTaskId == null }
+                    .forEach { items += DocumentGridItem.TaskFolder(it) }
+            } else {
+                sections.forEach { items += DocumentGridItem.SectionFolder(it) }
+            }
+            return items
+        }
+
     fun projectBreadcrumb(): List<BreadcrumbItem> {
         val items = mutableListOf(
             BreadcrumbItem(
                 id = "project-root",
                 label = "Tài liệu dự án",
-                isCurrent = selectedSectionId == null && selectedTaskId == null
+                isCurrent = selectedSectionId == null
             )
         )
         if (selectedSectionId != null) {
@@ -43,17 +70,16 @@ data class DocumentBrowserUiState(
                 BreadcrumbItem(
                     id = selectedSectionId,
                     label = section?.name ?: "Section",
-                    isCurrent = selectedTaskId == null
+                    isCurrent = taskPath.isEmpty()
                 )
             )
         }
-        val taskPath = findTaskPath(allTasks, selectedTaskId)
-        taskPath.forEach { task ->
+        taskPath.forEachIndexed { index, task ->
             items.add(
                 BreadcrumbItem(
                     id = task.id,
                     label = task.name ?: "Task",
-                    isCurrent = task.id == selectedTaskId
+                    isCurrent = index == taskPath.lastIndex
                 )
             )
         }
@@ -83,12 +109,6 @@ data class DocumentBrowserUiState(
         return items
     }
 
-    val selectedTaskChain: List<TaskResponse>
-        get() = findTaskPath(allTasks, selectedTaskId)
-
-    val currentTaskChildren: List<SubtaskResponse>
-        get() = selectedTaskChain.lastOrNull()?.subtasks ?: emptyList()
-
     val currentPersonalFolderChildren: List<FolderNode>
         get() {
             if (selectedFolderId == null) {
@@ -104,18 +124,6 @@ data class BreadcrumbItem(
     val label: String,
     val isCurrent: Boolean = false
 )
-
-internal fun findTaskPath(tasks: List<TaskResponse>, targetId: String?): List<TaskResponse> {
-    if (targetId == null) return emptyList()
-    for (task in tasks) {
-        if (task.id == targetId) return listOf(task)
-        val subtasks = task.subtasks ?: emptyList()
-        if (subtasks.any { it.id == targetId }) {
-            return listOf(task)
-        }
-    }
-    return emptyList()
-}
 
 internal fun findFolderById(folders: List<FolderNode>, folderId: String?): FolderNode? {
     if (folderId == null) return null

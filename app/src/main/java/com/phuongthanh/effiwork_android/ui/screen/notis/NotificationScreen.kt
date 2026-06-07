@@ -30,6 +30,8 @@ import com.phuongthanh.effiwork_android.viewmodel.notis.NotificationEffect
 import com.phuongthanh.effiwork_android.viewmodel.notis.NotificationUiState
 import com.phuongthanh.effiwork_android.viewmodel.notis.NotificationViewModel
 import kotlinx.coroutines.flow.collectLatest
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,7 @@ fun NotificationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val unreadOnly by viewModel.unreadOnly.collectAsStateWithLifecycle()
+    val projectNameMap by viewModel.projectNameMap.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val listState = rememberLazyListState()
 
@@ -162,6 +165,7 @@ fun NotificationScreen(
                             ) { notification ->
                                 NotificationItem(
                                     notification = notification,
+                                    projectName = notification.data?.projectId?.let { projectNameMap[it] },
                                     onMarkAsRead = { viewModel.markAsRead(notification.id) },
                                     onMarkAsUnread = { viewModel.markAsUnread(notification.id) },
                                     onClick = {
@@ -211,12 +215,14 @@ fun NotificationScreen(
 @Composable
 private fun NotificationItem(
     notification: NotificationResponse,
+    projectName: String?,
     onMarkAsRead: () -> Unit,
     onMarkAsUnread: () -> Unit,
     onClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val isUnread = notification.isRead != true
+    val senderName = notification.data?.senderName
 
     Card(
         modifier = Modifier
@@ -226,93 +232,160 @@ private fun NotificationItem(
         colors = CardDefaults.cardColors(
             containerColor = if (isUnread) Blue500.copy(alpha = 0.08f) else Color.White
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isUnread) 2.dp else 1.dp
+        )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Box(
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (isUnread) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 12.dp, top = 12.dp)
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF43F5E))
+                )
+            }
+            Row(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(getNotificationIconColor(notification.type).copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Icon(
-                    imageVector = getNotificationIcon(notification.type),
-                    contentDescription = null,
-                    tint = getNotificationIconColor(notification.type),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = notification.title ?: "Thông báo",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = notification.message ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = formatTimestamp(notification.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.LightGray
-                )
-            }
-
-            Box {
-                IconButton(onClick = { showMenu = true }) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(getNotificationIconColor(notification.type).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Tùy chọn",
-                        tint = Color.Gray
+                        imageVector = getNotificationIcon(notification.type),
+                        contentDescription = null,
+                        tint = getNotificationIconColor(notification.type),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    if (isUnread) {
-                        DropdownMenuItem(
-                            text = { Text("Đánh dấu đã đọc") },
-                            onClick = {
-                                showMenu = false
-                                onMarkAsRead()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null)
-                            }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = notification.title ?: "Thông báo",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (!projectName.isNullOrBlank()) {
+                            ProjectPill(projectName)
+                        }
+                        ReadStatusPill(isUnread)
+                    }
+                    if (!senderName.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Từ: $senderName",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
                         )
-                    } else {
-                        DropdownMenuItem(
-                            text = { Text("Đánh dấu chưa đọc") },
-                            onClick = {
-                                showMenu = false
-                                onMarkAsUnread()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.RadioButtonUnchecked, contentDescription = null)
-                            }
+                    }
+                    if (!notification.message.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = notification.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.DarkGray,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = formatTimestamp(notification.createdAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.LightGray
+                    )
+                }
+
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Tùy chọn",
+                            tint = Color.Gray
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        if (isUnread) {
+                            DropdownMenuItem(
+                                text = { Text("Đánh dấu đã đọc") },
+                                onClick = {
+                                    showMenu = false
+                                    onMarkAsRead()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null)
+                                }
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Đánh dấu chưa đọc") },
+                                onClick = {
+                                    showMenu = false
+                                    onMarkAsUnread()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.RadioButtonUnchecked, contentDescription = null)
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProjectPill(projectName: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = Color(0xFFF1F5F9)
+    ) {
+        Text(
+            text = "Dự án: $projectName",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF475569),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun ReadStatusPill(isUnread: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = if (isUnread) Color(0xFFFFE4E6) else Color(0xFFF1F5F9)
+    ) {
+        Text(
+            text = if (isUnread) "Chưa đọc" else "Đã đọc",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isUnread) Color(0xFFE11D48) else Color(0xFF64748B),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
     }
 }
 
@@ -337,16 +410,19 @@ private fun getNotificationIconColor(type: String?): Color {
 }
 
 private fun formatTimestamp(timestamp: String?): String {
-    if (timestamp == null) return ""
+    if (timestamp.isNullOrBlank()) return ""
     return try {
-        val parts = timestamp.split("T")
-        if (parts.size == 2) {
-            val datePart = parts[0]
-            val timePart = parts[1].take(5)
-            "$datePart $timePart"
-        } else {
-            timestamp
-        }
+        val parsers = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+            "yyyy-MM-dd'T'HH:mm:ssXXX",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss"
+        )
+        val parsed = parsers.firstNotNullOfOrNull { pattern ->
+            runCatching { SimpleDateFormat(pattern, Locale.US).parse(timestamp) }.getOrNull()
+        } ?: return timestamp
+        SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("vi", "VN")).format(parsed)
     } catch (e: Exception) {
         timestamp
     }

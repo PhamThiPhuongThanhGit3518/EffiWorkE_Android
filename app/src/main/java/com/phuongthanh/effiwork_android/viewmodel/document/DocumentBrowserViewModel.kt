@@ -91,27 +91,53 @@ class DocumentBrowserViewModel @Inject constructor(
     }
 
     fun selectSection(projectId: String, sectionId: String?) {
-        _uiState.update { it.copy(selectedSectionId = sectionId, selectedTaskId = null) }
+        _uiState.update {
+            it.copy(
+                selectedSectionId = sectionId,
+                taskPath = emptyList(),
+                taskAttachments = emptyList()
+            )
+        }
     }
 
     fun selectTask(projectId: String, task: TaskResponse) {
-        _uiState.update { it.copy(selectedTaskId = task.id, selectedSectionId = task.groupId) }
-        expandTaskAncestors(task.id)
+        val current = _uiState.value
+        val lastInPath = current.taskPath.lastOrNull()
+        val isChildOfCurrent = lastInPath != null &&
+            (current.subtasksByTaskId[lastInPath.id] ?: emptyList()).any { it.id == task.id }
+
+        val newPath = if (isChildOfCurrent) current.taskPath + task else listOf(task)
+
+        _uiState.update {
+            it.copy(
+                taskPath = newPath,
+                selectedSectionId = task.groupId,
+                taskAttachments = emptyList()
+            )
+        }
+        loadSubtasks(projectId, task.id)
         loadTaskAttachments(projectId, task.id)
     }
 
-    private fun expandTaskAncestors(taskId: String) {
-        val ancestors = mutableSetOf<String>()
-        val path = findTaskPath(_uiState.value.allTasks, taskId)
-        path.dropLast(1).forEach { ancestors.add(it.id) }
-        _uiState.update { it.copy(expandedTaskIds = it.expandedTaskIds + ancestors) }
-    }
-
-    fun toggleTaskExpand(taskId: String) {
-        _uiState.update {
-            val newSet = if (taskId in it.expandedTaskIds) it.expandedTaskIds - taskId
-            else it.expandedTaskIds + taskId
-            it.copy(expandedTaskIds = newSet)
+    private fun loadSubtasks(projectId: String, taskId: String) {
+        if (_uiState.value.subtasksByTaskId.containsKey(taskId)) return
+        viewModelScope.launch {
+            when (val result = taskRepository.getSubtasks(projectId, taskId)) {
+                is ApiResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            subtasksByTaskId = it.subtasksByTaskId + (taskId to result.data)
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(DocumentBrowserEffect.ShowError(
+                        "Lỗi tải công việc con",
+                        result.message
+                    ))
+                }
+                ApiResult.Loading -> Unit
+            }
         }
     }
 
@@ -142,14 +168,33 @@ class DocumentBrowserViewModel @Inject constructor(
     }
 
     fun onBreadcrumbClick(projectId: String, itemId: String) {
-        when (itemId) {
-            "project-root", "personal-root" -> {
-                _uiState.update { it.copy(selectedSectionId = null, selectedTaskId = null) }
+        val current = _uiState.value
+        when {
+            itemId == "project-root" || itemId == "personal-root" -> {
+                _uiState.update {
+                    it.copy(
+                        selectedSectionId = null,
+                        taskPath = emptyList(),
+                        taskAttachments = emptyList()
+                    )
+                }
+            }
+            current.sections.any { it.id == itemId } -> {
+                _uiState.update {
+                    it.copy(
+                        selectedSectionId = itemId,
+                        taskPath = emptyList(),
+                        taskAttachments = emptyList()
+                    )
+                }
             }
             else -> {
-                val isSection = _uiState.value.sections.any { it.id == itemId }
-                if (isSection) {
-                    _uiState.update { it.copy(selectedSectionId = itemId, selectedTaskId = null) }
+                val pathIndex = current.taskPath.indexOfFirst { it.id == itemId }
+                if (pathIndex >= 0) {
+                    val newPath = current.taskPath.subList(0, pathIndex + 1)
+                    val newCurrent = newPath.last()
+                    _uiState.update { it.copy(taskPath = newPath) }
+                    loadTaskAttachments(projectId, newCurrent.id)
                 }
             }
         }
@@ -214,14 +259,6 @@ class DocumentBrowserViewModel @Inject constructor(
 
     fun onSearchChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-    }
-
-    fun toggleViewMode() {
-        _uiState.update {
-            val newMode = if (it.viewMode == DocumentViewMode.LIST) DocumentViewMode.GRID
-            else DocumentViewMode.LIST
-            it.copy(viewMode = newMode)
-        }
     }
 
     fun createFolder(projectId: String, name: String) {
@@ -318,10 +355,10 @@ class DocumentBrowserViewModel @Inject constructor(
                 loadPersonalDocuments(projectId, current.selectedFolderId)
             }
             DocumentTab.PROJECT -> {
-                val taskId = current.selectedTaskId
-                if (taskId != null) {
-                    taskDetailCache = taskDetailCache - taskId
-                    loadTaskAttachments(projectId, taskId)
+                val currentTask = current.taskPath.lastOrNull()
+                if (currentTask != null) {
+                    taskDetailCache = taskDetailCache - currentTask.id
+                    loadTaskAttachments(projectId, currentTask.id)
                 }
             }
         }

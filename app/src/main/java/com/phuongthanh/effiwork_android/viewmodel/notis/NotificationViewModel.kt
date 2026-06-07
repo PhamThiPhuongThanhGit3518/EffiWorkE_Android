@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.model.response.NotificationResponse
 import com.phuongthanh.effiwork_android.data.repository.NotificationRepository
+import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,8 @@ sealed class NotificationEffect {
 
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
+    private val projectRepository: ProjectRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NotificationUiState>(NotificationUiState.Idle)
@@ -48,9 +50,30 @@ class NotificationViewModel @Inject constructor(
     private val _unreadOnly = MutableStateFlow(false)
     val unreadOnly: StateFlow<Boolean> = _unreadOnly.asStateFlow()
 
+    private val _projectNameMap = MutableStateFlow<Map<String, String>>(emptyMap())
+    val projectNameMap: StateFlow<Map<String, String>> = _projectNameMap.asStateFlow()
+
     private var currentPage = 1
     private var totalPages = 1
     private val pageSize = 20
+
+    init {
+        loadProjectNames()
+    }
+
+    private fun loadProjectNames() {
+        viewModelScope.launch {
+            when (val result = projectRepository.getProjects()) {
+                is ApiResult.Success -> {
+                    _projectNameMap.value = result.data.data.associate { it.id to it.name }
+                }
+                is ApiResult.Error -> {
+                    Log.w(TAG, "loadProjectNames failed: ${result.message}")
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
 
     fun loadNotifications(refresh: Boolean = false) {
         if (refresh) {

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextOverflow
 import com.phuongthanh.effiwork_android.viewmodel.document.BreadcrumbItem
 
 @Composable
@@ -35,11 +36,17 @@ fun DocumentBreadcrumb(
             Text(
                 text = item.label,
                 modifier = Modifier
-                    .clickable(enabled = !item.isCurrent) { onItemClick(item.id) },
+                    .clickable(enabled = !item.isCurrent) { onItemClick(item.id) }
+                        .then(
+                        if (items.size >= 3) Modifier.weight(1f)
+                            else Modifier
+                        ),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (item.isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (item.isCurrent) MaterialTheme.colorScheme.onSurface
-                else MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             if (index < items.size - 1) {
                 Icon(
