@@ -56,6 +56,7 @@ fun TaskDetailScreen(
     onEditTask: (String, String) -> Unit = { _, _ -> },
     onAddSubtask: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onNavigateToSubtaskDetail: (String, String) -> Unit = { _, _ -> },
+    onAttachmentClick: (String) -> Unit = {},
     viewModel: TaskDetailViewModel = hiltViewModel(),
     authRepository: AuthRepository? = null
 ) {
@@ -132,6 +133,7 @@ fun TaskDetailScreen(
         onSubtaskStatusChange = { subtaskId, newStatus -> viewModel.updateSubtaskStatus(subtaskId, newStatus) },
         onSubtaskClick = { subtaskId -> onNavigateToSubtaskDetail(projectId, subtaskId) },
         onDownloadAttachment = onDownloadAttachment,
+        onAttachmentClick = onAttachmentClick,
         currentUserId = currentUserId,
         isOwner = isOwner,
         isParticipant = isParticipant,
@@ -159,6 +161,7 @@ fun TaskDetailScreenContent(
     onSubtaskEdit: (String) -> Unit = {},
     onSubtaskDelete: (String) -> Unit = {},
     onDownloadAttachment: (String, String) -> Unit = { _, _ -> },
+    onAttachmentClick: (String) -> Unit = {},
     currentUserId: String = "",
     isOwner: Boolean = false,
     isParticipant: Boolean = false,
@@ -260,85 +263,11 @@ fun TaskDetailScreenContent(
                     }
                 }
             )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color(0xFFF5F5F5))
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.White,
-                    contentColor = Blue500
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { onTabSelected(index) },
-                            text = {
-                                Text(
-                                    text = title,
-                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selectedTabIndex == index) Blue500 else Color.Gray
-                                )
-                            }
-                        )
-                    }
-                }
-
-                when (val uiState = state.uiState) {
-                    is TaskDetailUiState.Loading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Blue500)
-                        }
-                    }
-                    is TaskDetailUiState.Success -> {
-                        when (selectedTabIndex) {
-                            0 -> TaskInfoTabContent(
-                                task = uiState.taskDetail,
-                                onDownloadAttachment = onDownloadAttachment
-                            )
-                            1 -> TaskCommentsTabContent(uiState.taskDetail.comments)
-                            2 -> TaskSubtasksTabContent(
-                                subtasks = uiState.taskDetail.subtasks,
-                                onAddSubtask = onAddSubtask,
-                                onSubtaskStatusChange = onSubtaskStatusChange,
-                                onSubtaskClick = onSubtaskClick,
-                                onSubtaskEdit = onSubtaskClick,
-                                onSubtaskDelete = onSubtaskDelete,
-                                currentUserId = currentUserId
-                            )
-                            3 -> TaskExtensionTabContent(
-                                requests = extensionRequests,
-                                isOwner = uiState.taskDetail.assigneeId == currentUserId,
-                                onCreate = onCreateExtensionRequest,
-                                onApprove = onApproveExtension,
-                                onReject = onRejectExtension
-                            )
-                        }
-                    }
-                    is TaskDetailUiState.Error -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(uiState.message, color = Color.Red)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-
+        },
+        bottomBar = {
             if (selectedTabIndex == 1) {
                 Surface(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .imePadding()
                         .navigationBarsPadding(),
@@ -377,13 +306,87 @@ fun TaskDetailScreenContent(
                 }
             }
         }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFFF5F5F5))
+        ) {
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.White,
+                contentColor = Blue500
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { onTabSelected(index) },
+                        text = {
+                            Text(
+                                text = title,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTabIndex == index) Blue500 else Color.Gray
+                            )
+                        }
+                    )
+                }
+            }
+
+            when (val uiState = state.uiState) {
+                is TaskDetailUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Blue500)
+                    }
+                }
+                is TaskDetailUiState.Success -> {
+                    when (selectedTabIndex) {
+                        0 -> TaskInfoTabContent(
+                            task = uiState.taskDetail,
+                            onDownloadAttachment = onDownloadAttachment,
+                            onAttachmentClick = onAttachmentClick
+                        )
+                        1 -> TaskCommentsTabContent(uiState.taskDetail.comments)
+                        2 -> TaskSubtasksTabContent(
+                            subtasks = uiState.taskDetail.subtasks,
+                            onAddSubtask = onAddSubtask,
+                            onSubtaskStatusChange = onSubtaskStatusChange,
+                            onSubtaskClick = onSubtaskClick,
+                            onSubtaskEdit = onSubtaskClick,
+                            onSubtaskDelete = onSubtaskDelete,
+                            currentUserId = currentUserId
+                        )
+                        3 -> TaskExtensionTabContent(
+                            requests = extensionRequests,
+                            isOwner = uiState.taskDetail.assigneeId == currentUserId,
+                            onCreate = onCreateExtensionRequest,
+                            onApprove = onApproveExtension,
+                            onReject = onRejectExtension
+                        )
+                    }
+                }
+                is TaskDetailUiState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(uiState.message, color = Color.Red)
+                    }
+                }
+                else -> {}
+            }
+        }
     }
 }
 
 @Composable
 private fun TaskInfoTabContent(
     task: TaskDetail,
-    onDownloadAttachment: (String, String) -> Unit = { _, _ -> }
+    onDownloadAttachment: (String, String) -> Unit = { _, _ -> },
+    onAttachmentClick: (String) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -401,7 +404,8 @@ private fun TaskInfoTabContent(
         item {
             TaskAttachmentsSection(
                 attachments = task.attachments,
-                onDownloadAttachment = onDownloadAttachment
+                onDownloadAttachment = onDownloadAttachment,
+                onAttachmentClick = onAttachmentClick
             )
         }
     }
@@ -410,7 +414,8 @@ private fun TaskInfoTabContent(
 @Composable
 private fun TaskAttachmentsSection(
     attachments: List<TaskAttachmentItem>,
-    onDownloadAttachment: (String, String) -> Unit
+    onDownloadAttachment: (String, String) -> Unit,
+    onAttachmentClick: (String) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -457,7 +462,8 @@ private fun TaskAttachmentsSection(
                 attachments.forEach { attachment ->
                     AttachmentRow(
                         attachment = attachment,
-                        onDownload = { onDownloadAttachment(attachment.documentId, attachment.fileName) }
+                        onDownload = { onDownloadAttachment(attachment.documentId, attachment.fileName) },
+                        onClick = { onAttachmentClick(attachment.documentId) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -469,12 +475,15 @@ private fun TaskAttachmentsSection(
 @Composable
 private fun AttachmentRow(
     attachment: TaskAttachmentItem,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF5F5F5))
+            .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -558,7 +567,7 @@ private fun openDownloadedFile(context: android.content.Context, file: File) {
 private fun TaskCommentsTabContent(comments: List<CommentItem>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp)
+        contentPadding = PaddingValues(16.dp)
     ) {
         item {
             CommentsSection(comments)
@@ -1342,7 +1351,11 @@ private val sampleTaskDetail = TaskDetail(
 @Composable
 private fun TaskInfoTabPreview() {
     MaterialTheme {
-        TaskInfoTabContent(sampleTaskDetail, onDownloadAttachment = { _, _ -> })
+        TaskInfoTabContent(
+    task = sampleTaskDetail,
+    onDownloadAttachment = { _, _ -> },
+    onAttachmentClick = {}
+)
     }
 }
 

@@ -272,6 +272,9 @@ fun MainScreen(
                     },
                     onNavigateToSubtaskDetail = { pid, subtaskId ->
                         navController.navigate(NavRoutes.taskDetail(pid, subtaskId))
+                    },
+                    onAttachmentClick = { documentId ->
+                        navController.navigate(NavRoutes.documentPreview(projectId, documentId))
                     }
                 )
             }
