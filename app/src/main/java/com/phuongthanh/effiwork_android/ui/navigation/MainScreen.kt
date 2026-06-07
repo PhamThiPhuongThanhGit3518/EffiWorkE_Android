@@ -34,6 +34,8 @@ import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatListScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.CreateGroupChatScreen
+import com.phuongthanh.effiwork_android.ui.screen.document.DocumentBrowserScreen
+import com.phuongthanh.effiwork_android.ui.screen.document.DocumentPreviewScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
@@ -66,6 +68,8 @@ object NavRoutes {
     const val NEW_MESSAGE = "new_message/{projectId}"
     const val CHAT = "chat/{projectId}/{conversationId}/{conversationName}/{currentUserId}"
     const val CREATE_GROUP_CHAT = "create_group_chat/{projectId}"
+    const val DOCUMENT_BROWSER = "document_browser/{projectId}"
+    const val DOCUMENT_PREVIEW = "document_preview/{projectId}/{documentId}"
 
     fun projectSetting(projectId: String) = "project_setting/$projectId"
     fun taskGroupList(projectId: String, projectName: String) = "task_group_list/$projectId/$projectName"
@@ -81,6 +85,8 @@ object NavRoutes {
     fun newMessage(projectId: String) = "new_message/$projectId"
     fun chat(projectId: String, conversationId: String, conversationName: String, currentUserId: String) = "chat/$projectId/$conversationId/$conversationName/$currentUserId"
     fun createGroupChat(projectId: String) = "create_group_chat/$projectId"
+    fun documentBrowser(projectId: String) = "document_browser/$projectId"
+    fun documentPreview(projectId: String, documentId: String) = "document_preview/$projectId/$documentId"
 }
 
 @Composable
@@ -161,6 +167,9 @@ fun MainScreen(
                     },
                     onNavigateToMessage = { projectId ->
                         navController.navigate(NavRoutes.newMessage(projectId))
+                    },
+                    onNavigateToDocument = { projectId ->
+                        navController.navigate(NavRoutes.documentBrowser(projectId))
                     }
                 )
             }
@@ -459,6 +468,36 @@ fun MainScreen(
                     onBackClick = { navController.popBackStack() },
                     onGroupCreated = { navController.popBackStack() },
                     authRepository = rememberAuthRepository()
+                )
+            }
+            composable(
+                route = NavRoutes.DOCUMENT_BROWSER,
+                arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                DocumentBrowserScreen(
+                    projectId = projectId,
+                    currentUserId = currentUserId,
+                    onBackClick = { navController.popBackStack() },
+                    onPreview = { documentId ->
+                        navController.navigate(NavRoutes.documentPreview(projectId, documentId))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.DOCUMENT_PREVIEW,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("documentId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                val documentId = backStackEntry.arguments?.getString("documentId") ?: return@composable
+                DocumentPreviewScreen(
+                    projectId = projectId,
+                    documentId = documentId,
+                    currentUserId = currentUserId,
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }
