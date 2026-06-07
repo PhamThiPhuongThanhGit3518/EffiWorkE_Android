@@ -1,5 +1,8 @@
 package com.phuongthanh.effiwork_android.viewmodel.task
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,10 +13,13 @@ import com.phuongthanh.effiwork_android.data.model.request.ReviewExtensionReques
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
 import com.phuongthanh.effiwork_android.data.model.response.ExtensionRequestResponse
+import com.phuongthanh.effiwork_android.data.model.response.TaskAttachment
 import com.phuongthanh.effiwork_android.data.model.response.TaskDetailResponse
 import com.phuongthanh.effiwork_android.data.model.response.TaskResponse
+import com.phuongthanh.effiwork_android.data.repository.DocumentRepository
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -119,7 +125,9 @@ data class TaskMember(
 
 @HiltViewModel
 class TaskViewModel @Inject constructor(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val documentRepository: DocumentRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TaskUiState>(TaskUiState.Idle)
@@ -159,6 +167,9 @@ class TaskViewModel @Inject constructor(
 
     private val _taskMembers = MutableStateFlow<List<TaskMember>>(emptyList())
     val taskMembers: StateFlow<List<TaskMember>> = _taskMembers.asStateFlow()
+
+    private val _editingAttachments = MutableStateFlow<List<TaskAttachmentItem>>(emptyList())
+    val editingAttachments: StateFlow<List<TaskAttachmentItem>> = _editingAttachments.asStateFlow()
 
     fun setProjectInfo(projectId: String, projectName: String) {
         _projectId.value = projectId
@@ -257,6 +268,9 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val task = mapTaskDetailToTask(result.data)
                     _uiState.value = TaskUiState.Success(listOf(task))
+                    _editingAttachments.value = result.data.attachments
+                        ?.mapNotNull { it.toAttachmentItem() }
+                        ?: emptyList()
                 }
                 is ApiResult.Error -> {
                     _effect.emit(TaskEffect.ShowToast(result.message))
@@ -281,6 +295,18 @@ class TaskViewModel @Inject constructor(
             endDate = detail.endDate?.take(10) ?: "",
             category = detail.groupId ?: "",
             subtasks = emptyList()
+        )
+    }
+
+    private fun TaskAttachment.toAttachmentItem(): TaskAttachmentItem? {
+        val doc = document ?: return null
+        return TaskAttachmentItem(
+            id = id,
+            documentId = doc.id,
+            fileName = doc.fileName ?: "(không tên)",
+            fileSize = doc.fileSize,
+            mimeType = doc.mimeType,
+            filePath = doc.filePath
         )
     }
 
@@ -328,7 +354,8 @@ class TaskViewModel @Inject constructor(
         startDate: String,
         endDate: String,
         reminderTime: String?,
-        participantIds: List<String>
+        participantIds: List<String>,
+        attachmentUris: List<Uri> = emptyList()
     ) {
         viewModelScope.launch {
             _uiState.value = TaskUiState.Loading
@@ -349,6 +376,7 @@ class TaskViewModel @Inject constructor(
             when (val result = taskRepository.createTask(projectIdValue, request)) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Create task success: ${result.data.id}, title: ${result.data.name}")
+                    attachUrisToTask(projectIdValue, result.data.id, attachmentUris)
                     _effect.emit(TaskEffect.ShowToast("Tạo công việc thành công"))
                     _effect.emit(TaskEffect.TaskCreated(name))
                     Log.d(TAG, "Calling refreshCurrentTab() to refresh list...")
@@ -374,7 +402,8 @@ class TaskViewModel @Inject constructor(
         startDate: String,
         endDate: String,
         reminderTime: String?,
-        participantIds: List<String>
+        participantIds: List<String>,
+        attachmentUris: List<Uri> = emptyList()
     ) {
         viewModelScope.launch {
             _uiState.value = TaskUiState.Loading
@@ -397,6 +426,7 @@ class TaskViewModel @Inject constructor(
             when (val result = taskRepository.createTask(projectIdValue, request)) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Create subtask success: ${result.data.id}, title: ${result.data.name}")
+                    attachUrisToTask(projectIdValue, result.data.id, attachmentUris)
                     _effect.emit(TaskEffect.ShowToast("Tạo công việc con thành công"))
                     _effect.emit(TaskEffect.TaskCreated(name))
                     invalidateAndReloadAllTabs()
@@ -421,7 +451,9 @@ class TaskViewModel @Inject constructor(
         startDate: String,
         endDate: String,
         reminderTime: String?,
-        participantIds: List<String>
+        participantIds: List<String>,
+        removedAttachmentIds: List<String> = emptyList(),
+        newAttachmentUris: List<Uri> = emptyList()
     ) {
         viewModelScope.launch {
             _uiState.value = TaskUiState.Loading
@@ -429,6 +461,7 @@ class TaskViewModel @Inject constructor(
             Log.d(TAG, "updateTask: projectId=$projectIdValue, taskId=$taskId")
             Log.d(TAG, "updateTask: name=$name, groupId=$groupId")
             Log.d(TAG, "updateTask: assigneeId=$assigneeId")
+            Log.d(TAG, "updateTask: removedAttachments=${removedAttachmentIds.size}, newUris=${newAttachmentUris.size}")
 
             val request = UpdateTaskRequest(
                 title = name.takeIf { it.isNotBlank() },
@@ -445,6 +478,9 @@ class TaskViewModel @Inject constructor(
             when (val result = taskRepository.updateTask(projectIdValue, taskId, request)) {
                 is ApiResult.Success -> {
                     Log.d(TAG, "Update task success: ${result.data.id}")
+                    syncAttachmentsForUpdate(projectIdValue, taskId, removedAttachmentIds, newAttachmentUris)
+                    _editingAttachments.value = _editingAttachments.value
+                        .filterNot { removedAttachmentIds.contains(it.id) }
                     _effect.emit(TaskEffect.ShowToast("Cập nhật công việc thành công"))
                     _effect.emit(TaskEffect.TaskUpdated(name))
                     invalidateAndReloadAllTabs()
@@ -642,5 +678,83 @@ class TaskViewModel @Inject constructor(
         )
         Log.d(TAG, "toTask mapped: id=$id, name=$name, assignee=${task.assignee}, assigneeId=${task.assigneeId}, creatorId=${task.creatorId}, participants=${task.participants}, startDate=${startDate}, endDate=${endDate}")
         return task
+    }
+
+    private suspend fun attachUrisToTask(
+        projectId: String,
+        taskId: String,
+        uris: List<Uri>
+    ) {
+        if (uris.isEmpty()) return
+        uris.forEachIndexed { index, uri ->
+            val fileName = queryFileName(uri) ?: "attachment_${index + 1}"
+            val mimeType = appContext.contentResolver.getType(uri)
+            val bytes = try {
+                appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            } catch (e: Exception) {
+                Log.e(TAG, "attachUrisToTask: failed to read uri $uri: ${e.message}")
+                null
+            } ?: return@forEachIndexed
+
+            when (val uploadResult = documentRepository.uploadDocument(
+                projectId = projectId,
+                fileName = fileName,
+                fileBytes = bytes,
+                mimeType = mimeType,
+                folderId = null,
+                visibilityType = "PROJECT_SHARED",
+                customFileName = null
+            )) {
+                is ApiResult.Success -> {
+                    when (val attachResult = documentRepository.attachToTask(
+                        projectId = projectId,
+                        taskId = taskId,
+                        documentId = uploadResult.data.id
+                    )) {
+                        is ApiResult.Success -> Log.d(TAG, "attachUrisToTask: attached ${uploadResult.data.id}")
+                        is ApiResult.Error -> _effect.emit(
+                            TaskEffect.ShowToast("Tải tài liệu \"$fileName\" xong nhưng gắn lỗi: ${attachResult.message}")
+                        )
+                        ApiResult.Loading -> Unit
+                    }
+                }
+                is ApiResult.Error -> _effect.emit(
+                    TaskEffect.ShowToast("Tải tài liệu \"$fileName\" lỗi: ${uploadResult.message}")
+                )
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
+
+    private suspend fun syncAttachmentsForUpdate(
+        projectId: String,
+        taskId: String,
+        removedAttachmentIds: List<String>,
+        newAttachmentUris: List<Uri>
+    ) {
+        if (removedAttachmentIds.isNotEmpty()) {
+            removedAttachmentIds.forEach { attachmentId ->
+                when (val result = documentRepository.detachFromTask(projectId, taskId, attachmentId)) {
+                    is ApiResult.Success -> Log.d(TAG, "syncAttachmentsForUpdate: detached $attachmentId")
+                    is ApiResult.Error -> _effect.emit(
+                        TaskEffect.ShowToast("Gỡ tài liệu lỗi: ${result.message}")
+                    )
+                    ApiResult.Loading -> Unit
+                }
+            }
+        }
+        if (newAttachmentUris.isNotEmpty()) {
+            attachUrisToTask(projectId, taskId, newAttachmentUris)
+        }
+    }
+
+    private fun queryFileName(uri: Uri): String? {
+        val cursor = appContext.contentResolver.query(uri, null, null, null, null) ?: return null
+        return cursor.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0) it.getString(nameIndex) else null
+            } else null
+        }
     }
 }

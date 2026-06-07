@@ -1,13 +1,17 @@
 package com.phuongthanh.effiwork_android.viewmodel.task
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.model.request.CreateExtensionRequest
 import com.phuongthanh.effiwork_android.data.model.request.UpdateTaskStatusRequest
+import com.phuongthanh.effiwork_android.data.model.response.TaskAttachment
+import com.phuongthanh.effiwork_android.data.repository.DocumentRepository
 import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 private const val TAG = "TaskDetailViewModel"
@@ -53,8 +58,21 @@ data class TaskDetail(
     val attachmentCount: Int,
     val subtaskCount: Int,
     val comments: List<CommentItem>,
-    val subtasks: List<SubtaskItem>
+    val subtasks: List<SubtaskItem>,
+    val attachments: List<TaskAttachmentItem> = emptyList()
 )
+
+private fun TaskAttachment.toItem(): TaskAttachmentItem? {
+    val doc = document ?: return null
+    return TaskAttachmentItem(
+        id = id,
+        documentId = doc.id,
+        fileName = doc.fileName ?: "(không tên)",
+        fileSize = doc.fileSize,
+        mimeType = doc.mimeType,
+        filePath = doc.filePath
+    )
+}
 
 data class SubtaskItem(
     val id: String,
@@ -93,11 +111,15 @@ sealed class TaskDetailEffect {
     data class ShowToast(val message: String) : TaskDetailEffect()
     object CommentPosted : TaskDetailEffect()
     object TaskDeleted : TaskDetailEffect()
+    data class AttachmentDownloaded(val file: File) : TaskDetailEffect()
+    data class AttachmentDownloadError(val message: String) : TaskDetailEffect()
 }
 
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val documentRepository: DocumentRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TaskDetailUiState>(TaskDetailUiState.Idle)
@@ -182,7 +204,8 @@ class TaskDetailViewModel @Inject constructor(
                                 createdAt = comment.createdAt?.take(10) ?: ""
                             )
                         } ?: emptyList(),
-                        subtasks = subtasks
+                        subtasks = subtasks,
+                        attachments = data.attachments?.mapNotNull { it.toItem() } ?: emptyList()
                     )
                     _uiState.value = TaskDetailUiState.Success(taskDetail)
                 }
@@ -376,6 +399,30 @@ class TaskDetailViewModel @Inject constructor(
                     _effect.emit(TaskDetailEffect.ShowToast(result.message))
                 }
                 is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun downloadAttachment(documentId: String, fileName: String) {
+        if (currentProjectId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val safeName = fileName.ifBlank { "attachment" }
+                val destFile = File(appContext.cacheDir, "downloads/task_attachments/$safeName")
+                destFile.parentFile?.mkdirs()
+                when (val result = documentRepository.downloadDocumentToFile(
+                    currentProjectId, documentId, destFile
+                )) {
+                    is ApiResult.Success -> {
+                        _effect.emit(TaskDetailEffect.AttachmentDownloaded(result.data))
+                    }
+                    is ApiResult.Error -> {
+                        _effect.emit(TaskDetailEffect.AttachmentDownloadError(result.message))
+                    }
+                    ApiResult.Loading -> Unit
+                }
+            } catch (e: Exception) {
+                _effect.emit(TaskDetailEffect.AttachmentDownloadError(e.message ?: "Lỗi không xác định"))
             }
         }
     }
