@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,7 +47,6 @@ fun NotificationScreen(
     val unreadOnly by viewModel.unreadOnly.collectAsStateWithLifecycle()
     val projectNameMap by viewModel.projectNameMap.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
         viewModel.loadNotifications(refresh = true)
@@ -65,7 +65,45 @@ fun NotificationScreen(
         }
     }
 
-    LaunchedEffect(listState) {
+    NotificationScreenContent(
+        uiState = uiState,
+        unreadOnly = unreadOnly,
+        projectNameMap = projectNameMap,
+        onToggleUnreadFilter = viewModel::toggleUnreadFilter,
+        onMarkAllAsRead = viewModel::markAllAsRead,
+        onRefresh = viewModel::refresh,
+        onMarkAsRead = viewModel::markAsRead,
+        onMarkAsUnread = viewModel::markAsUnread,
+        onItemClick = { notification ->
+            if (notification.isRead != true) {
+                viewModel.markAsRead(notification.id)
+            }
+            handleNotificationClick(
+                notification = notification,
+                onNavigateToTaskDetail = onNavigateToTaskDetail,
+                onNavigateToMeetingDetail = onNavigateToMeetingDetail
+            )
+        },
+        onLoadMore = viewModel::loadMoreNotifications
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationScreenContent(
+    uiState: NotificationUiState,
+    unreadOnly: Boolean,
+    projectNameMap: Map<String, String>,
+    onToggleUnreadFilter: () -> Unit,
+    onMarkAllAsRead: () -> Unit,
+    onRefresh: () -> Unit,
+    onMarkAsRead: (String) -> Unit,
+    onMarkAsUnread: (String) -> Unit,
+    onItemClick: (NotificationResponse) -> Unit,
+    onLoadMore: () -> Unit,
+    listState: LazyListState = rememberLazyListState()
+) {
+    LaunchedEffect(listState, uiState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastIndex ->
                 if (lastIndex == null || lastIndex < 0) return@collect
@@ -74,7 +112,7 @@ fun NotificationScreen(
                 if (state.isLoadingMore) return@collect
                 if (state.page >= state.totalPages) return@collect
                 if (lastIndex >= state.notifications.size - 3) {
-                    viewModel.loadMoreNotifications()
+                    onLoadMore()
                 }
             }
     }
@@ -91,20 +129,20 @@ fun NotificationScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.toggleUnreadFilter() }) {
+                    IconButton(onClick = onToggleUnreadFilter) {
                         Icon(
                             imageVector = if (unreadOnly) Icons.Default.FilterAlt else Icons.Default.FilterAltOff,
                             contentDescription = "Lọc chưa đọc",
                             tint = if (unreadOnly) Blue500 else MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    IconButton(onClick = { viewModel.markAllAsRead() }) {
+                    IconButton(onClick = onMarkAllAsRead) {
                         Icon(
                             imageVector = Icons.Default.DoneAll,
                             contentDescription = "Đánh dấu tất cả đã đọc"
                         )
                     }
-                    IconButton(onClick = { viewModel.refresh() }) {
+                    IconButton(onClick = onRefresh) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Làm mới"
@@ -170,18 +208,9 @@ fun NotificationScreen(
                                     notification = notification,
                                     projectName = notification.projectId?.let { projectNameMap[it] }
                                         ?: notification.data?.projectId?.let { projectNameMap[it] },
-                                    onMarkAsRead = { viewModel.markAsRead(notification.id) },
-                                    onMarkAsUnread = { viewModel.markAsUnread(notification.id) },
-                                    onClick = {
-                                        if (notification.isRead != true) {
-                                            viewModel.markAsRead(notification.id)
-                                        }
-                                        handleNotificationClick(
-                                            notification = notification,
-                                            onNavigateToTaskDetail = onNavigateToTaskDetail,
-                                            onNavigateToMeetingDetail = onNavigateToMeetingDetail
-                                        )
-                                    }
+                                    onMarkAsRead = { onMarkAsRead(notification.id) },
+                                    onMarkAsUnread = { onMarkAsUnread(notification.id) },
+                                    onClick = { onItemClick(notification) }
                                 )
                             }
 
@@ -220,7 +249,7 @@ fun NotificationScreen(
                             Text(state.message, color = Color.Red)
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { viewModel.refresh() },
+                                onClick = onRefresh,
                                 colors = ButtonDefaults.buttonColors(containerColor = Blue500)
                             ) {
                                 Text("Thử lại")
@@ -253,9 +282,6 @@ private fun NotificationItem(
         colors = CardDefaults.cardColors(
             containerColor = if (isUnread) Blue500.copy(alpha = 0.08f) else Color.White
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isUnread) 2.dp else 1.dp
-        )
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             if (isUnread) {
@@ -354,9 +380,6 @@ private fun NotificationItem(
                                     showMenu = false
                                     onMarkAsRead()
                                 },
-                                leadingIcon = {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null)
-                                }
                             )
                         } else {
                             DropdownMenuItem(
@@ -365,9 +388,6 @@ private fun NotificationItem(
                                     showMenu = false
                                     onMarkAsUnread()
                                 },
-                                leadingIcon = {
-                                    Icon(Icons.Default.RadioButtonUnchecked, contentDescription = null)
-                                }
                             )
                         }
                     }
@@ -617,5 +637,128 @@ private fun ReadStatusPillPreview() {
             ReadStatusPill(isUnread = true)
             ReadStatusPill(isUnread = false)
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Màn hình - Loading", heightDp = 720)
+@Composable
+private fun NotificationScreenLoadingPreview() {
+    MaterialTheme {
+        NotificationScreenContent(
+            uiState = NotificationUiState.Loading,
+            unreadOnly = false,
+            projectNameMap = emptyMap(),
+            onToggleUnreadFilter = {},
+            onMarkAllAsRead = {},
+            onRefresh = {},
+            onMarkAsRead = {},
+            onMarkAsUnread = {},
+            onItemClick = {},
+            onLoadMore = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Màn hình - Empty", heightDp = 720)
+@Composable
+private fun NotificationScreenEmptyPreview() {
+    MaterialTheme {
+        NotificationScreenContent(
+            uiState = NotificationUiState.Success(
+                notifications = emptyList(),
+                page = 1,
+                totalPages = 1
+            ),
+            unreadOnly = false,
+            projectNameMap = emptyMap(),
+            onToggleUnreadFilter = {},
+            onMarkAllAsRead = {},
+            onRefresh = {},
+            onMarkAsRead = {},
+            onMarkAsUnread = {},
+            onItemClick = {},
+            onLoadMore = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Màn hình - Có dữ liệu", heightDp = 720)
+@Composable
+private fun NotificationScreenSuccessPreview() {
+    MaterialTheme {
+        NotificationScreenContent(
+            uiState = NotificationUiState.Success(
+                notifications = listOf(
+                    sampleNotificationUnread,
+                    sampleNotificationRead,
+                    sampleNotificationNoProject
+                ),
+                page = 1,
+                totalPages = 3,
+                isLoadingMore = false
+            ),
+            unreadOnly = false,
+            projectNameMap = mapOf(
+                "proj-1" to "Website công ty",
+                "proj-2" to "App Mobile EffiWork"
+            ),
+            onToggleUnreadFilter = {},
+            onMarkAllAsRead = {},
+            onRefresh = {},
+            onMarkAsRead = {},
+            onMarkAsUnread = {},
+            onItemClick = {},
+            onLoadMore = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Màn hình - Đang load more", heightDp = 720)
+@Composable
+private fun NotificationScreenLoadingMorePreview() {
+    MaterialTheme {
+        NotificationScreenContent(
+            uiState = NotificationUiState.Success(
+                notifications = listOf(
+                    sampleNotificationUnread,
+                    sampleNotificationRead,
+                    sampleNotificationNoProject
+                ),
+                page = 1,
+                totalPages = 3,
+                isLoadingMore = true
+            ),
+            unreadOnly = true,
+            projectNameMap = mapOf(
+                "proj-1" to "Website công ty",
+                "proj-2" to "App Mobile EffiWork"
+            ),
+            onToggleUnreadFilter = {},
+            onMarkAllAsRead = {},
+            onRefresh = {},
+            onMarkAsRead = {},
+            onMarkAsUnread = {},
+            onItemClick = {},
+            onLoadMore = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Màn hình - Error", heightDp = 720)
+@Composable
+private fun NotificationScreenErrorPreview() {
+    MaterialTheme {
+        NotificationScreenContent(
+            uiState = NotificationUiState.Error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại."),
+            unreadOnly = false,
+            projectNameMap = emptyMap(),
+            onToggleUnreadFilter = {},
+            onMarkAllAsRead = {},
+            onRefresh = {},
+            onMarkAsRead = {},
+            onMarkAsUnread = {},
+            onItemClick = {},
+            onLoadMore = {}
+        )
     }
 }
