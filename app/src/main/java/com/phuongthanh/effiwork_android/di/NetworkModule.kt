@@ -7,6 +7,7 @@ import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
 import com.phuongthanh.effiwork_android.api.ChatService
 import com.phuongthanh.effiwork_android.api.DocumentService
+import com.phuongthanh.effiwork_android.api.FolderService
 import com.phuongthanh.effiwork_android.api.MeetingService
 import com.phuongthanh.effiwork_android.api.NotificationService
 import com.phuongthanh.effiwork_android.api.ProjectService
@@ -108,6 +109,12 @@ object NetworkModule {
     @Singleton
     fun provideDocumentService(retrofit: Retrofit): DocumentService {
         return retrofit.create(DocumentService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFolderService(retrofit: Retrofit): FolderService {
+        return retrofit.create(FolderService::class.java)
     }
 
     @Provides

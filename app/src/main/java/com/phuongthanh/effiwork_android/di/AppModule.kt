@@ -8,6 +8,8 @@ import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.AuthRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.DocumentRepository
 import com.phuongthanh.effiwork_android.data.repository.DocumentRepositoryImpl
+import com.phuongthanh.effiwork_android.data.repository.FolderRepository
+import com.phuongthanh.effiwork_android.data.repository.FolderRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.MeetingRepository
 import com.phuongthanh.effiwork_android.data.repository.MeetingRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.NotificationRepository
@@ -86,6 +88,14 @@ object AppModule {
         documentRepositoryImpl: DocumentRepositoryImpl
     ): DocumentRepository {
         return documentRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideFolderRepository(
+        folderRepositoryImpl: FolderRepositoryImpl
+    ): FolderRepository {
+        return folderRepositoryImpl
     }
 
     @Provides
