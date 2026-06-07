@@ -21,6 +21,8 @@ fun ChatInputBar(
     onSendClick: () -> Unit,
     onProjectFileClick: () -> Unit,
     onDeviceFileClick: () -> Unit,
+    canSend: Boolean = messageText.isNotBlank(),
+    isUploading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -52,7 +54,7 @@ fun ChatInputBar(
                 )
                 Button(
                     onClick = onSendClick,
-                    enabled = messageText.isNotBlank(),
+                    enabled = canSend && !isUploading,
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black,
@@ -60,12 +62,20 @@ fun ChatInputBar(
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Send,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    if (isUploading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Send,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 

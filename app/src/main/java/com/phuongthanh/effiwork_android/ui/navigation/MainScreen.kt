@@ -174,7 +174,17 @@ fun MainScreen(
                 )
             }
             composable(BottomNavItem.Notifications.route) {
-                NotificationScreen()
+                NotificationScreen(
+                    onNavigateToTaskDetail = { projectId, taskId ->
+                        navController.navigate(NavRoutes.taskDetail(projectId, taskId))
+                    },
+                    onNavigateToMeetingDetail = { projectId, meetingId ->
+                        navController.navigate(NavRoutes.meetingDetail(projectId, meetingId))
+                    },
+                    onNavigateToProject = { projectId, projectName ->
+                        navController.navigate(NavRoutes.taskGroupList(projectId, projectName))
+                    }
+                )
             }
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(authViewModel = authViewModel)
