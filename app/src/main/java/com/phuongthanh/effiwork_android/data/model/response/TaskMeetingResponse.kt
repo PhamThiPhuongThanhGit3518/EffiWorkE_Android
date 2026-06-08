@@ -88,9 +88,17 @@ data class MeetingParticipantUserInfo(
 
 data class Attachment(
     val id: String,
-    val fileName: String,
-    @SerializedName("filePath") val fileUrl: String?,
-    val fileSize: Long
+    val documentId: String?,
+    val createdAt: String?,
+    val document: AttachmentDocument?
+)
+
+data class AttachmentDocument(
+    val id: String,
+    val fileName: String?,
+    val filePath: String?,
+    val mimeType: String?,
+    val fileSize: String?
 )
 
 data class DocumentResponse(

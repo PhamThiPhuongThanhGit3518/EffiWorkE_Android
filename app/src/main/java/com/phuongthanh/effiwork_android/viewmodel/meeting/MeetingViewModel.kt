@@ -39,7 +39,16 @@ data class Meeting(
     val date: String,
     val participants: List<String>,
     val notes: String?,
-    val meetingTime: String?
+    val meetingTime: String?,
+    val attachments: List<MeetingAttachment> = emptyList()
+)
+
+data class MeetingAttachment(
+    val id: String,
+    val documentId: String,
+    val fileName: String,
+    val mimeType: String?,
+    val fileSize: Long
 )
 
 enum class MeetingFormat(val displayName: String) {
@@ -254,13 +263,14 @@ class MeetingViewModel @Inject constructor(
         meetingTime: String,
         notes: String?,
         participantIds: List<String>,
+        attachmentDocumentIds: List<String>,
         onSuccess: (String) -> Unit
     ) {
         viewModelScope.launch {
             _uiState.value = MeetingUiState.Loading
             val projectIdValue = _projectId.value
 
-            android.util.Log.d("MeetingDebug", "createMeeting called: projectId=$projectIdValue, title=$title, hostUserId=$hostUserId, type=$type, meetingTime=$meetingTime, participantIds=$participantIds")
+            android.util.Log.d("MeetingDebug", "createMeeting called: projectId=$projectIdValue, title=$title, hostUserId=$hostUserId, type=$type, meetingTime=$meetingTime, participantIds=$participantIds, attachmentDocumentIds=$attachmentDocumentIds")
 
             if (projectIdValue.isBlank()) {
                 android.util.Log.e("MeetingDebug", "Project ID is blank!")
@@ -288,9 +298,9 @@ class MeetingViewModel @Inject constructor(
                 content = if (content.isNotBlank()) content else null,
                 note = if (!notes.isNullOrBlank()) notes else null,
                 participantIds = participantIds,
-                attachmentDocumentIds = null
+                attachmentDocumentIds = attachmentDocumentIds.takeIf { it.isNotEmpty() }
             )
-            android.util.Log.d("MeetingDebug", "createMeeting request: projectId=$projectIdValue, title=${request.title}, type=${request.type}, meetingTime=${request.meetingTime}, hostUserId=${request.hostUserId}, content=${request.content}, note=${request.note}, participantIds=${request.participantIds}")
+            android.util.Log.d("MeetingDebug", "createMeeting request: projectId=$projectIdValue, title=${request.title}, type=${request.type}, meetingTime=${request.meetingTime}, hostUserId=${request.hostUserId}, content=${request.content}, note=${request.note}, participantIds=${request.participantIds}, attachmentDocumentIds=${request.attachmentDocumentIds}")
 
             android.util.Log.d("MeetingDebug", "Sending createMeeting request...")
             when (val result = meetingRepository.createMeeting(projectIdValue, request)) {
@@ -324,7 +334,8 @@ class MeetingViewModel @Inject constructor(
         type: String,
         meetingTime: String,
         notes: String?,
-        participantIds: List<String>
+        participantIds: List<String>,
+        attachmentDocumentIds: List<String>
     ) {
         viewModelScope.launch {
             _uiState.value = MeetingUiState.Loading
@@ -338,7 +349,7 @@ class MeetingViewModel @Inject constructor(
                 content = if (content.isNotBlank()) content else null,
                 note = if (!notes.isNullOrBlank()) notes else null,
                 participantIds = participantIds,
-                attachmentDocumentIds = null
+                attachmentDocumentIds = attachmentDocumentIds.takeIf { it.isNotEmpty() }
             )
 
             when (val result = meetingRepository.updateMeeting(projectIdValue, meetingId, request)) {
@@ -392,9 +403,21 @@ class MeetingViewModel @Inject constructor(
         return documentRepository.uploadDocument(projectIdValue, fileName, fileBytes)
     }
 
-    suspend fun attachMeetingDocument(meetingId: String, documentId: String): ApiResult<Unit> {
+    suspend fun uploadDocument(
+        fileName: String,
+        fileBytes: ByteArray,
+        mimeType: String?
+    ): ApiResult<com.phuongthanh.effiwork_android.data.model.response.DocumentResponse> {
         val projectIdValue = _projectId.value
-        return meetingRepository.attachMeetingDocument(projectIdValue, meetingId, documentId)
+        return documentRepository.uploadDocument(
+            projectId = projectIdValue,
+            fileName = fileName,
+            fileBytes = fileBytes,
+            mimeType = mimeType,
+            folderId = null,
+            visibilityType = "PROJECT_SHARED",
+            customFileName = null
+        )
     }
 
     fun isHost(meeting: Meeting): Boolean {
@@ -457,7 +480,17 @@ class MeetingViewModel @Inject constructor(
             date = date,
             participants = participants?.map { it.user?.fullName ?: "" } ?: emptyList(),
             notes = notes,
-            meetingTime = scheduledTime
+            meetingTime = scheduledTime,
+            attachments = attachments?.mapNotNull { att ->
+                val doc = att.document ?: return@mapNotNull null
+                MeetingAttachment(
+                    id = att.id,
+                    documentId = att.documentId ?: doc.id,
+                    fileName = doc.fileName.orEmpty(),
+                    mimeType = doc.mimeType,
+                    fileSize = doc.fileSize?.toLongOrNull() ?: 0L
+                )
+            } ?: emptyList()
         )
     }
 }

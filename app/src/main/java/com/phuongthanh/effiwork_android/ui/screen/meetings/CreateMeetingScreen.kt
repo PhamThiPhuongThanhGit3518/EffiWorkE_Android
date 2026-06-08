@@ -28,6 +28,7 @@ import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingAttachment
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingEffect
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
 import com.phuongthanh.effiwork_android.viewmodel.meeting.ProjectMember
@@ -58,6 +59,8 @@ fun CreateMeetingScreen(
     var isUploading by remember { mutableStateOf(false) }
     var uploadProgress by remember { mutableStateOf("") }
     var uploadedDocumentIds by remember { mutableStateOf(listOf<String>()) }
+    var existingAttachments by remember { mutableStateOf<List<MeetingAttachment>>(emptyList()) }
+    var removedAttachmentIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     var organizerExpanded by remember { mutableStateOf(false) }
     var formatExpanded by remember { mutableStateOf(false) }
@@ -97,6 +100,8 @@ fun CreateMeetingScreen(
                 organizerId = meeting.organizerId
                 notes = meeting.notes ?: ""
                 selectedParticipantIds = emptySet()
+                existingAttachments = meeting.attachments
+                removedAttachmentIds = emptySet()
                 meeting.meetingTime?.let { timeStr ->
                     try {
                         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
@@ -163,19 +168,30 @@ fun CreateMeetingScreen(
                                 val uploadedIds = mutableListOf<String>()
                                 selectedFiles.forEachIndexed { index, uri ->
                                     uploadProgress = "Đang tải tài liệu ${index + 1}/${selectedFiles.size}..."
-                                    val fileName = uri.lastPathSegment ?: "file_${index + 1}"
+                                    val mimeType = context.contentResolver.getType(uri)
+                                    val fileName = queryDisplayName(context, uri, index, mimeType)
                                     val inputStream = context.contentResolver.openInputStream(uri)
                                     val fileBytes = inputStream?.readBytes() ?: byteArrayOf()
                                     inputStream?.close()
 
-                                    val result = viewModel.uploadDocument(fileName, fileBytes)
+                                    val result = viewModel.uploadDocument(fileName, fileBytes, mimeType)
+                                    android.util.Log.d("MeetingAttachDebug", "[Upload] uri=$uri, fileName=$fileName, bytes.size=${fileBytes.size}, mimeType=$mimeType")
                                     if (result is ApiResult.Success) {
-                                        uploadedIds.add(result.data.id)
+                                        val d = result.data
+                                        android.util.Log.d("MeetingAttachDebug", "[Upload] Success: id=${d.id}, fileName=${d.fileName}, fileSize=${d.fileSize}, filePath=${d.filePath}, mimeType=${d.mimeType}")
+                                        uploadedIds.add(d.id)
+                                    } else if (result is ApiResult.Error) {
+                                        android.util.Log.d("MeetingAttachDebug", "[Upload] Error: ${result.message}")
                                     }
                                 }
 
                                 uploadedDocumentIds = uploadedIds
-                                uploadProgress = "Đang tạo cuộc họp..."
+                                val keptExistingIds = existingAttachments
+                                    .map { it.documentId }
+                                    .filter { it !in removedAttachmentIds }
+                                val finalAttachmentIds = keptExistingIds + uploadedIds
+
+                                uploadProgress = if (isEdit) "Đang cập nhật cuộc họp..." else "Đang tạo cuộc họp..."
 
                                 val formattedTime = dateTime?.let {
                                     SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
@@ -196,25 +212,17 @@ fun CreateMeetingScreen(
                                         type = meetingFormat.uppercase(),
                                         meetingTime = formattedTime,
                                         notes = notes.takeIf { it.isNotBlank() },
-                                        participantIds = allParticipantIds
+                                        participantIds = allParticipantIds,
+                                        attachmentDocumentIds = finalAttachmentIds
                                     )
-                                    // Attach uploaded documents to meeting
-                                    if (uploadedDocumentIds.isNotEmpty()) {
-                                        viewModel.viewModelScope.launch {
-                                            uploadedDocumentIds.forEach { docId ->
-                                                viewModel.attachMeetingDocument(meetingId, docId)
-                                            }
-                                        }
-                                    }
                                     isUploading = false
                                     uploadProgress = ""
-                                    // onNavigateBack() được gọi qua MeetingEffect.NavigateBack từ ViewModel
                                 } else {
                                     val allParticipantIds = selectedParticipantIds.toMutableList()
                                     if (!allParticipantIds.contains(organizerId)) {
                                         allParticipantIds.add(organizerId)
                                     }
-                                    android.util.Log.d("MeetingDebug", "Calling createMeeting: title=$meetingTitle, organizerId=$organizerId, type=${meetingFormat.uppercase()}, time=$formattedTime")
+                                    android.util.Log.d("MeetingDebug", "Calling createMeeting: title=$meetingTitle, organizerId=$organizerId, type=${meetingFormat.uppercase()}, time=$formattedTime, attachmentDocumentIds=$finalAttachmentIds")
                                     viewModel.createMeeting(
                                         title = meetingTitle,
                                         content = content,
@@ -222,17 +230,11 @@ fun CreateMeetingScreen(
                                         type = meetingFormat.uppercase(),
                                         meetingTime = formattedTime,
                                         notes = notes.takeIf { it.isNotBlank() },
-                                        participantIds = allParticipantIds
-                                    ) { meetingId ->
-                                        // Attach uploaded documents to meeting
-                                        viewModel.viewModelScope.launch {
-                                            uploadedDocumentIds.forEach { docId ->
-                                                viewModel.attachMeetingDocument(meetingId, docId)
-                                            }
-                                            isUploading = false
-                                            uploadProgress = ""
-                                            // onNavigateBack() được gọi qua MeetingEffect.NavigateBack từ ViewModel
-                                        }
+                                        participantIds = allParticipantIds,
+                                        attachmentDocumentIds = finalAttachmentIds
+                                    ) {
+                                        isUploading = false
+                                        uploadProgress = ""
                                     }
                                 }
                             } catch (e: Exception) {
@@ -527,6 +529,54 @@ fun CreateMeetingScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    val visibleExisting = existingAttachments.filter { it.documentId !in removedAttachmentIds }
+                    if (visibleExisting.isNotEmpty()) {
+                        Text(
+                            text = "Tài liệu đang gắn",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        visibleExisting.forEach { att ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Description,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = att.fileName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                IconButton(
+                                    onClick = {
+                                        removedAttachmentIds = removedAttachmentIds + att.documentId
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Gỡ khỏi cuộc họp",
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -563,7 +613,8 @@ fun CreateMeetingScreen(
                     if (selectedFiles.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         selectedFiles.forEachIndexed { index, uri ->
-                            val fileName = uri.lastPathSegment ?: "File ${index + 1}"
+                            val mimeType = context.contentResolver.getType(uri)
+                            val fileName = queryDisplayName(context, uri, index, mimeType)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -660,4 +711,43 @@ fun CreateMeetingScreen(
             }
         )
     }
+}
+
+private fun queryDisplayName(
+    context: android.content.Context,
+    uri: Uri,
+    index: Int = 0,
+    mimeType: String? = null
+): String {
+    val cursor = context.contentResolver.query(uri, null, null, null, null)
+    cursor?.use {
+        if (it.moveToFirst()) {
+            val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0) {
+                val name = it.getString(nameIndex)
+                if (!name.isNullOrBlank()) return name
+            }
+        }
+    }
+    val lastSegment = uri.lastPathSegment
+    if (!lastSegment.isNullOrBlank()) {
+        val decoded = Uri.decode(lastSegment.substringAfterLast('/'))
+        if (decoded.isNotBlank()) return decoded
+    }
+    val ext = mimeToExtension(mimeType)
+    return if (ext.isNotEmpty()) "file_${index + 1}.$ext" else "file_${index + 1}"
+}
+
+private fun mimeToExtension(mime: String?): String = when (mime) {
+    "application/pdf" -> "pdf"
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> "docx"
+    "application/msword" -> "doc"
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> "xlsx"
+    "application/vnd.ms-excel" -> "xls"
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> "pptx"
+    "application/vnd.ms-powerpoint" -> "ppt"
+    "image/png" -> "png"
+    "image/jpeg" -> "jpg"
+    "text/plain" -> "txt"
+    else -> ""
 }

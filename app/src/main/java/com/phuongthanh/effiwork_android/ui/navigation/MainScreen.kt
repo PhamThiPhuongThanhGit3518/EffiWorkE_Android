@@ -419,6 +419,9 @@ fun MainScreen(
                     onDeleteClick = {
                         meetingViewModel.deleteMeeting(projectId, meetingId)
                         navController.popBackStack()
+                    },
+                    onDocumentPreviewClick = { documentId ->
+                        navController.navigate(NavRoutes.documentPreview(projectId, documentId))
                     }
                 )
             }

@@ -55,6 +55,7 @@ class DocumentRepositoryImpl @Inject constructor(
             val visibilityTypePart = visibilityType?.toRequestBody("text/plain".toMediaTypeOrNull())
             val customFileNamePart = customFileName?.toRequestBody("text/plain".toMediaTypeOrNull())
 
+            Log.d(TAG, "[uploadDocument] projectId=$projectId, fileName=$fileName, bytes=${fileBytes.size}, mimeType=$mediaType")
             val response = documentService.uploadDocument(
                 projectId = projectId,
                 file = filePart,
@@ -62,8 +63,11 @@ class DocumentRepositoryImpl @Inject constructor(
                 visibilityType = visibilityTypePart,
                 fileName = customFileNamePart
             )
+            Log.d(TAG, "[uploadDocument] response.success=${response.success}, data=${response.data}, message=${response.message}")
             if (response.success && response.data != null) {
-                ApiResult.Success(response.data)
+                val d = response.data
+                Log.d(TAG, "[uploadDocument] data.id=${d.id}, fileName=${d.fileName}, fileSize=${d.fileSize}, filePath=${d.filePath}, mimeType=${d.mimeType}")
+                ApiResult.Success(d)
             } else {
                 ApiResult.Error(response.message)
             }

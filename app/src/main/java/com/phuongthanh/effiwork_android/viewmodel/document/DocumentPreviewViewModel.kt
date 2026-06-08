@@ -46,21 +46,26 @@ class DocumentPreviewViewModel @Inject constructor(
 
     fun load(projectId: String, documentId: String) {
         viewModelScope.launch {
+            android.util.Log.d("MeetingAttachDebug", "[Preview.load] projectId=$projectId, documentId=$documentId")
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             when (val detailResult = documentRepository.getDocumentDetail(projectId, documentId)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(document = detailResult.data) }
+                    val d = detailResult.data
+                    android.util.Log.d("MeetingAttachDebug", "[Preview.load] detail OK: id=${d.id}, fileName=${d.fileName}, fileSize=${d.fileSize}, filePath=${d.filePath}")
+                    _uiState.update { it.copy(document = d) }
                     when (val previewResult = documentRepository.previewDocument(projectId, documentId)) {
                         is ApiResult.Success -> {
                             _uiState.update { it.copy(previewBytes = previewResult.data, isLoading = false) }
                         }
                         is ApiResult.Error -> {
+                            android.util.Log.d("MeetingAttachDebug", "[Preview.load] preview ERROR: ${previewResult.message}")
                             _uiState.update { it.copy(isLoading = false) }
                         }
                         ApiResult.Loading -> Unit
                     }
                 }
                 is ApiResult.Error -> {
+                    android.util.Log.d("MeetingAttachDebug", "[Preview.load] detail ERROR: ${detailResult.message}")
                     _uiState.update { it.copy(isLoading = false) }
                     _effect.emit(Effect.ShowError(detailResult.message))
                 }

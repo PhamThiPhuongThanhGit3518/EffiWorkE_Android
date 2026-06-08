@@ -1,6 +1,7 @@
 package com.phuongthanh.effiwork_android.ui.screen.meetings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,12 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
 import com.phuongthanh.effiwork_android.viewmodel.meeting.Meeting
+import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingAttachment
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingFormat
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingStatus
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
@@ -33,6 +36,7 @@ fun MeetingDetailScreen(
     onBackClick: () -> Unit = {},
     onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    onDocumentPreviewClick: (String) -> Unit = {},
     viewModel: MeetingViewModel = hiltViewModel()
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -338,6 +342,46 @@ fun MeetingDetailScreen(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Tài liệu",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Các tài liệu đang được gắn với cuộc họp này.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                if (m.attachments.isEmpty()) {
+                                    Text(
+                                        text = "Chưa có tài liệu nào được gắn cho cuộc họp này.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                } else {
+                                    m.attachments.forEach { attachment ->
+                                        android.util.Log.d("MeetingAttachDebug", "[RenderAttachment] id=${attachment.id}, documentId=${attachment.documentId}, fileName=${attachment.fileName}, mimeType=${attachment.mimeType}, fileSize=${attachment.fileSize}")
+                                        MeetingAttachmentRow(
+                                            attachment = attachment,
+                                            onClick = { onDocumentPreviewClick(attachment.documentId) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 } ?: run {
                     if (uiState is com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingUiState.Idle) {
@@ -376,5 +420,65 @@ fun MeetingDetailScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun MeetingAttachmentRow(
+    attachment: MeetingAttachment,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color(0xFFE3F2FD), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Description,
+                contentDescription = null,
+                tint = Color(0xFF1565C0),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = attachment.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = formatMeetingFileSize(attachment.fileSize),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier
+                .size(18.dp)
+                .background(Color.Transparent)
+        )
+    }
+}
+
+private fun formatMeetingFileSize(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+        else -> "${bytes / (1024 * 1024 * 1024)} GB"
     }
 }
