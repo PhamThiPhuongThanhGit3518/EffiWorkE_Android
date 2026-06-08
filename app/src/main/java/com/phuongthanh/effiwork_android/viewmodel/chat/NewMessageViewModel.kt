@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.repository.AuthRepository
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
+import com.phuongthanh.effiwork_android.data.repository.TaskRepository
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
 import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
 import com.phuongthanh.effiwork_android.data.model.response.chat.ChatMessageResponse
@@ -14,6 +15,7 @@ import com.phuongthanh.effiwork_android.viewmodel.chat.state.NewMessageUiState
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.PrivateChatItem
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.ProjectGroup
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.ProjectMember
+import com.phuongthanh.effiwork_android.viewmodel.chat.state.TaskSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,7 @@ import javax.inject.Inject
 class NewMessageViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val projectRepository: ProjectRepository,
+    private val taskRepository: TaskRepository,
     private val authRepository: AuthRepository,
     private val socketManager: ChatSocketManager
 ) : ViewModel() {
@@ -213,11 +216,22 @@ class NewMessageViewModel @Inject constructor(
                         }
                     android.util.Log.d("NewMessageViewModel", "✅ Parsed privateChats: ${privateChats.size}")
 
+                    val sections = when (val sectionsResult = taskRepository.getTaskGroups(projectId)) {
+                        is ApiResult.Success -> sectionsResult.data
+                        is ApiResult.Error -> {
+                            android.util.Log.w("NewMessageViewModel", "⚠️ getTaskGroups failed: ${sectionsResult.message}")
+                            emptyList()
+                        }
+                        is ApiResult.Loading -> emptyList()
+                    }
+                    android.util.Log.d("NewMessageViewModel", "✅ Parsed sections: ${sections.size}")
+
                     _uiState.value = NewMessageUiState.Success(
                         conversations = conversations,
                         groups = groups,
                         members = members,
-                        privateChats = privateChats
+                        privateChats = privateChats,
+                        sections = sections
                     )
                 }
                 is ApiResult.Error -> {
@@ -348,6 +362,184 @@ class NewMessageViewModel @Inject constructor(
                     _uiState.value = NewMessageUiState.Error(result.message)
                     _effect.emit(NewMessageEffect.ShowToast(result.message))
                     onComplete()  // IMPROVEMENT #2: Error vẫn cần reset
+                }
+                is ApiResult.Loading -> { }
+            }
+        }
+    }
+
+    fun loadTaskDetail(taskId: String) {
+        val projectId = currentProjectId ?: return
+
+        viewModelScope.launch {
+            val current = _uiState.value
+            if (current is NewMessageUiState.Success) {
+                _uiState.value = current.copy(
+                    isLoadingTaskDetail = true,
+                    selectedTaskDetail = null
+                )
+            }
+
+            when (val result = taskRepository.getTaskDetail(projectId, taskId)) {
+                is ApiResult.Success -> {
+                    val updated = _uiState.value
+                    if (updated is NewMessageUiState.Success) {
+                        _uiState.value = updated.copy(
+                            selectedTaskDetail = result.data,
+                            isLoadingTaskDetail = false
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    val updated = _uiState.value
+                    if (updated is NewMessageUiState.Success) {
+                        _uiState.value = updated.copy(isLoadingTaskDetail = false)
+                    }
+                    _effect.emit(NewMessageEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> { }
+            }
+        }
+    }
+
+    fun loadParentTasksForSection(sectionId: String) {
+        val projectId = currentProjectId ?: return
+
+        viewModelScope.launch {
+            val current = _uiState.value
+            if (current is NewMessageUiState.Success) {
+                _uiState.value = current.copy(
+                    isLoadingParentTasks = true,
+                    currentParentTasks = emptyList(),
+                    currentSubtasks = emptyList(),
+                    isLoadingSubtasks = false,
+                    selectedTaskDetail = null,
+                    isLoadingTaskDetail = false
+                )
+            }
+
+            when (val result = taskRepository.getTasks(projectId, sectionId = sectionId)) {
+                is ApiResult.Success -> {
+                    val parents = result.data
+                        .filter { it.parentTaskId.isNullOrBlank() }
+                        .map { task ->
+                            TaskSummary(
+                                id = task.id,
+                                name = task.name ?: "Không tên",
+                                assigneeName = task.assigneeName ?: task.owner?.fullName,
+                                participantCount = task.participants?.size ?: 0
+                            )
+                        }
+                    val updated = _uiState.value
+                    if (updated is NewMessageUiState.Success) {
+                        _uiState.value = updated.copy(
+                            currentParentTasks = parents,
+                            isLoadingParentTasks = false
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    val updated = _uiState.value
+                    if (updated is NewMessageUiState.Success) {
+                        _uiState.value = updated.copy(isLoadingParentTasks = false)
+                    }
+                    _effect.emit(NewMessageEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> { }
+            }
+        }
+    }
+
+    fun loadSubtasksForParent(parentTaskId: String) {
+        val projectId = currentProjectId ?: return
+
+        viewModelScope.launch {
+            val current = _uiState.value
+            if (current is NewMessageUiState.Success) {
+                _uiState.value = current.copy(
+                    isLoadingSubtasks = true,
+                    currentSubtasks = emptyList(),
+                    selectedTaskDetail = null,
+                    isLoadingTaskDetail = false
+                )
+            }
+
+            when (val result = taskRepository.getSubtasks(projectId, parentTaskId)) {
+                is ApiResult.Success -> {
+                    val subs = result.data.map { task ->
+                        TaskSummary(
+                            id = task.id,
+                            name = task.name ?: "Không tên",
+                            assigneeName = task.assigneeName ?: task.owner?.fullName,
+                            participantCount = task.participants?.size ?: 0
+                        )
+                    }
+                    val updated = _uiState.value
+                    if (updated is NewMessageUiState.Success) {
+                        _uiState.value = updated.copy(
+                            currentSubtasks = subs,
+                            isLoadingSubtasks = false
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    val updated = _uiState.value
+                    if (updated is NewMessageUiState.Success) {
+                        _uiState.value = updated.copy(isLoadingSubtasks = false)
+                    }
+                    _effect.emit(NewMessageEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> { }
+            }
+        }
+    }
+
+    fun createGroupFromTask(
+        projectId: String,
+        taskId: String,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val current = _uiState.value
+            val task = (current as? NewMessageUiState.Success)?.selectedTaskDetail
+            if (task == null || task.id != taskId) {
+                _effect.emit(NewMessageEffect.ShowToast("Vui lòng chọn lại công việc"))
+                onComplete()
+                return@launch
+            }
+
+            val currentUserId = authRepository.getCurrentUserId() ?: ""
+            val memberIds = LinkedHashSet<String>()
+            task.assigneeId?.takeIf { it.isNotBlank() }?.let { memberIds.add(it) }
+            task.participants?.forEach { p ->
+                p.user?.id?.takeIf { it.isNotBlank() }?.let { memberIds.add(it) }
+            }
+            memberIds.remove(currentUserId)
+
+            if (memberIds.isEmpty()) {
+                _effect.emit(NewMessageEffect.ShowToast("Công việc chưa có thành viên nào"))
+                onComplete()
+                return@launch
+            }
+
+            _uiState.value = NewMessageUiState.Loading
+
+            val name = task.title?.takeIf { it.isNotBlank() } ?: "Nhóm"
+            when (val result = chatRepository.createGroupConversation(projectId, name, memberIds.toList())) {
+                is ApiResult.Success -> {
+                    _effect.emit(
+                        NewMessageEffect.NavigateToChat(
+                            projectId = projectId,
+                            conversationId = result.data.id,
+                            conversationName = result.data.name ?: name
+                        )
+                    )
+                    loadProjectData(projectId)
+                }
+                is ApiResult.Error -> {
+                    _uiState.value = NewMessageUiState.Error(result.message)
+                    _effect.emit(NewMessageEffect.ShowToast(result.message))
+                    onComplete()
                 }
                 is ApiResult.Loading -> { }
             }
