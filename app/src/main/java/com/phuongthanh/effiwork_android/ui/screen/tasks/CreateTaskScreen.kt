@@ -78,6 +78,7 @@ fun CreateTaskListScreen(
     var formState by remember { mutableStateOf(CreateTaskFormState(selectedGroupId = preselectedGroupId)) }
     val taskGroups by viewModel.taskGroups.collectAsStateWithLifecycle()
     val taskMembers by viewModel.taskMembers.collectAsStateWithLifecycle()
+    val parentTaskAllowedMemberIds by viewModel.parentTaskAllowedMemberIds.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val editingAttachments by viewModel.editingAttachments.collectAsStateWithLifecycle()
 
@@ -88,6 +89,12 @@ fun CreateTaskListScreen(
         viewModel.setProjectInfo(projectId, "")
         viewModel.loadTaskGroupsForCreate()
         viewModel.loadMembersForCreate()
+    }
+
+    LaunchedEffect(parentTaskId) {
+        if (parentTaskId.isNotBlank()) {
+            viewModel.loadParentTaskAllowedMembers(parentTaskId)
+        }
     }
 
     // Load task details if in edit mode
@@ -196,7 +203,8 @@ fun CreateTaskListScreen(
         },
         isEditMode = isEditMode,
         isSubtaskMode = isSubtaskMode,
-        parentTaskName = parentTaskName
+        parentTaskName = parentTaskName,
+        parentTaskAllowedMemberIds = parentTaskAllowedMemberIds
     )
 }
 
@@ -212,7 +220,8 @@ fun CreateTaskListScreenContent(
     onUpdateClick: () -> Unit = {},
     isEditMode: Boolean = false,
     isSubtaskMode: Boolean = false,
-    parentTaskName: String = ""
+    parentTaskName: String = "",
+    parentTaskAllowedMemberIds: List<String> = emptyList()
 ) {
     val statuses = listOf("Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng")
     val taskLevels = listOf("Công việc lớn của dự án", "Công việc nhỏ")
@@ -313,7 +322,8 @@ fun CreateTaskListScreenContent(
                 taskLevels = taskLevels,
                 taskMembers = taskMembers,
                 isSubtaskMode = isSubtaskMode,
-                parentTaskName = parentTaskName
+                parentTaskName = parentTaskName,
+                parentTaskAllowedMemberIds = parentTaskAllowedMemberIds
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -321,7 +331,9 @@ fun CreateTaskListScreenContent(
             CollaboratorsCard(
                 formState = formState,
                 onFormStateChange = onFormStateChange,
-                taskMembers = taskMembers
+                taskMembers = taskMembers,
+                isSubtaskMode = isSubtaskMode,
+                parentTaskAllowedMemberIds = parentTaskAllowedMemberIds
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -428,9 +440,15 @@ private fun AssignmentCard(
     taskLevels: List<String>,
     taskMembers: List<TaskMember>,
     isSubtaskMode: Boolean = false,
-    parentTaskName: String = ""
+    parentTaskName: String = "",
+    parentTaskAllowedMemberIds: List<String> = emptyList()
 ) {
     val statuses = listOf("Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng")
+    val availableMembers = if (isSubtaskMode) {
+        taskMembers.filter { parentTaskAllowedMemberIds.contains(it.userId) }
+    } else {
+        taskMembers
+    }
 
     Card(
         modifier = Modifier
@@ -490,12 +508,21 @@ private fun AssignmentCard(
             }
             Spacer(modifier = Modifier.height(12.dp))
 
+            if (isSubtaskMode) {
+                Text(
+                    text = "Chỉ có thể chọn người phụ trách từ công việc cha",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             ExposedDropdownMenuBox(
                 expanded = formState.assigneeExpanded,
                 onExpandedChange = { onFormStateChange(formState.copy(assigneeExpanded = it)) }
             ) {
                 OutlinedTextField(
-                    value = taskMembers.find { it.userId == formState.assigneeId }?.fullName ?: "",
+                    value = availableMembers.find { it.userId == formState.assigneeId }?.fullName ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Người phụ trách") },
@@ -509,13 +536,26 @@ private fun AssignmentCard(
                     expanded = formState.assigneeExpanded,
                     onDismissRequest = { onFormStateChange(formState.copy(assigneeExpanded = false)) }
                 ) {
-                    taskMembers.forEach { member ->
+                    if (availableMembers.isEmpty()) {
+                        val emptyMessage = if (isSubtaskMode && parentTaskAllowedMemberIds.isEmpty()) {
+                            "Công việc cha chưa có thành viên nào"
+                        } else {
+                            "Không có thành viên phù hợp"
+                        }
                         DropdownMenuItem(
-                            text = { Text(member.fullName) },
-                            onClick = {
-                                onFormStateChange(formState.copy(assigneeId = member.userId, assigneeExpanded = false))
-                            }
+                            text = { Text(emptyMessage) },
+                            onClick = {},
+                            enabled = false
                         )
+                    } else {
+                        availableMembers.forEach { member ->
+                            DropdownMenuItem(
+                                text = { Text(member.fullName) },
+                                onClick = {
+                                    onFormStateChange(formState.copy(assigneeId = member.userId, assigneeExpanded = false))
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -612,22 +652,7 @@ private fun AssignmentCard(
                     DatePicker(state = datePickerState)
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = formState.reminder,
-                onValueChange = { onFormStateChange(formState.copy(reminder = it)) },
-                label = { Text("Nhắc nhở") },
-                placeholder = { Text("Chọn thời gian nhắc nhở") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                trailingIcon = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.Gray)
-                    }
-                }
-            )
             Spacer(modifier = Modifier.height(12.dp))
 
             ExposedDropdownMenuBox(
@@ -668,9 +693,16 @@ private fun AssignmentCard(
 private fun CollaboratorsCard(
     formState: CreateTaskFormState,
     onFormStateChange: (CreateTaskFormState) -> Unit,
-    taskMembers: List<TaskMember>
+    taskMembers: List<TaskMember>,
+    isSubtaskMode: Boolean = false,
+    parentTaskAllowedMemberIds: List<String> = emptyList()
 ) {
     var participantDropdownExpanded by remember { mutableStateOf(false) }
+    val availableMembers = if (isSubtaskMode) {
+        taskMembers.filter { parentTaskAllowedMemberIds.contains(it.userId) }
+    } else {
+        taskMembers
+    }
 
     Card(
         modifier = Modifier
@@ -688,12 +720,21 @@ private fun CollaboratorsCard(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
+            if (isSubtaskMode) {
+                Text(
+                    text = "Chỉ có thể chọn thành viên từ công việc cha",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                taskMembers.filter { formState.participantIds.contains(it.userId) }.forEach { member ->
+                availableMembers.filter { formState.participantIds.contains(it.userId) }.forEach { member ->
                     InputChip(
                         selected = true,
                         onClick = {},
@@ -743,13 +784,18 @@ private fun CollaboratorsCard(
                     expanded = participantDropdownExpanded,
                     onDismissRequest = { participantDropdownExpanded = false }
                 ) {
-                    val filteredMembers = taskMembers.filter { member ->
+                    val filteredMembers = availableMembers.filter { member ->
                         !formState.participantIds.contains(member.userId) &&
                         member.fullName.contains(formState.participantSearchQuery, ignoreCase = true)
                     }
                     if (filteredMembers.isEmpty()) {
+                        val emptyMessage = if (isSubtaskMode && parentTaskAllowedMemberIds.isEmpty()) {
+                            "Công việc cha chưa có thành viên nào"
+                        } else {
+                            "Không có thành viên phù hợp"
+                        }
                         DropdownMenuItem(
-                            text = { Text("Không có thành viên phù hợp") },
+                            text = { Text(emptyMessage) },
                             onClick = {},
                             enabled = false
                         )

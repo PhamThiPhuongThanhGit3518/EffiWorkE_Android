@@ -168,6 +168,9 @@ class TaskViewModel @Inject constructor(
     private val _taskMembers = MutableStateFlow<List<TaskMember>>(emptyList())
     val taskMembers: StateFlow<List<TaskMember>> = _taskMembers.asStateFlow()
 
+    private val _parentTaskAllowedMemberIds = MutableStateFlow<List<String>>(emptyList())
+    val parentTaskAllowedMemberIds: StateFlow<List<String>> = _parentTaskAllowedMemberIds.asStateFlow()
+
     private val _editingAttachments = MutableStateFlow<List<TaskAttachmentItem>>(emptyList())
     val editingAttachments: StateFlow<List<TaskAttachmentItem>> = _editingAttachments.asStateFlow()
 
@@ -340,6 +343,30 @@ class TaskViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     Log.e(TAG, "Failed to load members: ${result.message}")
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun loadParentTaskAllowedMembers(parentTaskId: String) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) return@launch
+
+            when (val result = taskRepository.getTaskDetail(projectIdValue, parentTaskId)) {
+                is ApiResult.Success -> {
+                    val allowed = mutableListOf<String>()
+                    (result.data.assigneeId ?: result.data.assignee?.id)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { allowed.add(it) }
+                    result.data.participants?.forEach { p ->
+                        p.user?.id?.takeIf { it.isNotBlank() }?.let { allowed.add(it) }
+                    }
+                    _parentTaskAllowedMemberIds.value = allowed.distinct()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "loadParentTaskAllowedMembers: ${result.message}")
                 }
                 is ApiResult.Loading -> {}
             }
