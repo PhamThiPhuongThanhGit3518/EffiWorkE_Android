@@ -22,7 +22,7 @@ import androidx.navigation.navArgument
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.ui.common.BottomNavigationBar
 import com.phuongthanh.effiwork_android.ui.common.rememberAuthRepository
-import com.phuongthanh.effiwork_android.ui.components.NotificationToastOverlay
+import com.phuongthanh.effiwork_android.ui.screen.notis.items.NotificationToastOverlay
 import com.phuongthanh.effiwork_android.ui.screen.notis.NotificationScreen
 import com.phuongthanh.effiwork_android.ui.screen.profile.ProfileScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
@@ -39,14 +39,12 @@ import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatListScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.CreateGroupChatScreen
-import com.phuongthanh.effiwork_android.ui.screen.document.DocumentBrowserScreen
+import com.phuongthanh.effiwork_android.ui.screen.document.DocumentListScreen
 import com.phuongthanh.effiwork_android.ui.screen.document.DocumentPreviewScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
 import com.phuongthanh.effiwork_android.viewmodel.notis.NotificationViewModel
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
-import com.phuongthanh.effiwork_android.viewmodel.task.TaskViewModel
-import com.phuongthanh.effiwork_android.data.local.TokenManager
 
 sealed class BottomNavItem(
     val route: String,
@@ -514,7 +512,7 @@ fun MainScreen(
                 arguments = listOf(navArgument("projectId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
-                DocumentBrowserScreen(
+                DocumentListScreen(
                     projectId = projectId,
                     currentUserId = currentUserId,
                     onBackClick = { navController.popBackStack() },
@@ -543,6 +541,15 @@ fun MainScreen(
             NotificationToastOverlay(
                 newNotifications = notificationViewModel.newNotificationToShow,
                 projectNameFor = { id -> projectNameMap[id] },
+                onNotificationClick = {
+                    navController.navigate(BottomNavItem.Notifications.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)

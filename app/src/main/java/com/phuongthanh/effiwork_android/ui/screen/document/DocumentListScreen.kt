@@ -65,20 +65,20 @@ import com.phuongthanh.effiwork_android.data.model.response.TaskResponse
 import com.phuongthanh.effiwork_android.data.model.response.UploadedByInfo
 import com.phuongthanh.effiwork_android.data.model.response.document.FolderNode
 import com.phuongthanh.effiwork_android.ui.screen.document.component.DocumentBreadcrumb
-import com.phuongthanh.effiwork_android.viewmodel.document.DocumentBrowserEffect
-import com.phuongthanh.effiwork_android.viewmodel.document.DocumentBrowserUiState
-import com.phuongthanh.effiwork_android.viewmodel.document.DocumentBrowserViewModel
+import com.phuongthanh.effiwork_android.viewmodel.document.DocumentListEffect
+import com.phuongthanh.effiwork_android.viewmodel.document.DocumentListUiState
+import com.phuongthanh.effiwork_android.viewmodel.document.DocumentListViewModel
 import com.phuongthanh.effiwork_android.viewmodel.document.DocumentGridItem
 import com.phuongthanh.effiwork_android.viewmodel.document.DocumentTab
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocumentBrowserScreen(
+fun DocumentListScreen(
     projectId: String,
     currentUserId: String,
     onBackClick: () -> Unit,
     onPreview: (String) -> Unit,
-    viewModel: DocumentBrowserViewModel = hiltViewModel()
+    viewModel: DocumentListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -95,25 +95,25 @@ fun DocumentBrowserScreen(
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                is DocumentBrowserEffect.ShowToast -> {
+                is DocumentListEffect.ShowToast -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
-                is DocumentBrowserEffect.ShowError -> {
+                is DocumentListEffect.ShowError -> {
                     snackbarHostState.showSnackbar(
                         "${effect.message}: ${effect.description ?: ""}"
                     )
                 }
-                is DocumentBrowserEffect.FolderCreated -> {
+                is DocumentListEffect.FolderCreated -> {
                     Toast.makeText(context, "Đã tạo thư mục", Toast.LENGTH_SHORT).show()
                 }
-                is DocumentBrowserEffect.DocumentDeleted -> {
+                is DocumentListEffect.DocumentDeleted -> {
                     Toast.makeText(context, "Đã xóa", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    DocumentBrowserContent(
+    DocumentListContent(
         uiState = uiState,
         projectId = projectId,
         currentUserId = currentUserId,
@@ -133,8 +133,8 @@ fun DocumentBrowserScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocumentBrowserContent(
-    uiState: DocumentBrowserUiState,
+fun DocumentListContent(
+    uiState: DocumentListUiState,
     projectId: String,
     currentUserId: String,
     snackbarHostState: SnackbarHostState,
@@ -524,11 +524,11 @@ private fun formatFileSize(bytes: Long): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "Document Browser - Project (root)")
 @Composable
-fun DocumentBrowserScreenProjectRootPreview() {
+fun DocumentListScreenProjectRootPreview() {
     MaterialTheme {
         Surface {
-            DocumentBrowserContent(
-                uiState = DocumentBrowserUiState(
+            DocumentListContent(
+                uiState = DocumentListUiState(
                     activeTab = DocumentTab.PROJECT,
                     sections = listOf(
                         SectionResponse(id = "s1", name = "Phần 1: Backend", projectId = "p1", sortOrder = 0, createdAt = null),
@@ -556,11 +556,11 @@ fun DocumentBrowserScreenProjectRootPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "Document Browser - Task level")
 @Composable
-fun DocumentBrowserScreenTaskLevelPreview() {
+fun DocumentListScreenTaskLevelPreview() {
     MaterialTheme {
         Surface {
-            DocumentBrowserContent(
-                uiState = DocumentBrowserUiState(
+            DocumentListContent(
+                uiState = DocumentListUiState(
                     activeTab = DocumentTab.PROJECT,
                     sections = listOf(
                         SectionResponse(id = "s1", name = "Phần 1: Backend", projectId = "p1", sortOrder = 0, createdAt = null)
@@ -638,11 +638,11 @@ fun DocumentBrowserScreenTaskLevelPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "Document Browser - Personal")
 @Composable
-fun DocumentBrowserScreenPersonalPreview() {
+fun DocumentListScreenPersonalPreview() {
     MaterialTheme {
         Surface {
-            DocumentBrowserContent(
-                uiState = DocumentBrowserUiState(
+            DocumentListContent(
+                uiState = DocumentListUiState(
                     activeTab = DocumentTab.PERSONAL,
                     folderTree = listOf(
                         FolderNode(

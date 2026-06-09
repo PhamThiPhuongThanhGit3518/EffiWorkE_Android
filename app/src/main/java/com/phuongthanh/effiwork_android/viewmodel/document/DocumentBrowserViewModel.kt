@@ -26,17 +26,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DocumentBrowserViewModel @Inject constructor(
+class DocumentListViewModel @Inject constructor(
     private val documentRepository: DocumentRepository,
     private val folderRepository: FolderRepository,
     private val taskRepository: TaskRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(DocumentBrowserUiState())
-    val uiState: StateFlow<DocumentBrowserUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(DocumentListUiState())
+    val uiState: StateFlow<DocumentListUiState> = _uiState.asStateFlow()
 
-    private val _effect = MutableSharedFlow<DocumentBrowserEffect>()
-    val effect: SharedFlow<DocumentBrowserEffect> = _effect.asSharedFlow()
+    private val _effect = MutableSharedFlow<DocumentListEffect>()
+    val effect: SharedFlow<DocumentListEffect> = _effect.asSharedFlow()
 
     private var taskDetailCache: Map<String, List<DocumentResponse>> = emptyMap()
     private var currentProjectId: String? = null
@@ -77,7 +77,7 @@ class DocumentBrowserViewModel @Inject constructor(
                 _uiState.update { it.copy(sections = sections, allTasks = allTasks) }
             }
             is ApiResult.Error -> {
-                _effect.emit(DocumentBrowserEffect.ShowError(
+                _effect.emit(DocumentListEffect.ShowError(
                     "Lỗi tải sections",
                     sectionsResult.message
                 ))
@@ -131,7 +131,7 @@ class DocumentBrowserViewModel @Inject constructor(
                     }
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Lỗi tải công việc con",
                         result.message
                     ))
@@ -157,7 +157,7 @@ class DocumentBrowserViewModel @Inject constructor(
                     _uiState.update { it.copy(taskAttachments = attachments) }
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Lỗi tải tài liệu task",
                         result.message
                     ))
@@ -220,7 +220,7 @@ class DocumentBrowserViewModel @Inject constructor(
                     _uiState.update { it.copy(folderTree = result.data) }
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Lỗi tải cây thư mục",
                         result.message
                     ))
@@ -247,7 +247,7 @@ class DocumentBrowserViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     _uiState.update { it.copy(isLoading = false) }
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Lỗi tải tài liệu",
                         result.message
                     ))
@@ -271,11 +271,11 @@ class DocumentBrowserViewModel @Inject constructor(
             )
             when (val result = folderRepository.createFolder(projectId, request)) {
                 is ApiResult.Success -> {
-                    _effect.emit(DocumentBrowserEffect.FolderCreated)
+                    _effect.emit(DocumentListEffect.FolderCreated)
                     loadFolderTree(projectId)
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Không tạo được thư mục",
                         result.message
                     ))
@@ -289,13 +289,13 @@ class DocumentBrowserViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = documentRepository.deleteDocument(projectId, document.id)) {
                 is ApiResult.Success -> {
-                    _effect.emit(DocumentBrowserEffect.DocumentDeleted)
+                    _effect.emit(DocumentListEffect.DocumentDeleted)
                     if (_uiState.value.activeTab == DocumentTab.PERSONAL) {
                         loadPersonalDocuments(projectId, _uiState.value.selectedFolderId)
                     }
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Không xóa được tài liệu",
                         result.message
                     ))
@@ -309,14 +309,14 @@ class DocumentBrowserViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = folderRepository.deleteFolder(projectId, folderId)) {
                 is ApiResult.Success -> {
-                    _effect.emit(DocumentBrowserEffect.DocumentDeleted)
+                    _effect.emit(DocumentListEffect.DocumentDeleted)
                     if (_uiState.value.selectedFolderId == folderId) {
                         selectFolder(projectId, null)
                     }
                     loadFolderTree(projectId)
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Không xóa được thư mục",
                         result.message
                     ))
@@ -331,13 +331,13 @@ class DocumentBrowserViewModel @Inject constructor(
             val request = UpdateDocumentRequest(fileName = newName)
             when (val result = documentRepository.updateDocument(projectId, documentId, request)) {
                 is ApiResult.Success -> {
-                    _effect.emit(DocumentBrowserEffect.DocumentDeleted)
+                    _effect.emit(DocumentListEffect.DocumentDeleted)
                     if (_uiState.value.activeTab == DocumentTab.PERSONAL) {
                         loadPersonalDocuments(projectId, _uiState.value.selectedFolderId)
                     }
                 }
                 is ApiResult.Error -> {
-                    _effect.emit(DocumentBrowserEffect.ShowError(
+                    _effect.emit(DocumentListEffect.ShowError(
                         "Không đổi tên được",
                         result.message
                     ))

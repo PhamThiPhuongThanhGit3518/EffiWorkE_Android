@@ -443,8 +443,8 @@ class MeetingViewModel @Inject constructor(
 
     private fun MeetingResponse.toMeeting(): Meeting {
         val dateTimeParts = (scheduledTime ?: "").split("T")
-        val date = dateTimeParts.getOrNull(0)?.takeLast(5) ?: ""
-        val time = dateTimeParts.getOrNull(1)?.takeLast(5) ?: ""
+        val date = dateTimeParts.getOrNull(0)?.take(10) ?: ""
+        val time = dateTimeParts.getOrNull(1)?.take(5) ?: ""
 
         // Compute status from scheduledTime since server doesn't return status
         val computedStatus = try {

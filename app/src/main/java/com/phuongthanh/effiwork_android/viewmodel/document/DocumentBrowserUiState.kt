@@ -14,7 +14,7 @@ sealed class DocumentGridItem {
     data class File(val document: DocumentResponse) : DocumentGridItem()
 }
 
-data class DocumentBrowserUiState(
+data class DocumentListUiState(
     val activeTab: DocumentTab = DocumentTab.PROJECT,
     val searchQuery: String = "",
     val isLoading: Boolean = false,

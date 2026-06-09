@@ -1,17 +1,17 @@
-package com.phuongthanh.effiwork_android.ui.components
+package com.phuongthanh.effiwork_android.ui.screen.notis.items
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,7 +34,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,9 +50,10 @@ private const val AUTO_DISMISS_MS = 9000L
 fun NotificationToastOverlay(
     newNotifications: SharedFlow<NotificationResponse>,
     projectNameFor: (String) -> String?,
+    onNotificationClick: (NotificationResponse) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    android.util.Log.d("NotifToastOverlay", "composing NotificationToastOverlay")
+    Log.d("NotifToastOverlay", "composing NotificationToastOverlay")
     val scope = rememberCoroutineScope()
     var current by remember { mutableStateOf<NotificationResponse?>(null) }
     var visible by remember { mutableStateOf(false) }
@@ -79,11 +79,11 @@ fun NotificationToastOverlay(
     }
 
     LaunchedEffect(Unit) {
-        android.util.Log.d("NotifToastOverlay", "LaunchedEffect started, collecting newNotifications")
+        Log.d("NotifToastOverlay", "LaunchedEffect started, collecting newNotifications")
         newNotifications.collect { notification ->
-            android.util.Log.d("NotifToastOverlay", "received notification id=${notification.id}, projectId=${notification.projectId}, content=${notification.content?.take(40)}")
+            Log.d("NotifToastOverlay", "received notification id=${notification.id}, projectId=${notification.projectId}, content=${notification.content?.take(40)}")
             show(notification)
-            android.util.Log.d("NotifToastOverlay", "after show(): visible=$visible, current!=null=${current != null}")
+            Log.d("NotifToastOverlay", "after show(): visible=$visible, current!=null=${current != null}")
         }
     }
 
@@ -97,7 +97,15 @@ fun NotificationToastOverlay(
         NotificationToastCard(
             projectName = notification.projectId?.let(projectNameFor) ?: "Thông báo",
             content = notification.content ?: notification.message ?: notification.title ?: "",
-            onClose = ::dismiss
+            onClose = ::dismiss,
+            onClick = {
+                val tapped = current
+                dismiss()
+                if (tapped != null) {
+                    Log.d("NotifToastOverlay", "card clicked, id=${tapped.id}, invoking onNotificationClick")
+                    onNotificationClick(tapped)
+                }
+            }
         )
     }
 }
@@ -106,7 +114,8 @@ fun NotificationToastOverlay(
 private fun NotificationToastCard(
     projectName: String,
     content: String,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onClick: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -114,7 +123,7 @@ private fun NotificationToastCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         modifier = Modifier
             .width(320.dp)
-            .padding(0.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
