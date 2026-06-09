@@ -311,6 +311,7 @@ class MeetingViewModel @Inject constructor(
                     _effect.emit(MeetingEffect.ShowToast("Tạo cuộc họp thành công"))
                     loadMeetings()
                     onSuccess(meetingId)
+                    _effect.emit(MeetingEffect.NavigateBack)
                 }
                 is ApiResult.Error -> {
                     android.util.Log.e("MeetingDebug", "createMeeting ERROR: ${result.message}")
