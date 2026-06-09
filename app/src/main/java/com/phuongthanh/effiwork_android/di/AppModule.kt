@@ -21,6 +21,7 @@ import com.phuongthanh.effiwork_android.data.repository.TaskRepositoryImpl
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepositoryImpl
 import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
+import com.phuongthanh.effiwork_android.data.socket.NotificationSocketManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -120,5 +121,13 @@ object AppModule {
         tokenManager: TokenManager
     ): ChatSocketManager {
         return ChatSocketManager(tokenManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationSocketManager(
+        tokenManager: TokenManager
+    ): NotificationSocketManager {
+        return NotificationSocketManager(tokenManager)
     }
 }

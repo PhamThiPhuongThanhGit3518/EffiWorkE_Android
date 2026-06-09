@@ -157,6 +157,14 @@ fun CreateTaskListScreen(
         onFormStateChange = { formState = it },
         onBackClick = onBackClick,
         onCreateClick = {
+            val selectedStatus = com.phuongthanh.effiwork_android.viewmodel.task.TaskStatus
+                .fromDisplayName(formState.status)
+            val selectedStatusServerValue = selectedStatus.serverValue
+            android.util.Log.d(
+                "CreateTaskDebug",
+                "onCreateClick: formState.status='${formState.status}', mapped=$selectedStatus, serverValue=$selectedStatusServerValue, " +
+                    "willApplyAfterCreate=${selectedStatus != com.phuongthanh.effiwork_android.viewmodel.task.TaskStatus.NOT_STARTED}"
+            )
             if (parentTaskId.isNotBlank()) {
                 viewModel.createSubtask(
                     name = formState.taskName,
@@ -168,7 +176,8 @@ fun CreateTaskListScreen(
                     endDate = formState.endDate,
                     reminderTime = formState.reminder.ifBlank { null },
                     participantIds = formState.participantIds,
-                    attachmentUris = formState.selectedFileUris
+                    attachmentUris = formState.selectedFileUris,
+                    status = selectedStatus
                 )
             } else {
                 viewModel.createTask(
@@ -180,7 +189,8 @@ fun CreateTaskListScreen(
                     endDate = formState.endDate,
                     reminderTime = formState.reminder.ifBlank { null },
                     participantIds = formState.participantIds,
-                    attachmentUris = formState.selectedFileUris
+                    attachmentUris = formState.selectedFileUris,
+                    status = selectedStatus
                 )
             }
         },

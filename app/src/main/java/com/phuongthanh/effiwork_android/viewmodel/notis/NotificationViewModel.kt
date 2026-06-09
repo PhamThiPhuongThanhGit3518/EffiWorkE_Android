@@ -7,6 +7,7 @@ import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.model.response.NotificationResponse
 import com.phuongthanh.effiwork_android.data.repository.NotificationRepository
 import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
+import com.phuongthanh.effiwork_android.data.socket.NotificationSocketManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +40,8 @@ sealed class NotificationEffect {
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
     private val notificationRepository: NotificationRepository,
-    private val projectRepository: ProjectRepository
+    private val projectRepository: ProjectRepository,
+    private val notificationSocketManager: NotificationSocketManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NotificationUiState>(NotificationUiState.Idle)
@@ -60,6 +62,27 @@ class NotificationViewModel @Inject constructor(
 
     init {
         loadProjectNames()
+        observeNotificationsCache()
+        observeSocketEvents()
+    }
+
+    private fun observeNotificationsCache() {
+        viewModelScope.launch {
+            notificationRepository.notificationsFlow.collect { items ->
+                val current = _uiState.value
+                if (current is NotificationUiState.Success) {
+                    _uiState.value = current.copy(notifications = items)
+                }
+            }
+        }
+    }
+
+    private fun observeSocketEvents() {
+        viewModelScope.launch {
+            notificationSocketManager.newNotificationFlow.collect { event ->
+                notificationRepository.upsertNotification(event.notification)
+            }
+        }
     }
 
     private fun loadProjectNames() {

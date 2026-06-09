@@ -7,6 +7,10 @@ import com.phuongthanh.effiwork_android.data.model.request.SaveFcmTokenRequest
 import com.phuongthanh.effiwork_android.data.model.response.NotificationListResponse
 import com.phuongthanh.effiwork_android.data.model.response.NotificationResponse
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,11 +22,13 @@ class NotificationRepositoryImpl @Inject constructor(
     private val notificationService: NotificationService
 ) : NotificationRepository {
 
+    private val _notificationsFlow = MutableStateFlow<List<NotificationResponse>>(emptyList())
+    override val notificationsFlow: StateFlow<List<NotificationResponse>> = _notificationsFlow.asStateFlow()
+
     override suspend fun getNotifications(page: Int, limit: Int, unreadOnly: Boolean?): ApiResult<NotificationListResponse> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "getNotifications: page=$page, limit=$limit, unreadOnly=$unreadOnly")
-                // Chỉ gửi unreadOnly khi là true, null để lấy tất cả
                 val unreadOnlyParam = if (unreadOnly == true) true else null
                 val response = notificationService.getNotifications(page, limit, unreadOnlyParam)
                 Log.d(TAG, "getNotifications response: page=${response.page}, total=${response.total}, totalPages=${response.totalPages}, data size = ${response.data.size}")
@@ -31,6 +37,11 @@ class NotificationRepositoryImpl @Inject constructor(
                 }
                 response.data.forEachIndexed { index, notif ->
                     Log.d(TAG, "Notification[$index]: id=${notif.id}, title=${notif.title}, message=${notif.message}, type=${notif.type}, isRead=${notif.isRead}, createdAt=${notif.createdAt}")
+                }
+                if (page == 1) {
+                    _notificationsFlow.value = response.data
+                } else {
+                    _notificationsFlow.update { current -> current + response.data }
                 }
                 ApiResult.Success(response)
             } catch (e: Exception) {
@@ -45,6 +56,7 @@ class NotificationRepositoryImpl @Inject constructor(
             try {
                 val response = notificationService.markAsRead(notificationId)
                 if (response.success && response.data != null) {
+                    updateLocalItem(response.data)
                     ApiResult.Success(response.data)
                 } else {
                     ApiResult.Error(response.message)
@@ -60,6 +72,7 @@ class NotificationRepositoryImpl @Inject constructor(
             try {
                 val response = notificationService.markAsUnread(notificationId)
                 if (response.success && response.data != null) {
+                    updateLocalItem(response.data)
                     ApiResult.Success(response.data)
                 } else {
                     ApiResult.Error(response.message)
@@ -75,6 +88,9 @@ class NotificationRepositoryImpl @Inject constructor(
             try {
                 val response = notificationService.markAllAsRead()
                 if (response.success) {
+                    _notificationsFlow.update { current ->
+                        current.map { it.copy(isRead = true) }
+                    }
                     ApiResult.Success(Unit)
                 } else {
                     ApiResult.Error(response.message)
@@ -96,6 +112,28 @@ class NotificationRepositoryImpl @Inject constructor(
                 }
             } catch (e: Exception) {
                 ApiResult.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    override suspend fun upsertNotification(item: NotificationResponse) {
+        _notificationsFlow.update { current ->
+            val index = current.indexOfFirst { it.id == item.id }
+            if (index >= 0) {
+                current.toMutableList().apply { this[index] = item }
+            } else {
+                listOf(item) + current
+            }
+        }
+    }
+
+    private fun updateLocalItem(item: NotificationResponse) {
+        _notificationsFlow.update { current ->
+            val index = current.indexOfFirst { it.id == item.id }
+            if (index >= 0) {
+                current.toMutableList().apply { this[index] = item }
+            } else {
+                current
             }
         }
     }

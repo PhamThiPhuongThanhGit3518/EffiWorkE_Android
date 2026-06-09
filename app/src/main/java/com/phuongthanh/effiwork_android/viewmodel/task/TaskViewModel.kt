@@ -89,6 +89,10 @@ enum class TaskStatus(val displayName: String, val serverValue: String) {
         fun fromServerValue(value: String): TaskStatus {
             return entries.find { it.serverValue.equals(value, ignoreCase = true) } ?: fromString(value)
         }
+
+        fun fromDisplayName(value: String): TaskStatus {
+            return entries.find { it.displayName == value } ?: NOT_STARTED
+        }
     }
 }
 
@@ -382,11 +386,14 @@ class TaskViewModel @Inject constructor(
         endDate: String,
         reminderTime: String?,
         participantIds: List<String>,
-        attachmentUris: List<Uri> = emptyList()
+        attachmentUris: List<Uri> = emptyList(),
+        status: TaskStatus = TaskStatus.NOT_STARTED
     ) {
         viewModelScope.launch {
             _uiState.value = TaskUiState.Loading
             val projectIdValue = _projectId.value
+
+            Log.d(TAG, "createTask: received status=$status, willApplyAfterCreate=${status != TaskStatus.NOT_STARTED}")
 
             val request = CreateTaskRequest(
                 title = name,
@@ -402,8 +409,13 @@ class TaskViewModel @Inject constructor(
 
             when (val result = taskRepository.createTask(projectIdValue, request)) {
                 is ApiResult.Success -> {
-                    Log.d(TAG, "Create task success: ${result.data.id}, title: ${result.data.name}")
-                    attachUrisToTask(projectIdValue, result.data.id, attachmentUris)
+                    val newTaskId = result.data.id
+                    Log.d(TAG, "Create task success: id=$newTaskId, title: ${result.data.name}, serverReturnedStatus=${result.data.status}")
+                    attachUrisToTask(projectIdValue, newTaskId, attachmentUris)
+                    if (status != TaskStatus.NOT_STARTED) {
+                        Log.d(TAG, "createTask: applying non-default status=$status to new task $newTaskId")
+                        applyStatusAfterCreate(newTaskId, status, isSubtask = false)
+                    }
                     _effect.emit(TaskEffect.ShowToast("Tạo công việc thành công"))
                     _effect.emit(TaskEffect.TaskCreated(name))
                     Log.d(TAG, "Calling refreshCurrentTab() to refresh list...")
@@ -430,13 +442,14 @@ class TaskViewModel @Inject constructor(
         endDate: String,
         reminderTime: String?,
         participantIds: List<String>,
-        attachmentUris: List<Uri> = emptyList()
+        attachmentUris: List<Uri> = emptyList(),
+        status: TaskStatus = TaskStatus.NOT_STARTED
     ) {
         viewModelScope.launch {
             _uiState.value = TaskUiState.Loading
             val projectIdValue = _projectId.value
 
-            Log.d(TAG, "createSubtask: projectId=$projectIdValue, parentTaskId=$parentTaskId")
+            Log.d(TAG, "createSubtask: projectId=$projectIdValue, parentTaskId=$parentTaskId, status=$status, willApplyAfterCreate=${status != TaskStatus.NOT_STARTED}")
 
             val request = CreateTaskRequest(
                 title = name,
@@ -452,8 +465,13 @@ class TaskViewModel @Inject constructor(
 
             when (val result = taskRepository.createTask(projectIdValue, request)) {
                 is ApiResult.Success -> {
-                    Log.d(TAG, "Create subtask success: ${result.data.id}, title: ${result.data.name}")
-                    attachUrisToTask(projectIdValue, result.data.id, attachmentUris)
+                    val newTaskId = result.data.id
+                    Log.d(TAG, "Create subtask success: id=$newTaskId, title: ${result.data.name}, serverReturnedStatus=${result.data.status}")
+                    attachUrisToTask(projectIdValue, newTaskId, attachmentUris)
+                    if (status != TaskStatus.NOT_STARTED) {
+                        Log.d(TAG, "createSubtask: applying non-default status=$status to new task $newTaskId")
+                        applyStatusAfterCreate(newTaskId, status, isSubtask = true)
+                    }
                     _effect.emit(TaskEffect.ShowToast("Tạo công việc con thành công"))
                     _effect.emit(TaskEffect.TaskCreated(name))
                     invalidateAndReloadAllTabs()
@@ -465,6 +483,28 @@ class TaskViewModel @Inject constructor(
                 is ApiResult.Loading -> {
                     _uiState.value = TaskUiState.Loading
                 }
+            }
+        }
+    }
+
+    private fun applyStatusAfterCreate(taskId: String, status: TaskStatus, isSubtask: Boolean) {
+        viewModelScope.launch {
+            val projectIdValue = _projectId.value
+            if (projectIdValue.isBlank()) {
+                Log.e(TAG, "applyStatusAfterCreate: projectId is blank!")
+                return@launch
+            }
+            val serverValue = status.serverValue
+            Log.d(TAG, "applyStatusAfterCreate: taskId=$taskId, requested=$status, serverValue=$serverValue, isSubtask=$isSubtask")
+            when (val result = taskRepository.updateTaskStatus(projectIdValue, taskId, UpdateTaskStatusRequest(serverValue))) {
+                is ApiResult.Success -> {
+                    Log.d(TAG, "applyStatusAfterCreate SUCCESS: taskId=$taskId, serverValue=$serverValue")
+                    invalidateAndReloadAllTabs()
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "applyStatusAfterCreate FAILED: taskId=$taskId, message=${result.message}")
+                }
+                is ApiResult.Loading -> {}
             }
         }
     }
