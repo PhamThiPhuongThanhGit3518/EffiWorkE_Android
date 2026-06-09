@@ -1,11 +1,15 @@
 package com.phuongthanh.effiwork_android.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -18,6 +22,7 @@ import androidx.navigation.navArgument
 import com.phuongthanh.effiwork_android.R
 import com.phuongthanh.effiwork_android.ui.common.BottomNavigationBar
 import com.phuongthanh.effiwork_android.ui.common.rememberAuthRepository
+import com.phuongthanh.effiwork_android.ui.components.NotificationToastOverlay
 import com.phuongthanh.effiwork_android.ui.screen.notis.NotificationScreen
 import com.phuongthanh.effiwork_android.ui.screen.profile.ProfileScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
@@ -38,6 +43,7 @@ import com.phuongthanh.effiwork_android.ui.screen.document.DocumentBrowserScreen
 import com.phuongthanh.effiwork_android.ui.screen.document.DocumentPreviewScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
 import com.phuongthanh.effiwork_android.viewmodel.meeting.MeetingViewModel
+import com.phuongthanh.effiwork_android.viewmodel.notis.NotificationViewModel
 import com.phuongthanh.effiwork_android.viewmodel.project.ProjectsViewModel
 import com.phuongthanh.effiwork_android.viewmodel.task.TaskViewModel
 import com.phuongthanh.effiwork_android.data.local.TokenManager
@@ -93,13 +99,15 @@ object NavRoutes {
 fun MainScreen(
     projectsViewModel: ProjectsViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel(),
-    meetingViewModel: MeetingViewModel = hiltViewModel()
+    meetingViewModel: MeetingViewModel = hiltViewModel(),
+    notificationViewModel: NotificationViewModel = hiltViewModel()
 ) {
     val authRepository = rememberAuthRepository()
     val currentUserId by authViewModel.currentUserId.collectAsStateWithLifecycle()
     android.util.Log.d("MainScreenDebug", "currentUserId from authViewModel: $currentUserId")
     val navController = rememberNavController()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val projectNameMap by notificationViewModel.projectNameMap.collectAsStateWithLifecycle()
     val navItems = listOf(
         BottomNavItem.Projects,
         BottomNavItem.Notifications,
@@ -142,11 +150,16 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Projects.route,
-            modifier = Modifier.padding(innerPadding)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
+            NavHost(
+                navController = navController,
+                startDestination = BottomNavItem.Projects.route,
+                modifier = Modifier.fillMaxSize()
+            ) {
             composable(BottomNavItem.Projects.route) {
                 ProjectsScreen(
                     projectsViewModel = projectsViewModel,
@@ -526,6 +539,14 @@ fun MainScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }
+        }
+            NotificationToastOverlay(
+                newNotifications = notificationViewModel.newNotificationToShow,
+                projectNameFor = { id -> projectNameMap[id] },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            )
         }
     }
 }

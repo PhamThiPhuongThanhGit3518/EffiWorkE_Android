@@ -56,6 +56,9 @@ class NotificationViewModel @Inject constructor(
     private val _projectNameMap = MutableStateFlow<Map<String, String>>(emptyMap())
     val projectNameMap: StateFlow<Map<String, String>> = _projectNameMap.asStateFlow()
 
+    private val _newNotificationToShow = MutableSharedFlow<NotificationResponse>(replay = 0, extraBufferCapacity = 16)
+    val newNotificationToShow: SharedFlow<NotificationResponse> = _newNotificationToShow.asSharedFlow()
+
     private var currentPage = 1
     private var totalPages = 1
     private val pageSize = 20
@@ -79,8 +82,12 @@ class NotificationViewModel @Inject constructor(
 
     private fun observeSocketEvents() {
         viewModelScope.launch {
+            Log.d(TAG, "observeSocketEvents: collector started, waiting for newNotificationFlow events")
             notificationSocketManager.newNotificationFlow.collect { event ->
+                Log.d(TAG, "observeSocketEvents: received event for notification id=${event.notification.id}, projectId=${event.notification.projectId}")
                 notificationRepository.upsertNotification(event.notification)
+                val emitted = _newNotificationToShow.tryEmit(event.notification)
+                Log.d(TAG, "observeSocketEvents: tryEmit to newNotificationToShow -> $emitted")
             }
         }
     }
