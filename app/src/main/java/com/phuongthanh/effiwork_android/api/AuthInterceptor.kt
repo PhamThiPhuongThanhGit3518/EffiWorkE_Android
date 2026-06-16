@@ -30,4 +30,6 @@ class AuthInterceptor @Inject constructor(
             chain.proceed(originalRequest)
         }
     }
+
+    fun authHeaderValue(): String? = tokenManager.getAccessToken()?.let { "Bearer $it" }
 }

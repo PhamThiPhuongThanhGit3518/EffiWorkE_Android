@@ -7,4 +7,6 @@ sealed class ChatEffect {
     data class MessageSent(val message: ChatMessageResponse) : ChatEffect()
     object ScrollToBottom : ChatEffect()
     data class NewMessageReceived(val message: ChatMessageResponse) : ChatEffect()
+    data class GroupNameUpdated(val newName: String) : ChatEffect()
+    object LeftGroup : ChatEffect()
 }

@@ -178,6 +178,42 @@ class ChatRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addMembers(
+        projectId: String,
+        conversationId: String,
+        request: AddMembersRequest
+    ): ApiResult<ChatConversationResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = chatService.addMembers(projectId, conversationId, request)
+            if (response.success && response.data != null) {
+                ApiResult.Success(response.data)
+            } else {
+                ApiResult.Error(response.message)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "addMembers error", e)
+            ApiResult.Error(e.message ?: "Failed to add members")
+        }
+    }
+
+    override suspend fun removeMembers(
+        projectId: String,
+        conversationId: String,
+        request: RemoveMembersRequest
+    ): ApiResult<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = chatService.removeMembers(projectId, conversationId, request)
+            if (response.success) {
+                ApiResult.Success(Unit)
+            } else {
+                ApiResult.Error(response.message)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "removeMembers error", e)
+            ApiResult.Error(e.message ?: "Failed to remove members")
+        }
+    }
+
     override suspend fun leaveConversation(
         projectId: String,
         conversationId: String

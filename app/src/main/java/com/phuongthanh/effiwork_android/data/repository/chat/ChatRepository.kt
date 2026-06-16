@@ -56,6 +56,18 @@ interface ChatRepository {
         conversationId: String
     ): ApiResult<List<ChatMessageResponse>>
 
+    suspend fun addMembers(
+        projectId: String,
+        conversationId: String,
+        request: AddMembersRequest
+    ): ApiResult<ChatConversationResponse>
+
+    suspend fun removeMembers(
+        projectId: String,
+        conversationId: String,
+        request: RemoveMembersRequest
+    ): ApiResult<Unit>
+
     suspend fun leaveConversation(
         projectId: String,
         conversationId: String

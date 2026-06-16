@@ -41,6 +41,9 @@ fun NotificationScreen(
     modifier: Modifier = Modifier,
     onNavigateToTaskDetail: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeetingDetail: (String, String) -> Unit = { _, _ -> },
+    onNavigateToChat: (String, String, String) -> Unit = { _, _, _ -> },
+    onNavigateToProjectSetting: (String) -> Unit = {},
+    onNavigateToDocument: (String) -> Unit = {},
     onNavigateToProject: (String) -> Unit = {},
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
@@ -79,10 +82,13 @@ fun NotificationScreen(
             if (notification.isRead != true) {
                 viewModel.markAsRead(notification.id)
             }
-            handleNotificationClick(
+            resolveNotificationNavigation(
                 notification = notification,
                 onNavigateToTaskDetail = onNavigateToTaskDetail,
                 onNavigateToMeetingDetail = onNavigateToMeetingDetail,
+                onNavigateToChat = onNavigateToChat,
+                onNavigateToProjectSetting = onNavigateToProjectSetting,
+                onNavigateToDocument = onNavigateToDocument,
                 onNavigateToProject = onNavigateToProject
             )
         },
@@ -469,40 +475,6 @@ private fun formatTimestamp(timestamp: String?): String {
         SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("vi", "VN")).format(parsed)
     } catch (e: Exception) {
         timestamp
-    }
-}
-
-private fun handleNotificationClick(
-    notification: NotificationResponse,
-    onNavigateToTaskDetail: (String, String) -> Unit,
-    onNavigateToMeetingDetail: (String, String) -> Unit,
-    onNavigateToProject: (String) -> Unit
-) {
-    val projectId = notification.projectId ?: notification.data?.projectId
-    val relatedType = notification.relatedType
-    val relatedId = notification.relatedId
-    val data = notification.data
-
-    when {
-        projectId != null && relatedType.equals("TASK", ignoreCase = true) && !relatedId.isNullOrBlank() -> {
-            onNavigateToTaskDetail(projectId, relatedId)
-            return
-        }
-        projectId != null && relatedType.equals("MEETING", ignoreCase = true) && !relatedId.isNullOrBlank() -> {
-            onNavigateToMeetingDetail(projectId, relatedId)
-            return
-        }
-        data?.taskId != null && data.projectId != null -> {
-            onNavigateToTaskDetail(data.projectId, data.taskId)
-            return
-        }
-        data?.meetingId != null && data.projectId != null -> {
-            onNavigateToMeetingDetail(data.projectId, data.meetingId)
-            return
-        }
-        projectId != null -> {
-            onNavigateToProject(projectId)
-        }
     }
 }
 

@@ -65,6 +65,20 @@ interface ChatService {
         @Path("conversationId") conversationId: String
     ): ApiResponse<List<ChatMessageResponse>>
 
+    @POST("v1/projects/{projectId}/chat/conversations/{conversationId}/members")
+    suspend fun addMembers(
+        @Path("projectId") projectId: String,
+        @Path("conversationId") conversationId: String,
+        @Body request: AddMembersRequest
+    ): ApiResponse<ChatConversationResponse>
+
+    @POST("v1/projects/{projectId}/chat/conversations/{conversationId}/members/remove")
+    suspend fun removeMembers(
+        @Path("projectId") projectId: String,
+        @Path("conversationId") conversationId: String,
+        @Body request: RemoveMembersRequest
+    ): ApiResponse<Unit>
+
     @DELETE("v1/projects/{projectId}/chat/conversations/{conversationId}/leave")
     suspend fun leaveConversation(
         @Path("projectId") projectId: String,

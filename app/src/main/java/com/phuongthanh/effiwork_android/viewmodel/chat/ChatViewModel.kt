@@ -4,7 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuongthanh.effiwork_android.api.ApiResult
 import com.phuongthanh.effiwork_android.data.model.chat.ChatMessageType
+import com.phuongthanh.effiwork_android.data.model.request.chat.AddMembersRequest
 import com.phuongthanh.effiwork_android.data.model.request.chat.CreateChatMessageRequest
+import com.phuongthanh.effiwork_android.data.model.request.chat.RemoveMembersRequest
+import com.phuongthanh.effiwork_android.data.model.request.chat.UpdateChatConversationRequest
+import com.phuongthanh.effiwork_android.data.model.response.ProjectMemberResponse
+import com.phuongthanh.effiwork_android.data.model.response.chat.ChatConversationDetailResponse
+import com.phuongthanh.effiwork_android.data.repository.ProjectRepository
 import com.phuongthanh.effiwork_android.data.repository.chat.ChatRepository
 import com.phuongthanh.effiwork_android.data.socket.ChatSocketManager
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatEffect
@@ -23,6 +29,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
+    private val projectRepository: ProjectRepository,
     private val socketManager: ChatSocketManager
 ) : ViewModel() {
 
@@ -31,6 +38,15 @@ class ChatViewModel @Inject constructor(
 
     private val _effect = MutableSharedFlow<ChatEffect>()
     val effect: SharedFlow<ChatEffect> = _effect.asSharedFlow()
+
+    private val _conversationDetail = MutableStateFlow<ChatConversationDetailResponse?>(null)
+    val conversationDetail: StateFlow<ChatConversationDetailResponse?> = _conversationDetail.asStateFlow()
+
+    private val _projectMembers = MutableStateFlow<List<ProjectMemberResponse>>(emptyList())
+    val projectMembers: StateFlow<List<ProjectMemberResponse>> = _projectMembers.asStateFlow()
+
+    private val _isGroupMutating = MutableStateFlow(false)
+    val isGroupMutating: StateFlow<Boolean> = _isGroupMutating.asStateFlow()
 
     private var currentPage = 1
     private var totalPages = 1
@@ -234,6 +250,124 @@ class ChatViewModel @Inject constructor(
         val projectId = currentProjectId ?: return
         val conversationId = currentConversationId ?: return
         loadMessages(projectId, conversationId, refresh = true)
+    }
+
+    fun loadConversationDetail() {
+        val projectId = currentProjectId ?: return
+        val conversationId = currentConversationId ?: return
+        viewModelScope.launch {
+            when (val result = chatRepository.getConversationDetail(projectId, conversationId)) {
+                is ApiResult.Success -> {
+                    _conversationDetail.value = result.data
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(ChatEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun loadProjectMembers() {
+        val projectId = currentProjectId ?: return
+        viewModelScope.launch {
+            when (val result = projectRepository.getProjectMembers(projectId)) {
+                is ApiResult.Success -> {
+                    _projectMembers.value = result.data
+                }
+                is ApiResult.Error -> {}
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
+    fun renameGroup(newName: String) {
+        val projectId = currentProjectId ?: return
+        val conversationId = currentConversationId ?: return
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) {
+            viewModelScope.launch { _effect.emit(ChatEffect.ShowToast("Tên nhóm không được trống")) }
+            return
+        }
+        viewModelScope.launch {
+            _isGroupMutating.value = true
+            when (val result = chatRepository.updateConversation(
+                projectId, conversationId, UpdateChatConversationRequest(name = trimmed)
+            )) {
+                is ApiResult.Success -> {
+                    loadConversationDetail()
+                    _effect.emit(ChatEffect.GroupNameUpdated(trimmed))
+                    _effect.emit(ChatEffect.ShowToast("Đã đổi tên nhóm"))
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(ChatEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+            _isGroupMutating.value = false
+        }
+    }
+
+    fun addMembers(memberIds: List<String>) {
+        val projectId = currentProjectId ?: return
+        val conversationId = currentConversationId ?: return
+        if (memberIds.isEmpty()) return
+        viewModelScope.launch {
+            _isGroupMutating.value = true
+            when (val result = chatRepository.addMembers(
+                projectId, conversationId, AddMembersRequest(memberIds)
+            )) {
+                is ApiResult.Success -> {
+                    loadConversationDetail()
+                    _effect.emit(ChatEffect.ShowToast("Đã thêm thành viên"))
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(ChatEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+            _isGroupMutating.value = false
+        }
+    }
+
+    fun removeMembers(userIds: List<String>) {
+        val projectId = currentProjectId ?: return
+        val conversationId = currentConversationId ?: return
+        if (userIds.isEmpty()) return
+        viewModelScope.launch {
+            _isGroupMutating.value = true
+            when (val result = chatRepository.removeMembers(
+                projectId, conversationId, RemoveMembersRequest(userIds)
+            )) {
+                is ApiResult.Success -> {
+                    loadConversationDetail()
+                    _effect.emit(ChatEffect.ShowToast("Đã xóa thành viên"))
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(ChatEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+            _isGroupMutating.value = false
+        }
+    }
+
+    fun leaveGroup() {
+        val projectId = currentProjectId ?: return
+        val conversationId = currentConversationId ?: return
+        viewModelScope.launch {
+            _isGroupMutating.value = true
+            when (val result = chatRepository.leaveConversation(projectId, conversationId)) {
+                is ApiResult.Success -> {
+                    _effect.emit(ChatEffect.LeftGroup)
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(ChatEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+            _isGroupMutating.value = false
+        }
     }
 
     override fun onCleared() {

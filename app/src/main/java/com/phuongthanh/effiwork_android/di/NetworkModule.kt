@@ -6,6 +6,7 @@ import com.phuongthanh.effiwork_android.BuildConfig
 import com.phuongthanh.effiwork_android.api.AuthInterceptor
 import com.phuongthanh.effiwork_android.api.AuthService
 import com.phuongthanh.effiwork_android.api.ChatService
+import com.phuongthanh.effiwork_android.api.ChatbotService
 import com.phuongthanh.effiwork_android.api.DocumentService
 import com.phuongthanh.effiwork_android.api.FolderService
 import com.phuongthanh.effiwork_android.api.MeetingService
@@ -29,7 +30,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://effiwork-api.phuongthanhphuongthanh.id.vn/api/"
+//    internal const val BASE_URL = "http://192.168.0.107:3000/api/"
+     internal const val BASE_URL = "https://effiwork-api.phuongthanhphuongthanh.id.vn/api/"
 
     @Provides
     @Singleton
@@ -127,5 +129,11 @@ object NetworkModule {
     @Singleton
     fun provideChatService(retrofit: Retrofit): ChatService {
         return retrofit.create(ChatService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatbotService(retrofit: Retrofit): ChatbotService {
+        return retrofit.create(ChatbotService::class.java)
     }
 }

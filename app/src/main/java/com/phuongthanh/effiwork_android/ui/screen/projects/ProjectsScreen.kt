@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,12 +61,15 @@ fun ProjectsScreen(
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeeting: (String) -> Unit = {},
     onNavigateToMessage: (String) -> Unit = {},
-    onNavigateToDocument: (String) -> Unit = {}
+    onNavigateToDocument: (String) -> Unit = {},
+    onNavigateToChatbot: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
+    val selectedProjectId by projectsViewModel.selectedProjectId.collectAsStateWithLifecycle()
+    var showChatbotAlert by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         projectsViewModel.handleIntent(ProjectsIntent.LoadProjects)
@@ -156,7 +161,11 @@ fun ProjectsScreen(
                                 onNavigateToTask = onNavigateToTask,
                                 onNavigateToMeeting = onNavigateToMeeting,
                                 onNavigateToMessage = onNavigateToMessage,
-                                onNavigateToDocument = onNavigateToDocument
+                                onNavigateToDocument = onNavigateToDocument,
+                                onNavigateToChatbot = {
+                                    if (selectedProjectId.isNullOrBlank()) showChatbotAlert = true
+                                    else onNavigateToChatbot()
+                                }
                             )
                         }
                         is ProjectDetailUiState.NoProject -> {
@@ -175,6 +184,17 @@ fun ProjectsScreen(
             }
         }
     )
+
+    if (showChatbotAlert) {
+        AlertDialog(
+            onDismissRequest = { showChatbotAlert = false },
+            title = { Text("Chưa có dự án") },
+            text = { Text("Hãy mở một dự án trước khi dùng trợ lý ảo.") },
+            confirmButton = {
+                TextButton(onClick = { showChatbotAlert = false }) { Text("Đóng") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -184,7 +204,8 @@ fun ProjectDashboardContent(
     onNavigateToTask: (String, String) -> Unit = { _, _ -> },
     onNavigateToMeeting: (String) -> Unit = {},
     onNavigateToMessage: (String) -> Unit = {},
-    onNavigateToDocument: (String) -> Unit = {}
+    onNavigateToDocument: (String) -> Unit = {},
+    onNavigateToChatbot: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -208,6 +229,7 @@ fun ProjectDashboardContent(
             onNavigateToMeeting = onNavigateToMeeting,
             onNavigateToMessage = onNavigateToMessage,
             onNavigateToDocument = onNavigateToDocument,
+            onNavigateToChatbot = onNavigateToChatbot,
             projectId = state.projectId,
             projectName = state.projectName
         )
@@ -287,16 +309,18 @@ private fun FeaturesGrid(
     onNavigateToMeeting: (String) -> Unit = {},
     onNavigateToMessage: (String) -> Unit = {},
     onNavigateToDocument: (String) -> Unit = {},
+    onNavigateToChatbot: () -> Unit = {},
     projectId: String = "",
     projectName: String = ""
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         val features = listOf(
-            Triple("Công việc", Icons.Default.CheckCircle, Color(0xFF2196F3)),
-            Triple("Cuộc họp", Icons.Default.DateRange, Color(0xFF9C27B0)),
-            Triple("Tin nhắn", Icons.Default.Email, Color(0xFF03A9F4)),
-            Triple("Tài liệu", Icons.Default.FileCopy, Color(0xFF607D66)),
-            Triple("Cài đặt", Icons.Default.Settings, Color(0xFF607D8B)),
+            Triple("Công việc", FeatureIcon.Vector(Icons.Default.CheckCircle), Color(0xFF009F06)),
+            Triple("Cuộc họp", FeatureIcon.Vector(Icons.Default.DateRange), Color(0xFF9C27B0)),
+            Triple("Tin nhắn", FeatureIcon.Vector(Icons.Default.Email), Color(0xFFBE7201)),
+            Triple("Tài liệu", FeatureIcon.Vector(Icons.Default.FileCopy), Color(0xFF607D66)),
+            Triple("Trợ lý ảo", FeatureIcon.Resource(R.drawable.ic_chatbot), Color.Unspecified),
+            Triple("Cài đặt", FeatureIcon.Vector(Icons.Default.Settings), Color(0xFF607D8B)),
         )
 
         features.chunked(3).forEach { rowItems ->
@@ -309,6 +333,7 @@ private fun FeaturesGrid(
                             "Cuộc họp" -> { { onNavigateToMeeting(projectId) } }
                             "Tin nhắn" -> { { onNavigateToMessage(projectId) } }
                             "Tài liệu" -> { { onNavigateToDocument(projectId) } }
+                            "Trợ lý ảo" -> onNavigateToChatbot
                             else -> { {} }
                         }
                     FeatureCard(icon, label, color, Modifier.weight(1f), onClick = onClick)
@@ -320,8 +345,13 @@ private fun FeaturesGrid(
     }
 }
 
+private sealed class FeatureIcon {
+    data class Vector(val icon: ImageVector) : FeatureIcon()
+    data class Resource(@field:DrawableRes val resId: Int) : FeatureIcon()
+}
+
 @Composable
-private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+private fun FeatureCard(icon: FeatureIcon, label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
@@ -331,7 +361,15 @@ private fun FeatureCard(icon: ImageVector, label: String, color: Color, modifier
     ) {
         Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = color.copy(alpha = 0.1f)) {
-                Icon(icon, label, tint = color, modifier = Modifier.padding(12.dp))
+                when (icon) {
+                    is FeatureIcon.Vector -> Icon(icon.icon, label, tint = color, modifier = Modifier.padding(12.dp))
+                    is FeatureIcon.Resource -> Icon(
+                        painter = painterResource(icon.resId),
+                        contentDescription = label,
+                        tint = color,
+                        modifier = Modifier
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)

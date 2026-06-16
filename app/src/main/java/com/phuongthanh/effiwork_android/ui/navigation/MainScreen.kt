@@ -24,6 +24,7 @@ import com.phuongthanh.effiwork_android.ui.common.BottomNavigationBar
 import com.phuongthanh.effiwork_android.ui.common.rememberAuthRepository
 import com.phuongthanh.effiwork_android.ui.screen.notis.items.NotificationToastOverlay
 import com.phuongthanh.effiwork_android.ui.screen.notis.NotificationScreen
+import com.phuongthanh.effiwork_android.ui.screen.notis.resolveNotificationNavigation
 import com.phuongthanh.effiwork_android.ui.screen.profile.ProfileScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.CreateProjectScreen
 import com.phuongthanh.effiwork_android.ui.screen.projects.JoinByCodeScreen
@@ -39,6 +40,7 @@ import com.phuongthanh.effiwork_android.ui.screen.meetings.MeetingDetailScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatListScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.ChatScreen
 import com.phuongthanh.effiwork_android.ui.screen.chat.CreateGroupChatScreen
+import com.phuongthanh.effiwork_android.ui.screen.chatbot.ChatbotScreen
 import com.phuongthanh.effiwork_android.ui.screen.document.DocumentListScreen
 import com.phuongthanh.effiwork_android.ui.screen.document.DocumentPreviewScreen
 import com.phuongthanh.effiwork_android.viewmodel.login.AuthViewModel
@@ -74,6 +76,7 @@ object NavRoutes {
     const val CREATE_GROUP_CHAT = "create_group_chat/{projectId}"
     const val DOCUMENT_BROWSER = "document_browser/{projectId}"
     const val DOCUMENT_PREVIEW = "document_preview/{projectId}/{documentId}"
+    const val CHATBOT = "chatbot/{projectId}"
 
     fun projectSetting(projectId: String) = "project_setting/$projectId"
     fun taskGroupList(projectId: String, projectName: String) = "task_group_list/$projectId/$projectName"
@@ -91,6 +94,7 @@ object NavRoutes {
     fun createGroupChat(projectId: String) = "create_group_chat/$projectId"
     fun documentBrowser(projectId: String) = "document_browser/$projectId"
     fun documentPreview(projectId: String, documentId: String) = "document_preview/$projectId/$documentId"
+    fun chatbot(projectId: String) = "chatbot/$projectId"
 }
 
 @Composable
@@ -181,16 +185,32 @@ fun MainScreen(
                     },
                     onNavigateToDocument = { projectId ->
                         navController.navigate(NavRoutes.documentBrowser(projectId))
+                    },
+                    onNavigateToChatbot = {
+                        val projectId = projectsViewModel.selectedProjectId.value
+                        if (!projectId.isNullOrBlank()) {
+                            navController.navigate(NavRoutes.chatbot(projectId))
+                        }
                     }
                 )
             }
             composable(BottomNavItem.Notifications.route) {
+                val currentUserIdForChat = authViewModel.currentUserId.value ?: ""
                 NotificationScreen(
                     onNavigateToTaskDetail = { projectId, taskId ->
                         navController.navigate(NavRoutes.taskDetail(projectId, taskId))
                     },
                     onNavigateToMeetingDetail = { projectId, meetingId ->
                         navController.navigate(NavRoutes.meetingDetail(projectId, meetingId))
+                    },
+                    onNavigateToChat = { projectId, conversationId, conversationName ->
+                        navController.navigate(NavRoutes.chat(projectId, conversationId, conversationName, currentUserIdForChat))
+                    },
+                    onNavigateToProjectSetting = { projectId ->
+                        navController.navigate(NavRoutes.projectSetting(projectId))
+                    },
+                    onNavigateToDocument = { projectId ->
+                        navController.navigate(NavRoutes.documentBrowser(projectId))
                     },
                     onNavigateToProject = { projectId ->
                         projectsViewModel.requestFocusProject(projectId)
@@ -537,18 +557,50 @@ fun MainScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }
+            composable(
+                route = NavRoutes.CHATBOT,
+                arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                ChatbotScreen(
+                    projectId = projectId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
             NotificationToastOverlay(
                 newNotifications = notificationViewModel.newNotificationToShow,
                 projectNameFor = { id -> projectNameMap[id] },
-                onNotificationClick = {
-                    navController.navigate(BottomNavItem.Notifications.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+                onNotificationClick = { notification ->
+                    resolveNotificationNavigation(
+                        notification = notification,
+                        onNavigateToTaskDetail = { projectId, taskId ->
+                            navController.navigate(NavRoutes.taskDetail(projectId, taskId))
+                        },
+                        onNavigateToMeetingDetail = { projectId, meetingId ->
+                            navController.navigate(NavRoutes.meetingDetail(projectId, meetingId))
+                        },
+                        onNavigateToChat = { projectId, conversationId, conversationName ->
+                            val uid = authViewModel.currentUserId.value ?: ""
+                            navController.navigate(NavRoutes.chat(projectId, conversationId, conversationName, uid))
+                        },
+                        onNavigateToProjectSetting = { projectId ->
+                            navController.navigate(NavRoutes.projectSetting(projectId))
+                        },
+                        onNavigateToDocument = { projectId ->
+                            navController.navigate(NavRoutes.documentBrowser(projectId))
+                        },
+                        onNavigateToProject = { projectId ->
+                            projectsViewModel.requestFocusProject(projectId)
+                            navController.navigate(BottomNavItem.Projects.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+                    )
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
