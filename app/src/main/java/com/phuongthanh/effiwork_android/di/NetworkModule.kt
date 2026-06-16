@@ -30,8 +30,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-//    internal const val BASE_URL = "http://192.168.0.107:3000/api/"
-     internal const val BASE_URL = "https://effiwork-api.phuongthanhphuongthanh.id.vn/api/"
+    internal const val BASE_URL = "http://192.168.0.108:3000/api/"
+//     internal const val BASE_URL = "https://effiwork-api.phuongthanhphuongthanh.id.vn/api/"
 
     @Provides
     @Singleton

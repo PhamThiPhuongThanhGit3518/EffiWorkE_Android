@@ -103,6 +103,9 @@ fun ProjectSettingScreen(
                         },
                         onRemoveMember = { userId ->
                             viewModel.removeMember(projectId, userId)
+                        },
+                        onTransferAdmin = { userId ->
+                            viewModel.transferAdmin(projectId, userId)
                         }
                     )
                 }
@@ -121,7 +124,8 @@ private fun ProjectSettingContent(
     joinRequests: List<JoinRequestResponse>,
     onApproveRequest: (String) -> Unit,
     onRejectRequest: (String) -> Unit,
-    onRemoveMember: (String) -> Unit
+    onRemoveMember: (String) -> Unit,
+    onTransferAdmin: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -144,7 +148,8 @@ private fun ProjectSettingContent(
         items(members) { member ->
             MemberItem(
                 member = member,
-                onRemove = { onRemoveMember(member.userId) }
+                onRemove = { onRemoveMember(member.userId) },
+                onTransferAdmin = { onTransferAdmin(member.userId) }
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -281,9 +286,11 @@ private fun PreviewStatItem(
 @Composable
 private fun MemberItem(
     member: com.phuongthanh.effiwork_android.data.model.response.ProjectMemberResponse,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onTransferAdmin: () -> Unit
 ) {
-    val safeFullName =member.user?.fullName ?: "Thành viên"
+    val safeFullName = member.user?.fullName ?: "Thành viên"
+    var menuExpanded by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -320,13 +327,48 @@ private fun MemberItem(
                     .background(Blue500.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Xóa",
-                    tint = Color.Red.copy(alpha = 0.7f)
-                )
+            Spacer(modifier = Modifier.width(4.dp))
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "Tùy chọn",
+                        tint = Color.Gray
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Chuyển quyền quản trị viên") },
+                        onClick = {
+                            menuExpanded = false
+                            onTransferAdmin()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.AdminPanelSettings,
+                                contentDescription = null,
+                                tint = Blue500
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Xóa thành viên") },
+                        onClick = {
+                            menuExpanded = false
+                            onRemove()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = Color.Red.copy(alpha = 0.7f)
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -452,7 +494,8 @@ private fun ProjectSettingScreenPreview() {
             joinRequests = fakeRequests,
             onApproveRequest = {},
             onRejectRequest = {},
-            onRemoveMember = {}
+            onRemoveMember = {},
+            onTransferAdmin = {}
         )
     }
 }

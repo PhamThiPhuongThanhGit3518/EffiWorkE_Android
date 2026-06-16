@@ -101,10 +101,8 @@ class ChatbotViewModel @Inject constructor(
     fun sendMessage(projectId: String, text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || isStreaming()) {
-            Log.w(TAG, "sendMessage SKIP empty=$trimmed.isEmpty() streaming=${isStreaming()}")
             return
         }
-        Log.d(TAG, "sendMessage START projectId=$projectId text='${trimmed.take(50)}'")
         this.projectId = projectId
         loadEpoch++
         loadJob?.cancel()
@@ -133,9 +131,7 @@ class ChatbotViewModel @Inject constructor(
         streamJob = viewModelScope.launch {
             var pendingId = assistantPlaceholder.id
             var accumulated = ""
-            Log.d(TAG, "streamJob started, collecting events...")
             chatbotRepository.streamMessage(projectId, trimmed).collect { event ->
-                Log.d(TAG, "streamJob received: $event")
                 when (event) {
                     is ChatStreamEvent.Start -> {
                         pendingId = event.messageId
@@ -151,10 +147,8 @@ class ChatbotViewModel @Inject constructor(
                         updateAssistant(event.messageId, finalContent, isStreaming = false)
                         _uiState.value = (_uiState.value as? ChatbotUiState.Success)?.copy(isStreaming = false)
                             ?: ChatbotUiState.Success(emptyList(), isStreaming = false)
-                        Log.d(TAG, "streamJob DONE, isStreaming=false")
                     }
                     is ChatStreamEvent.Error -> {
-                        Log.e(TAG, "streamJob ERROR: ${event.message}")
                         removeAssistant()
                         _uiState.value = (_uiState.value as? ChatbotUiState.Success)?.copy(isStreaming = false)
                             ?: ChatbotUiState.Success(emptyList(), isStreaming = false)
@@ -162,7 +156,6 @@ class ChatbotViewModel @Inject constructor(
                     }
                 }
             }
-            Log.d(TAG, "streamJob collect finished")
         }
     }
 

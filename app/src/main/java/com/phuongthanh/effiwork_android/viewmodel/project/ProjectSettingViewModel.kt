@@ -111,4 +111,19 @@ class ProjectSettingViewModel @Inject constructor(
             }
         }
     }
+
+    fun transferAdmin(projectId: String, targetUserId: String) {
+        viewModelScope.launch {
+            when (val result = projectRepository.transferAdmin(projectId, targetUserId, null)) {
+                is ApiResult.Success -> {
+                    _effect.emit(ProjectSettingEffect.ShowToast("Chuyển quyền quản trị viên thành công"))
+                    loadProjectSettings(projectId)
+                }
+                is ApiResult.Error -> {
+                    _effect.emit(ProjectSettingEffect.ShowToast(result.message))
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
 }

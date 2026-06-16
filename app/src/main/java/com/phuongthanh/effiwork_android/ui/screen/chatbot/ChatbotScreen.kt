@@ -21,10 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phuongthanh.effiwork_android.ui.theme.EffiWork_AndroidTheme
 import com.phuongthanh.effiwork_android.viewmodel.chatbot.ChatbotEffect
 import com.phuongthanh.effiwork_android.viewmodel.chatbot.ChatbotMessageUi
 import com.phuongthanh.effiwork_android.viewmodel.chatbot.ChatbotRole
@@ -68,7 +71,20 @@ fun ChatbotScreen(
         }
     }
 
+    // Lấy số lượng tin nhắn hiện tại
+    val messagesSize = (uiState as? ChatbotUiState.Success)?.messages?.size ?: 0
+    val isKeyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+
+// Tự động cuộn khi bàn phím mở HOẶC khi có thêm tin nhắn mới
+    LaunchedEffect(messagesSize, isKeyboardOpen) {
+        if (messagesSize > 0) {
+            // Cuộn hẳn xuống item cuối cùng kèm theo khoảng padding trống vừa tạo
+            listState.animateScrollToItem(messagesSize - 1)
+        }
+    }
+
     Scaffold(
+        contentWindowInsets = WindowInsets.systemBars,
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -112,7 +128,8 @@ fun ChatbotScreen(
                     val text = input
                     input = ""
                     viewModel.sendMessage(projectId, text)
-                }
+                },
+                modifier = Modifier.imePadding()
             )
         }
     ) { innerPadding ->
@@ -145,10 +162,20 @@ fun ChatbotScreen(
                     if (state.messages.isEmpty()) {
                         EmptyHint()
                     } else {
+                        val density = LocalDensity.current
+                        val keyboardBottomPadding = with(density) {
+                            WindowInsets.ime.getBottom(density).toDp()
+                        }
+
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                top = 16.dp,
+                                end = 16.dp,
+                                bottom = if (keyboardBottomPadding > 0.dp) keyboardBottomPadding + 8.dp else 16.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(items = state.messages, key = { it.id }) { message ->
@@ -258,12 +285,13 @@ private fun ChatbotInputBar(
     text: String,
     onTextChange: (String) -> Unit,
     isStreaming: Boolean,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         shadowElevation = 6.dp,
         color = Color.White,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -308,6 +336,92 @@ private fun ChatbotInputBar(
                         contentDescription = "Gửi",
                         tint = Color.White
                     )
+                }
+            }
+        }
+    }
+}
+
+@Preview
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatbotScreenPreview() {
+    val sampleMessages = listOf(
+        ChatbotMessageUi(
+            id = "1",
+            role = ChatbotRole.USER,
+            content = "Dự án này có bao nhiêu thành viên?"
+        ),
+        ChatbotMessageUi(
+            id = "2",
+            role = ChatbotRole.ASSISTANT,
+            content = "Dự án hiện có 8 thành viên, trong đó có 2 thành viên mới tham gia tuần này."
+        ),
+        ChatbotMessageUi(
+            id = "3",
+            role = ChatbotRole.USER,
+            content = "Lịch họp sắp tới của dự án là khi nào?"
+        )
+    )
+
+    Scaffold(
+        contentWindowInsets = WindowInsets.systemBars,
+        topBar = {
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.SmartToy,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Trợ lý ảo",
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Tải lại")
+                    }
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.DeleteSweep, contentDescription = "Xóa hội thoại")
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            ChatbotInputBar(
+                text = "",
+                onTextChange = {},
+                isStreaming = false,
+                onSend = {}
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFFF5F7FB))
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(items = sampleMessages, key = { it.id }) { message ->
+                    MessageBubble(message = message)
                 }
             }
         }

@@ -41,6 +41,7 @@ import com.phuongthanh.effiwork_android.data.model.response.chat.ChatUserRespons
 import com.phuongthanh.effiwork_android.ui.screen.chat.item.ChatInputBar
 import com.phuongthanh.effiwork_android.ui.screen.chat.item.ChatMessageItem
 import com.phuongthanh.effiwork_android.ui.theme.Blue500
+import com.phuongthanh.effiwork_android.ui.theme.EffiWork_AndroidTheme
 import com.phuongthanh.effiwork_android.viewmodel.chat.ChatAttachmentViewModel
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatEffect
 import com.phuongthanh.effiwork_android.viewmodel.chat.state.ChatUiState
@@ -862,4 +863,70 @@ private fun LeaveGroupConfirmDialog(
             }
         }
     )
+}
+
+@Composable
+private fun GroupMenuItems(
+    isCreator: Boolean,
+    onRenameClick: () -> Unit,
+    onEditMembersClick: () -> Unit,
+    onLeaveClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text("Đổi tên nhóm") },
+        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+        onClick = onRenameClick
+    )
+    if (isCreator) {
+        DropdownMenuItem(
+            text = { Text("Chỉnh sửa thành viên") },
+            leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
+            onClick = onEditMembersClick
+        )
+    }
+    DropdownMenuItem(
+        text = { Text("Rời khỏi nhóm", color = Color.Red) },
+        leadingIcon = {
+            Icon(
+                Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = null,
+                tint = Color.Red
+            )
+        },
+        onClick = onLeaveClick
+    )
+}
+
+@Preview(showBackground = true, name = "Group menu (creator)")
+@Composable
+private fun GroupMenuCreatorPreview() {
+    EffiWork_AndroidTheme {
+        Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            DropdownMenu(expanded = true, onDismissRequest = {}) {
+                GroupMenuItems(
+                    isCreator = true,
+                    onRenameClick = {},
+                    onEditMembersClick = {},
+                    onLeaveClick = {}
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Group menu (member)")
+@Composable
+private fun GroupMenuMemberPreview() {
+    EffiWork_AndroidTheme {
+        Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            DropdownMenu(expanded = true, onDismissRequest = {}) {
+                GroupMenuItems(
+                    isCreator = false,
+                    onRenameClick = {},
+                    onEditMembersClick = {},
+                    onLeaveClick = {}
+                )
+            }
+        }
+    }
 }
